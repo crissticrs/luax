@@ -3332,8 +3332,8 @@ const CREDIT_WEEKLY_PRO = 250;
 // Checkout (tied to the signed-in Google email). For production,
 // add a webhook that confirms subscription status by email.
 // ---------------------------------------------------------------
-const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/fZu7sKgHmckY0W5fiY3Je00'; // e.g. 'https://buy.stripe.com/xxxx'
-const STRIPE_PORTAL_LINK = 'https://billing.stripe.com/p/login/fZu7sKgHmckY0W5fiY3Je00';  // e.g. 'https://billing.stripe.com/p/login/xxxx'
+const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/fZu7sKgHmckY0W5fiY3Je00';
+const STRIPE_PORTAL_LINK = 'https://billing.stripe.com/p/login/fZu7sKgHmckY0W5fiY3Je00';
 // Optional: your backend that returns { "active": true/false, "activeUntil": "ISO" }
 // Leave empty to use local Pro status (email match + activeUntil window).
 const STRIPE_STATUS_ENDPOINT = '';
@@ -3579,14 +3579,25 @@ function renderBillingPanel() {
     }
 }
 
+/**
+ * Unlock Pro after Stripe checkout.
+ * Requires either a live Google session or a remembered profile (token may still be restoring).
+ * Returns false if auth is not ready yet — caller can retry.
+ */
 function activateProAfterPayment(source) {
-    if (!isAuthed()) {
-        alert('Sign in with Google first, then activate Pro.');
+    // Token may still be refreshing after redirect; remembered profile is enough
+    const ready = isAuthed() || hasRememberedProfile() || !!currentAccountEmail();
+    if (!ready) {
+        // Do not alert here — auth is often still loading after Stripe redirect
         return false;
     }
     setPro(true, { source: source || 'stripe', email: currentAccountEmail() });
-    try { sessionStorage.removeItem('luax_stripe_pending'); } catch (_) {}
+    try {
+        sessionStorage.removeItem('luax_stripe_pending');
+        sessionStorage.removeItem('luax_stripe_activate');
+    } catch (_) {}
     updateProfileUI();
+    try { renderBillingPanel(); } catch (_) {}
     return true;
 }
 
@@ -3603,7 +3614,40 @@ function cleanStripeParamsFromUrl() {
     }
 }
 
-/** Handle return from Stripe Checkout */
+function hadStripeCheckoutPending() {
+    try {
+        return sessionStorage.getItem('luax_stripe_pending') === '1' ||
+            sessionStorage.getItem('luax_stripe_activate') === '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+/**
+ * Apply a pending Pro unlock once Google session is available.
+ * Called from boot timeout and after successful sign-in / session restore.
+ */
+function tryFinishPendingProActivation() {
+    let need = false;
+    try { need = sessionStorage.getItem('luax_stripe_activate') === '1'; } catch (_) {}
+    if (!need) return false;
+    if (!(isAuthed() || hasRememberedProfile())) return false;
+    if (activateProAfterPayment('stripe_return')) {
+        setTimeout(() => {
+            alert('Welcome to LuaX Pro! Your higher credit limit is active on this account.');
+        }, 200);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Handle return from Stripe Checkout.
+ *
+ * Security: ?pro=success alone does NOT unlock Pro.
+ * Unlock only if this browser started Checkout (luax_stripe_pending set in startStripeCheckout).
+ * Random visitors who type /?pro=success get nothing.
+ */
 function handleStripeReturn() {
     try {
         const params = new URLSearchParams(window.location.search);
@@ -3618,12 +3662,22 @@ function handleStripeReturn() {
             !!sessionId;
 
         if (success) {
-            // Only unlock from real Stripe return URL (?pro=success), not manual buttons
-            activateProAfterPayment('stripe_return');
             cleanStripeParamsFromUrl();
-            setTimeout(() => {
-                alert('Welcome to LuaX Pro! Your higher credit limit is active on this account.');
-            }, 300);
+
+            // Must have clicked Subscribe in this browser first
+            if (!hadStripeCheckoutPending()) {
+                // Ignore bare /?pro=success — not a real checkout return
+                return false;
+            }
+
+            try { sessionStorage.setItem('luax_stripe_activate', '1'); } catch (_) {}
+
+            if (activateProAfterPayment('stripe_return')) {
+                setTimeout(() => {
+                    alert('Welcome to LuaX Pro! Your higher credit limit is active on this account.');
+                }, 300);
+            }
+            // else: auth still loading — tryFinishPendingProActivation() will finish it
             return true;
         }
         if (
@@ -3632,12 +3686,13 @@ function handleStripeReturn() {
             redirectStatus === 'failed' ||
             params.get('billing') === 'canceled'
         ) {
-            try { sessionStorage.removeItem('luax_stripe_pending'); } catch (_) {}
-            if (isPro()) setPro(false);
+            try {
+                sessionStorage.removeItem('luax_stripe_pending');
+                sessionStorage.removeItem('luax_stripe_activate');
+            } catch (_) {}
             cleanStripeParamsFromUrl();
             return false;
         }
-        // No manual “I already paid” unlock — require Stripe redirect with ?pro=success
     } catch (_) {}
     return false;
 }
@@ -3995,6 +4050,7 @@ function ensureGoogleTokenClient(silent) {
                 updateCloudUI();
                 setCloudStatus('Cloud: signed in — syncing…', 'ok');
                 await fetchGoogleProfile();
+                tryFinishPendingProActivation();
                 await cloudSyncOnSignIn({ free: true });
                 await verifySubscriptionOnAccess();
                 applyAuthGate();
@@ -4049,8 +4105,12 @@ function tryRestoreGoogleSession() {
         authRefreshing = false;
         updateCloudUI();
         setCloudStatus('Cloud: welcome back — syncing…', 'ok');
+        tryFinishPendingProActivation();
         fetchGoogleProfile()
-            .then(() => verifySubscriptionOnAccess())
+            .then(() => {
+                tryFinishPendingProActivation();
+                return verifySubscriptionOnAccess();
+            })
             .catch(() => {});
         cloudSyncOnSignIn({ free: true }).catch(() => {});
         return;
@@ -4241,14 +4301,22 @@ try {
     applyTheme('purple');
 }
 hydrateIcons(document);
+// Restore remembered Google profile first so Stripe return can bind email
+try {
+    const pr = localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (pr) googleProfile = JSON.parse(pr);
+} catch (_) {}
+loadPersistedGoogleToken();
 handleStripeReturn();
 tryRestoreGoogleSession();
 applyAuthGate();
-// After profile/token settle: bind Pro email + verify plan + open shared play links
+tryFinishPendingProActivation();
+// After profile/token settle: finish pending Pro, bind email, verify plan
 setTimeout(() => {
+    tryFinishPendingProActivation();
     if (isPro() && currentAccountEmail()) {
         const st = loadProStatus();
-        if (st && st.active && !st.email) {
+        if (st && st.active && (!st.email || st.email !== currentAccountEmail())) {
             setPro(true, { source: st.source || 'stripe', email: currentAccountEmail(), since: st.since, activeUntil: st.activeUntil });
         }
     }
@@ -4263,6 +4331,8 @@ setTimeout(() => {
         }
     }
 }, 800);
+// One more retry after slower token refresh
+setTimeout(() => { tryFinishPendingProActivation(); }, 2500);
 
 // Mark initial load as saved if we have data
 try {
