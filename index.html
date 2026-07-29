@@ -3333,7 +3333,7 @@ const CREDIT_WEEKLY_PRO = 250;
 // add a webhook that confirms subscription status by email.
 // ---------------------------------------------------------------
 const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/fZu7sKgHmckY0W5fiY3Je00'; // e.g. 'https://buy.stripe.com/xxxx'
-const STRIPE_PORTAL_LINK = 'https://billing.stripe.com/p/login/fZu7sKgHmckY0W5fiY3Je00';  // e.g. 'https://billing.stripe.com/p/login/xxxx'
+const STRIPE_PORTAL_LINK = '';  // e.g. 'https://billing.stripe.com/p/login/xxxx'
 // Optional: your backend that returns { "active": true/false, "activeUntil": "ISO" }
 // Leave empty to use local Pro status (email match + activeUntil window).
 const STRIPE_STATUS_ENDPOINT = '';
@@ -3519,26 +3519,11 @@ function openBillingManage() {
             <li>Turn the portal <b>on</b> (allow cancel subscription)</li>
             <li>Copy the portal link into <code>STRIPE_PORTAL_LINK</code> in index.html</li>
           </ol>
-          <p style="margin:0;font-size:0.8rem;color:var(--muted)">Until then, you can remove Pro on this device only — Stripe may still charge until you cancel in the receipt email / Stripe.</p>
+          <p style="margin:0;font-size:0.8rem;color:var(--muted)">Pro only unlocks after Stripe redirects back with <code>?pro=success</code>.</p>
         </div>`,
-        isPro() ? 'Remove Pro on this device' : 'OK',
-        () => {
-            if (isPro()) deactivateProLocal();
-        }
+        'OK',
+        () => {}
     );
-}
-
-function deactivateProLocal() {
-    if (!confirm(
-        'Remove Pro on this device?\n\n' +
-        'This does NOT cancel the Stripe charge by itself.\n' +
-        'Use Manage billing / Customer Portal (or your Stripe receipt email) to stop monthly payments.'
-    )) return;
-    setPro(false);
-    try { sessionStorage.removeItem('luax_stripe_pending'); } catch (_) {}
-    renderBillingPanel();
-    updateProfileUI();
-    alert('Pro removed on this device. Cancel in Stripe if you want to stop being charged.');
 }
 
 function cancelSubscription() {
@@ -3552,7 +3537,7 @@ function cancelSubscription() {
             'Cancel subscription',
             `<div style="font-size:0.9rem;line-height:1.45;color:var(--text-color)">
               <p style="margin:0 0 10px">You’ll open Stripe’s secure portal to cancel or change your plan.</p>
-              <p style="margin:0;color:var(--muted);font-size:0.85rem">After canceling there, come back and use <b>Remove Pro on this device</b> if Pro is still shown here.</p>
+              <p style="margin:0;color:var(--muted);font-size:0.85rem">After you cancel in Stripe, Pro is removed when status is verified (or when your paid period ends).</p>
             </div>`,
             'Open Stripe portal',
             () => { openStripePortal(); }
@@ -3581,9 +3566,8 @@ function renderBillingPanel() {
             <div class="billing-actions">
               <button type="button" class="btn btn-primary btn-sm" onclick="openBillingManage()">Manage billing</button>
               <button type="button" class="btn btn-sm btn-danger-outline" onclick="cancelSubscription()">Cancel subscription</button>
-              <button type="button" class="btn btn-sm" onclick="deactivateProLocal()">Remove Pro on this device</button>
             </div>
-            <p class="lx-hint" style="margin-top:10px;margin-bottom:0">Cancel in Stripe stops future charges. “Remove Pro on this device” only turns off Pro in the app.</p>`;
+            <p class="lx-hint" style="margin-top:10px;margin-bottom:0">Cancel only through Stripe Customer Portal so billing and app status stay in sync.</p>`;
     } else {
         el.innerHTML = `
             <p class="billing-status free">Free plan</p>
@@ -3634,6 +3618,7 @@ function handleStripeReturn() {
             !!sessionId;
 
         if (success) {
+            // Only unlock from real Stripe return URL (?pro=success), not manual buttons
             activateProAfterPayment('stripe_return');
             cleanStripeParamsFromUrl();
             setTimeout(() => {
@@ -3648,35 +3633,11 @@ function handleStripeReturn() {
             params.get('billing') === 'canceled'
         ) {
             try { sessionStorage.removeItem('luax_stripe_pending'); } catch (_) {}
-            // Returned from cancel flow → drop to Free on this device
             if (isPro()) setPro(false);
             cleanStripeParamsFromUrl();
             return false;
         }
-
-        // User paid on Stripe’s page but Payment Link has no redirect URL set.
-        // Offer to unlock Pro once they come back.
-        let pending = false;
-        try { pending = sessionStorage.getItem('luax_stripe_pending') === '1'; } catch (_) {}
-        if (pending && !isPro()) {
-            setTimeout(() => {
-                if (isPro()) return;
-                openModal(
-                    'Complete Pro activation',
-                    `<div style="font-size:0.9rem;line-height:1.45;color:var(--text-color)">
-                      <p style="margin:0 0 10px">If you finished paying on Stripe, tap below to unlock Pro on this account.</p>
-                      <p style="margin:0;font-size:0.8rem;color:var(--muted)">Tip: in Stripe → Payment Link → After payment, choose <b>Redirect to website</b> and use:<br>
-                      <code style="word-break:break-all">https://YOUR-SITE/?pro=success</code></p>
-                    </div>`,
-                    'I paid — activate Pro',
-                    () => {
-                        if (activateProAfterPayment('stripe_manual')) {
-                            alert('LuaX Pro is active. Thanks for subscribing!');
-                        }
-                    }
-                );
-            }, 600);
-        }
+        // No manual “I already paid” unlock — require Stripe redirect with ?pro=success
     } catch (_) {}
     return false;
 }
@@ -3722,8 +3683,6 @@ function openSubscriptionInfo() {
     closeAccountMenu();
     const pro = isPro();
     const stripeReady = !!STRIPE_PAYMENT_LINK;
-    let pending = false;
-    try { pending = sessionStorage.getItem('luax_stripe_pending') === '1'; } catch (_) {}
 
     if (pro) {
         openModal(
@@ -3752,12 +3711,9 @@ function openSubscriptionInfo() {
           </ul>
           <p style="margin:0 0 8px"><b>Free:</b> ${CREDIT_WEEKLY_FREE} / week · <b>Pro:</b> ${CREDIT_WEEKLY_PRO} / week</p>
           <p style="margin:0;color:var(--muted);font-size:0.8rem">Pay with card, Apple Pay, or Google Pay (via Stripe).</p>
-          ${pending
-            ? '<p style="margin:12px 0 0;color:var(--accent-color);font-weight:600">Payment started — if you already paid, use Activate below.</p>'
-            : (stripeReady
-                ? '<p style="margin:12px 0 0;font-size:0.8rem;color:var(--muted)">Opens secure Stripe Checkout.</p>'
-                : '<p style="margin:12px 0 0;font-size:0.8rem;color:#ff8a80">Stripe Payment Link not set yet.</p>')}
-          ${stripeReady ? `<p style="margin:12px 0 0"><button type="button" class="btn btn-sm btn-block" onclick="closeModal(); if(activateProAfterPayment('stripe_manual')) alert('LuaX Pro is active. Thanks for subscribing!');">I already paid — activate Pro</button></p>` : ''}
+          ${stripeReady
+            ? '<p style="margin:12px 0 0;font-size:0.8rem;color:var(--muted)">Opens secure Stripe Checkout. Pro unlocks after payment redirects back to this site.</p>'
+            : '<p style="margin:12px 0 0;font-size:0.8rem;color:#ff8a80">Stripe Payment Link not set yet.</p>'}
         </div>`,
         stripeReady ? 'Subscribe — €5/mo' : 'Close',
         () => { if (stripeReady) startStripeCheckout(); }
