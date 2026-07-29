@@ -1504,7 +1504,7 @@ function getProjectGamepad(name) {
     if (!name) return true;
     const s = projectSettings[name];
     if (s && typeof s.gamepad === 'boolean') return s.gamepad;
-    return true; // default: on-screen controls enabled
+    return true; // default ON for mobile projects
 }
 
 function setProjectGamepad(name, enabled) {
@@ -1518,7 +1518,14 @@ function setProjectGamepad(name, enabled) {
 
 function updateGamepadToggleUI() {
     const btn = document.getElementById('btn-gamepad-toggle');
-    if (!btn || !currentProjectName) return;
+    if (!btn) return;
+    // Desktop: gamepad UI does not exist — keyboard/mouse only
+    if (typeof isMobileDevice !== 'undefined' && !isMobileDevice) {
+        btn.style.display = 'none';
+        return;
+    }
+    btn.style.display = '';
+    if (!currentProjectName) return;
     const on = getProjectGamepad(currentProjectName);
     btn.textContent = on ? 'Gamepad: ON' : 'Gamepad: OFF';
     btn.classList.toggle('on', on);
@@ -1527,6 +1534,7 @@ function updateGamepadToggleUI() {
 
 function toggleProjectGamepad() {
     if (!currentProjectName) return;
+    if (typeof isMobileDevice !== 'undefined' && !isMobileDevice) return;
     const next = !getProjectGamepad(currentProjectName);
     setProjectGamepad(currentProjectName, next);
     updateGamepadToggleUI();
@@ -1778,23 +1786,32 @@ function promptNewProject() {
     const tplHtml = Object.keys(TEMPLATES).map(k =>
         `<button type="button" class="template-btn${k===selectedTemplate?' selected':''}" data-tpl="${k}" onclick="selectTemplate('${k}')">${TEMPLATES[k].name}</button>`
     ).join('');
+    // Gamepad option only on mobile — desktop uses keyboard/mouse only
+    const mobile = typeof isMobileDevice !== 'undefined' ? isMobileDevice : false;
+    const gpHtml = mobile
+        ? `<label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;cursor:pointer;user-select:none;margin-top:4px">
+             <input type="checkbox" id="modal-gamepad" checked style="width:18px;height:18px;accent-color:var(--accent-color)">
+             On-screen gamepad (joystick + buttons)
+           </label>
+           <div style="font-size:0.75rem;color:#666;margin-top:4px">Touch controls for phones / tablets</div>`
+        : `<div style="font-size:0.75rem;color:#666;margin-top:8px">Desktop: keyboard (WASD) + mouse look — no on-screen gamepad</div>`;
     openModal('New Project',
         `<input type="text" id="modal-input" placeholder="Project name" autocomplete="off">
          <div style="font-size:0.85rem;color:#888;margin-bottom:6px">Template</div>
          <div class="template-list">${tplHtml}</div>
-         <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;cursor:pointer;user-select:none;margin-top:4px">
-           <input type="checkbox" id="modal-gamepad" checked style="width:18px;height:18px;accent-color:var(--accent-color)">
-           On-screen gamepad (joystick + buttons)
-         </label>
-         <div style="font-size:0.75rem;color:#666;margin-top:4px">Turn off for keyboard/mouse only or when exporting without touch UI</div>`,
+         ${gpHtml}`,
         'Create',
         () => {
             const name = (document.getElementById('modal-input').value || '').trim();
             if (!name) return alert('Enter a name');
             if (projects[name]) return alert('Already exists');
             projects[name] = JSON.parse(JSON.stringify(TEMPLATES[selectedTemplate].files));
-            const gp = document.getElementById('modal-gamepad');
-            setProjectGamepad(name, gp ? gp.checked : true);
+            if (mobile) {
+                const gp = document.getElementById('modal-gamepad');
+                setProjectGamepad(name, gp ? gp.checked : true);
+            } else {
+                setProjectGamepad(name, false);
+            }
             saveState();
             renderProjects();
             openProject(name);
@@ -2340,16 +2357,14 @@ function detectMobile() {
 const isMobileDevice = detectMobile();
 
 /**
- * On-screen gamepad visibility is per-project (Gamepad: ON/OFF).
- * When OFF → hide joystick + face buttons, full-screen look (desktop-friendly / export).
+ * On-screen gamepad: mobile only.
+ * Desktop never shows joystick/face buttons (keyboard + mouse look).
+ * On mobile, per-project Gamepad ON/OFF still applies.
  */
 function applyControlsVisibility() {
-    // Project setting wins; if no project open, default hidden on desktop
-    let show;
-    if (currentProjectName) {
-        show = getProjectGamepad(currentProjectName);
-    } else {
-        show = isMobileDevice;
+    let show = false;
+    if (isMobileDevice) {
+        show = currentProjectName ? getProjectGamepad(currentProjectName) : true;
     }
     document.body.classList.toggle('controls-hidden', !show);
     return !show;
@@ -3777,9 +3792,12 @@ function openSubscriptionInfo() {
 const GOOGLE_CLIENT_ID = '996784289780-lrl7mub599dn6eti14h3nvfre2ov6027.apps.googleusercontent.com';
 
 const CLOUD_FILE_NAME = 'luadeck_projects.json';
-const CLOUD_SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+// openid + profile + email + Drive appData (private app folder)
+const CLOUD_SCOPE = 'openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/drive.appdata';
 const TOKEN_STORAGE_KEY = 'luadeck_google_token';
 const PROFILE_STORAGE_KEY = 'luadeck_google_profile';
+const SCOPE_VERSION_KEY = 'luadeck_oauth_scope_v';
+const SCOPE_VERSION = '2'; // bump when scopes change → force re-consent once
 
 let googleClientId = GOOGLE_CLIENT_ID || localStorage.getItem('luadeck_google_client_id') || '';
 let googleToken = null;
@@ -3926,8 +3944,9 @@ function loginWithGoogle() {
         }
         return;
     }
-    const returning = hasRememberedProfile() || !!localStorage.getItem(TOKEN_STORAGE_KEY);
-    client.requestAccessToken({ prompt: returning ? '' : 'consent' });
+    // New scopes or first login → full consent so Drive appData is granted
+    const forceConsent = needsScopeReconsent() || !(hasRememberedProfile() || localStorage.getItem(TOKEN_STORAGE_KEY));
+    client.requestAccessToken({ prompt: forceConsent ? 'consent' : '' });
 }
 
 function showLoginError(msg) {
@@ -4018,6 +4037,18 @@ function isGoogleTokenValid() {
     return !!(googleToken && Date.now() < googleTokenExpiresAt);
 }
 
+function needsScopeReconsent() {
+    try {
+        return localStorage.getItem(SCOPE_VERSION_KEY) !== SCOPE_VERSION;
+    } catch (_) {
+        return true;
+    }
+}
+
+function markScopesGranted() {
+    try { localStorage.setItem(SCOPE_VERSION_KEY, SCOPE_VERSION); } catch (_) {}
+}
+
 function ensureGoogleTokenClient(silent) {
     if (!googleClientId) {
         if (!silent) {
@@ -4033,6 +4064,7 @@ function ensureGoogleTokenClient(silent) {
         googleTokenClient = google.accounts.oauth2.initTokenClient({
             client_id: googleClientId,
             scope: CLOUD_SCOPE,
+            include_granted_scopes: true,
             callback: async (resp) => {
                 if (resp.error) {
                     setCloudStatus('Cloud: ' + (resp.error_description || resp.error), 'warn');
@@ -4046,6 +4078,7 @@ function ensureGoogleTokenClient(silent) {
                 }
                 authRefreshing = false;
                 persistGoogleToken(resp.access_token, resp.expires_in);
+                markScopesGranted();
                 updateCloudUI();
                 setCloudStatus('Cloud: signed in — syncing…', 'ok');
                 await fetchGoogleProfile();
@@ -4065,6 +4098,15 @@ function ensureGoogleTokenClient(silent) {
         });
     }
     return googleTokenClient;
+}
+
+/** Force a one-time re-consent so Drive appData scope is actually on the token */
+function requestGoogleTokenWithScopes(opts) {
+    const client = ensureGoogleTokenClient(!!(opts && opts.silent));
+    if (!client) return false;
+    const forceConsent = !!(opts && opts.forceConsent) || needsScopeReconsent();
+    client.requestAccessToken({ prompt: forceConsent ? 'consent' : '' });
+    return true;
 }
 
 function googleSignInOrOut() {
@@ -4126,7 +4168,8 @@ function tryRestoreGoogleSession() {
         if (typeof google !== 'undefined' && google.accounts?.oauth2) {
             const client = ensureGoogleTokenClient(true);
             if (client) {
-                client.requestAccessToken({ prompt: '' });
+                // Scope upgrade needs consent once; otherwise silent refresh
+                client.requestAccessToken({ prompt: needsScopeReconsent() ? 'consent' : '' });
             } else {
                 authRefreshing = false;
                 updateCloudUI();
@@ -4145,6 +4188,8 @@ function tryRestoreGoogleSession() {
     waitForGis(30);
 }
 
+let scopeReauthInFlight = false;
+
 async function driveFetch(path, options = {}) {
     if (!googleToken) throw new Error('Not signed in');
     const res = await fetch('https://www.googleapis.com/drive/v3' + path, {
@@ -4156,7 +4201,22 @@ async function driveFetch(path, options = {}) {
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message || res.statusText || 'Drive API error');
+        const msg = (err.error && err.error.message) || res.statusText || 'Drive API error';
+        const insufficient =
+            /insufficient.*scope|ACCESS_TOKEN_SCOPE_INSUFFICIENT|permission/i.test(msg) ||
+            (err.error && err.error.status === 'PERMISSION_DENIED');
+        if (insufficient && !scopeReauthInFlight) {
+            scopeReauthInFlight = true;
+            setCloudStatus('Cloud: need Drive permission — sign in again…', 'warn');
+            try { localStorage.removeItem(SCOPE_VERSION_KEY); } catch (_) {}
+            clearPersistedGoogleToken({ keepProfile: true });
+            // Prompt user to grant drive.appdata
+            setTimeout(() => {
+                scopeReauthInFlight = false;
+                requestGoogleTokenWithScopes({ forceConsent: true, silent: true });
+            }, 400);
+        }
+        throw new Error(msg);
     }
     return res;
 }
