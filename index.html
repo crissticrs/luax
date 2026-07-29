@@ -1470,14 +1470,8 @@ function loadProjectSettings() {
     }
 }
 
-let projects = loadProjectsFromStorage();
-if (!projects) {
-    // First launch only — seed demo
-    projects = { DemoGame: JSON.parse(JSON.stringify(TEMPLATES.demo.files)) };
-} else if (Object.keys(projects).length === 0) {
-    projects.DemoGame = JSON.parse(JSON.stringify(TEMPLATES.demo.files));
-}
-// NOTE: never wipe existing projects just because DemoGame is missing
+// Start empty — user creates their first project (no DemoGame seed)
+let projects = loadProjectsFromStorage() || {};
 
 /** Per-project settings: { [name]: { gamepad: boolean } } — gamepad default true */
 let projectSettings = loadProjectSettings();
