@@ -4239,17 +4239,19 @@ const CLOUD_CREDIT_COOLDOWN_MS = 60 * 60 * 1000; // charge cloud_save at most on
 async function cloudUpload(silent, opts) {
     if (!googleToken || cloudSyncing) return;
     const free = opts && opts.free;
-    if (!free) {
-        const now = Date.now();
-        const needCredit = (now - lastCloudCreditAt) >= CLOUD_CREDIT_COOLDOWN_MS;
-        if (needCredit) {
-            if (!spendCredits('cloud_save', { silent: !!silent })) {
-                if (!silent) setCloudStatus('Cloud: need credits to backup', 'warn');
-                return;
-            }
-            lastCloudCreditAt = now;
+    const now = Date.now();
+    const needCredit = !free && (now - lastCloudCreditAt) >= CLOUD_CREDIT_COOLDOWN_MS;
+
+    // Check balance first, but do NOT charge until upload succeeds
+    if (needCredit) {
+        const st = loadCreditsState();
+        const cost = CREDIT_COSTS.cloud_save || 0;
+        if (st.left < cost) {
+            if (!silent) setCloudStatus('Cloud: need credits to backup', 'warn');
+            return;
         }
     }
+
     cloudSyncing = true;
     if (!silent) setCloudStatus('Cloud: saving…');
     try {
@@ -4296,9 +4298,18 @@ async function cloudUpload(silent, opts) {
             const data = await res.json();
             cloudFileId = data.id;
         }
+
+        // Charge only after a successful upload
+        if (needCredit) {
+            if (spendCredits('cloud_save', { silent: true })) {
+                lastCloudCreditAt = now;
+            }
+        }
+
         setCloudStatus('Cloud: synced ✓', 'ok');
         updateProfileUI();
     } catch (err) {
+        // Failed sync → no credits spent
         setCloudStatus('Cloud: sync failed', 'warn');
         if (!silent) console.warn('Cloud save failed', err);
     } finally {
