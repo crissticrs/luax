@@ -1825,6 +1825,11 @@ function deleteProject(e, name) {
         saveProjectAssets();
         saveState();
         renderProjects();
+        // Push deletion to Drive immediately so reload does not restore the project
+        if (googleToken) {
+            clearTimeout(cloudSaveTimer);
+            cloudUpload(true).catch(() => {});
+        }
     }
 }
 
@@ -4255,12 +4260,12 @@ function scheduleCloudSave() {
 }
 
 /**
- * Pull cloud projects then push local.
- * opts.free = true → no credits (page reload / already signed in).
- * Loading your own save is free; only real backups while editing cost credits.
+ * Sync with Drive on sign-in / reload.
+ * - If cloud is NEWER than local → take cloud (other device / first restore)
+ * - If local is NEWER or same → keep local (deletes & edits win) and push to cloud
+ * Previously cloud always overwrote local, so deleted projects came back on reload.
  */
 async function cloudSyncOnSignIn(opts) {
-    const free = !!(opts && opts.free);
     try {
         const fileId = await findCloudFile();
         if (fileId) {
@@ -4268,16 +4273,37 @@ async function cloudSyncOnSignIn(opts) {
             const res = await driveFetch(`/files/${fileId}?alt=media`);
             const data = await res.json();
             if (data.projects && typeof data.projects === 'object') {
-                const merged = { ...data.projects, ...projects };
-                Object.keys(data.projects).forEach(k => { merged[k] = data.projects[k]; });
-                projects = merged;
-                try {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-                } catch (_) {}
-                renderProjects();
+                const cloudAt = data.savedAt ? Date.parse(data.savedAt) : 0;
+                let localAt = lastSaveAt ? Number(lastSaveAt) : 0;
+                if (!localAt) {
+                    try {
+                        const meta = JSON.parse(localStorage.getItem(STORAGE_META) || 'null');
+                        if (meta && meta.savedAt) localAt = Number(meta.savedAt);
+                    } catch (_) {}
+                }
+                const localCount = Object.keys(projects || {}).length;
+                const cloudCount = Object.keys(data.projects).length;
+
+                // Cloud wins only when it is clearly newer (e.g. other device saved later)
+                // or local is empty and cloud has data (first load on this browser)
+                const cloudNewer = cloudAt > localAt + 500; // 0.5s skew tolerance
+                const firstRestore = localCount === 0 && cloudCount > 0;
+
+                if (cloudNewer || firstRestore) {
+                    projects = data.projects;
+                    try {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+                        localStorage.setItem(STORAGE_META, JSON.stringify({
+                            savedAt: cloudAt || Date.now()
+                        }));
+                    } catch (_) {}
+                    lastSaveAt = cloudAt || Date.now();
+                    renderProjects();
+                }
+                // else: local is newer (includes deletions) — keep local, push below
             }
         }
-        // Welcome-back / sign-in handshake upload is free; later edits still cost
+        // Always push local after decide so Drive matches this device
         await cloudUpload(true, { free: true });
         setCloudStatus('Cloud: synced ✓', 'ok');
         updateProfileUI();
