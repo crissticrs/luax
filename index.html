@@ -871,6 +871,48 @@
             width: auto; min-width: 40px; padding: 0 10px;
             font-weight: 800; font-size: 0.85rem;
         }
+        .spr-size-custom {
+            display: flex; align-items: center; gap: 6px;
+            margin-top: 8px; flex-wrap: wrap;
+        }
+        .spr-size-custom input {
+            width: 56px; height: 36px;
+            border-radius: 10px;
+            border: 1.5px solid var(--glass-border);
+            background: var(--panel-2, #1a1c23);
+            color: var(--text-color);
+            font-weight: 700; font-size: 0.85rem;
+            text-align: center;
+            padding: 0 4px;
+        }
+        .spr-size-custom input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        .spr-size-x {
+            color: var(--muted); font-weight: 700; font-size: 0.85rem;
+        }
+        .spr-size-lock {
+            width: 36px; height: 36px; border-radius: 10px;
+            border: 1.5px solid var(--glass-border);
+            background: transparent; color: var(--muted);
+            font-size: 1rem; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0;
+        }
+        .spr-size-lock.on {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+        }
+        .spr-size-apply {
+            height: 36px; padding: 0 12px; border-radius: 10px;
+            border: 1.5px solid var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+            color: var(--accent-color);
+            font-weight: 800; font-size: 0.78rem;
+            cursor: pointer;
+        }
         .spr-color-block {
             display: flex; align-items: center; gap: 12px;
         }
@@ -1363,12 +1405,20 @@
                     </div>
                 </div>
                 <div class="spr-card">
-                    <div class="spr-card-label">Brush Size</div>
+                    <div class="spr-card-label">Canvas size</div>
                     <div class="spr-row" id="spr-sizes">
                         <button type="button" class="spr-size" data-size="8" onclick="setSpriteSize(8)">8</button>
                         <button type="button" class="spr-size active" data-size="16" onclick="setSpriteSize(16)">16</button>
                         <button type="button" class="spr-size" data-size="24" onclick="setSpriteSize(24)">24</button>
                         <button type="button" class="spr-size" data-size="32" onclick="setSpriteSize(32)">32</button>
+                        <button type="button" class="spr-size" data-size="64" onclick="setSpriteSize(64)">64</button>
+                    </div>
+                    <div class="spr-size-custom">
+                        <input type="number" id="spr-custom-w" min="1" max="512" value="16" inputmode="numeric" oninput="onSpriteCustomSizeInput('w')">
+                        <span class="spr-size-x">×</span>
+                        <input type="number" id="spr-custom-h" min="1" max="512" value="16" inputmode="numeric" oninput="onSpriteCustomSizeInput('h')">
+                        <button type="button" class="spr-size-lock on" id="spr-size-lock" title="Lock square (same W and H)" onclick="toggleSpriteSizeLock()">🔗</button>
+                        <button type="button" class="spr-size-apply" onclick="applyCustomSpriteSize()">Apply</button>
                     </div>
                 </div>
             </div>
@@ -2218,10 +2268,12 @@ local dir = 0
 local names = { "Front", "Right", "Left", "Back" }
 
 function _update(dt)
-    if btn(0) or axis(1) < -0.4 then dir = 3 end  -- up    -> Back
-    if btn(1) or axis(1) >  0.4 then dir = 0 end  -- down  -> Front
-    if btn(2) or axis(0) < -0.4 then dir = 2 end  -- left  -> Left
-    if btn(3) or axis(0) >  0.4 then dir = 1 end  -- right -> Right
+    local ax = -axis(0)  -- invert X so left/right match the stick
+    local ay = axis(1)
+    if btn(0) or ay < -0.4 then dir = 3 end  -- up    -> Back
+    if btn(1) or ay >  0.4 then dir = 0 end  -- down  -> Front
+    if btn(2) or ax < -0.4 then dir = 2 end  -- left  -> Left
+    if btn(3) or ax >  0.4 then dir = 1 end  -- right -> Right
 end
 
 function _draw()
@@ -2757,6 +2809,7 @@ const SPRITE_PALETTE = [
 ];
 
 const spriteEd = {
+    lockAspect: true,
     w: 16,
     h: 16,
     layers: [],       // { name, visible, pixels }
@@ -3411,29 +3464,91 @@ function setSpriteTool(tool) {
     renderSpritePalette();
 }
 
-function setSpriteSize(size) {
-    size = size | 0;
-    if (![8, 16, 24, 32].includes(size)) return;
-    if (spriteEd.w === size && spriteEd.h === size) {
-        document.querySelectorAll('.spr-size').forEach(b => {
-            b.classList.toggle('active', +b.dataset.size === size);
-        });
+// Canvas size lock: when on, W and H stay equal (perfect square)
+if (typeof spriteEd !== 'undefined' && spriteEd.lockAspect == null) {
+    spriteEd.lockAspect = true;
+}
+
+function syncSpriteSizeUI() {
+    const w = spriteEd.w | 0;
+    const h = spriteEd.h | 0;
+    const wIn = document.getElementById('spr-custom-w');
+    const hIn = document.getElementById('spr-custom-h');
+    if (wIn) wIn.value = w;
+    if (hIn) hIn.value = h;
+    const square = (w === h);
+    document.querySelectorAll('.spr-size').forEach(b => {
+        const s = +b.dataset.size;
+        b.classList.toggle('active', square && s === w);
+    });
+    const lock = document.getElementById('spr-size-lock');
+    if (lock) lock.classList.toggle('on', !!spriteEd.lockAspect);
+}
+
+function toggleSpriteSizeLock() {
+    spriteEd.lockAspect = !spriteEd.lockAspect;
+    const lock = document.getElementById('spr-size-lock');
+    if (lock) lock.classList.toggle('on', spriteEd.lockAspect);
+    if (spriteEd.lockAspect) {
+        // force H = W from the width box
+        const wIn = document.getElementById('spr-custom-w');
+        const hIn = document.getElementById('spr-custom-h');
+        if (wIn && hIn) hIn.value = wIn.value;
+    }
+}
+
+function onSpriteCustomSizeInput(which) {
+    if (!spriteEd.lockAspect) return;
+    const wIn = document.getElementById('spr-custom-w');
+    const hIn = document.getElementById('spr-custom-h');
+    if (!wIn || !hIn) return;
+    if (which === 'w') hIn.value = wIn.value;
+    else wIn.value = hIn.value;
+}
+
+function applySpriteCanvasSize(w, h) {
+    w = Math.round(Number(w));
+    h = Math.round(Number(h));
+    if (!(w >= 1 && w <= 512 && h >= 1 && h <= 512)) {
+        alert('Size must be between 1 and 512');
         return;
     }
-    if (spriteEd.dirty && !confirm('Resize clears all layers. Continue?')) return;
-    spriteEd.w = size;
-    spriteEd.h = size;
+    if (spriteEd.w === w && spriteEd.h === h) {
+        syncSpriteSizeUI();
+        return;
+    }
+    if (spriteEd.dirty && !confirm('Resize clears all layers. Continue?')) {
+        syncSpriteSizeUI();
+        return;
+    }
+    spriteEd.w = w;
+    spriteEd.h = h;
     spriteEd.layers = [createSpriteLayer('Layer 1')];
     spriteEd.activeLayer = 0;
     spriteEd.history = [];
     spriteEd.historyIdx = -1;
     spriteEd.dirty = false;
-    document.querySelectorAll('.spr-size').forEach(b => {
-        b.classList.toggle('active', +b.dataset.size === size);
-    });
     pushSpriteHistory();
     renderSpriteLayersUI();
     redrawSpriteCanvas();
+    syncSpriteSizeUI();
+}
+
+function setSpriteSize(size) {
+    size = size | 0;
+    if (size < 1 || size > 512) return;
+    // preset buttons always make a square
+    applySpriteCanvasSize(size, size);
+}
+
+function applyCustomSpriteSize() {
+    const wIn = document.getElementById('spr-custom-w');
+    const hIn = document.getElementById('spr-custom-h');
+    if (!wIn || !hIn) return;
+    let w = parseInt(wIn.value, 10);
+    let h = parseInt(hIn.value, 10);
+    if (spriteEd.lockAspect) h = w;
+    applySpriteCanvasSize(w, h);
 }
 
 function clearSpriteCanvas() {
@@ -3627,6 +3742,7 @@ function openSpriteEditor(existingName) {
         pushSpriteHistory();
         renderSpriteLayersUI();
         redrawSpriteCanvas();
+    syncSpriteSizeUI();
     }
 
     setSpriteTool('pencil');
