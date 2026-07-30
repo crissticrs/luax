@@ -510,9 +510,32 @@
             font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
             font-size: 14px; line-height: 1.5;
             background: var(--bg-color) !important;
-            -webkit-user-select: text; user-select: text;
+            -webkit-user-select: text !important; user-select: text !important;
+            touch-action: auto !important;
         }
-        .CodeMirror-vscrollbar, .CodeMirror-hscrollbar { display: none !important; }
+        .CodeMirror, .CodeMirror * {
+            -webkit-user-select: text !important; user-select: text !important;
+        }
+        #editor-view, #editor-view * {
+            touch-action: manipulation;
+        }
+        #editor-view .CodeMirror {
+            touch-action: auto !important;
+        }
+        .editor-toolbar {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            padding: 6px 10px; flex-shrink: 0;
+            background: var(--panel-color);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .editor-toolbar .btn {
+            min-height: 32px; padding: 6px 10px; font-size: 0.78rem;
+            border-radius: 8px;
+        }
+        .editor-toolbar .btn-danger-soft {
+            background: transparent; color: #ff8a80;
+            border: 1px solid rgba(255,82,82,0.4);
+        }
         /* Inline syntax / runtime error markers */
         .luax-error-gutter {
             width: 14px;
@@ -2149,6 +2172,13 @@
             <div class="header-actions">
                 <button class="btn btn-primary" id="save-btn" onclick="saveCurrentFile()">SAVE</button>
             </div>
+        </div>
+        <div class="editor-toolbar" id="editor-toolbar">
+            <button type="button" class="btn btn-sm" onclick="editorUndo()" title="Undo">↺ Undo</button>
+            <button type="button" class="btn btn-sm" onclick="editorRedo()" title="Redo">↻ Redo</button>
+            <button type="button" class="btn btn-sm" onclick="editorSelectAll()" title="Select all">Select all</button>
+            <button type="button" class="btn btn-sm" onclick="editorPaste()" title="Paste">Paste</button>
+            <button type="button" class="btn btn-sm btn-danger-soft" onclick="editorDeleteAll()" title="Clear file">Delete all</button>
         </div>
         <div class="tabs-bar" id="tabs-bar"></div>
         <div class="editor-container" id="editor"></div>
@@ -5077,11 +5107,21 @@ try {
         editor = CodeMirror(document.getElementById('editor'), {
             mode: 'lua', theme: 'material-ocean',
             lineNumbers: true, matchBrackets: true, indentUnit: 4,
-            styleActiveLine: true, viewportMargin: Infinity,
+            styleActiveLine: true,
+            viewportMargin: 80,
+            historyEventDelay: 250,
+            undoDepth: 200,
             gutters: ['CodeMirror-linenumbers', 'luax-error-gutter'],
             extraKeys: {
                 'Ctrl-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
                 'Cmd-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
+                'Ctrl-A': function (cm) { cm.execCommand('selectAll'); },
+                'Cmd-A': function (cm) { cm.execCommand('selectAll'); },
+                'Ctrl-Z': function (cm) { cm.undo(); },
+                'Cmd-Z': function (cm) { cm.undo(); },
+                'Ctrl-Y': function (cm) { cm.redo(); },
+                'Cmd-Shift-Z': function (cm) { cm.redo(); },
+                'Ctrl-Shift-Z': function (cm) { cm.redo(); },
             },
         });
     } else {
@@ -5189,28 +5229,79 @@ function applyEditorSyntaxCheck(code, filename) {
 if (editor) {
 editor.on('change', () => {
     if (!currentFileName) return;
-    const now = editor.getValue();
-    isDirty = (now !== savedContent);
-    updateDirtyUI();
-    // Clear stale markers while typing; re-check shortly after pause
-    if (editorErrorState.line != null) clearEditorErrors();
-    clearTimeout(editor._luaxLintTimer);
-    editor._luaxLintTimer = setTimeout(() => {
-        if (!currentFileName) return;
-        applyEditorSyntaxCheck(editor.getValue(), currentFileName);
-    }, 650);
+    try {
+        const now = editor.getValue();
+        isDirty = (now !== savedContent);
+        updateDirtyUI();
+        if (editorErrorState.line != null) clearEditorErrors();
+        clearTimeout(editor._luaxLintTimer);
+        // Debounce lint — avoid freezing on select-all + delete
+        editor._luaxLintTimer = setTimeout(() => {
+            if (!currentFileName || !editor) return;
+            try {
+                const code = editor.getValue();
+                if (code.length > 80000) return; // skip lint on huge pastes
+                applyEditorSyntaxCheck(code, currentFileName);
+            } catch (_) {}
+        }, 900);
+    } catch (_) {}
 });
 
-// Auto-show hints while typing identifiers / after a dot
+// Auto-show hints while typing identifiers / after a dot (not on delete/paste floods)
 editor.on('inputRead', function (cm, change) {
-    if (change.origin !== '+input') return;
-    const text = (change.text && change.text[0]) || '';
-    if (!/[\w.]/.test(text)) return;
-    // Don't spam inside comments/strings too aggressively
-    const tok = cm.getTokenAt(cm.getCursor());
-    if (tok && (tok.type === 'string' || tok.type === 'comment')) return;
-    CodeMirror.commands.autocomplete(cm, null, { hint: luaxHint, completeSingle: false });
+    try {
+        if (!change || change.origin !== '+input') return;
+        const text = (change.text && change.text[0]) || '';
+        if (!/[\w.]/.test(text)) return;
+        if (text.length > 1) return;
+        const tok = cm.getTokenAt(cm.getCursor());
+        if (tok && (tok.type === 'string' || tok.type === 'comment')) return;
+        CodeMirror.commands.autocomplete(cm, null, { hint: luaxHint, completeSingle: false });
+    } catch (_) {}
 });
+}
+
+function editorUndo() {
+    if (!editor) return;
+    editor.focus();
+    editor.undo();
+}
+function editorRedo() {
+    if (!editor) return;
+    editor.focus();
+    editor.redo();
+}
+function editorSelectAll() {
+    if (!editor) return;
+    editor.focus();
+    editor.execCommand('selectAll');
+}
+function editorDeleteAll() {
+    if (!editor) return;
+    if (!confirm('Clear all text in this file? You can Undo.')) return;
+    try {
+        editor.focus();
+        const last = { line: editor.lastLine(), ch: (editor.getLine(editor.lastLine()) || '').length };
+        editor.replaceRange('', { line: 0, ch: 0 }, last, '+delete');
+    } catch (_) {
+        editor.setValue('');
+    }
+}
+async function editorPaste() {
+    if (!editor) return;
+    editor.focus();
+    try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            const t = await navigator.clipboard.readText();
+            if (t != null) {
+                editor.replaceSelection(t, 'around');
+                return;
+            }
+        }
+    } catch (_) {}
+    // Fallback: prompt
+    const t = prompt('Paste text here:');
+    if (t != null) editor.replaceSelection(t, 'around');
 }
 
 // Hover documentation tooltip
@@ -5286,63 +5377,49 @@ editor.on('inputRead', function (cm, change) {
 // Screenshots cannot be blocked by a website (OS-level).
 // ---------------------------------------------------------------
 (function setupEditorClipboardGuard() {
+    // Soft copy protection only — do NOT block cut/delete/select (that froze the editor).
     const editorRoot = document.getElementById('editor');
     if (!editorRoot) return;
 
     function inEditorTarget(t) {
         if (!t) return false;
         if (editorRoot.contains(t)) return true;
-        // CodeMirror input textarea is often outside visual layout but tied to editor
         if (t.classList && (t.classList.contains('CodeMirror-code') || t.classList.contains('CodeMirror-line'))) return true;
         return !!(t.closest && t.closest('.CodeMirror'));
     }
 
-    function blockCopyCut(e) {
-        if (!inEditorTarget(e.target) && e.target !== document.body) {
-            // If selection is inside CodeMirror
-            const sel = window.getSelection && window.getSelection();
-            if (sel && sel.anchorNode && inEditorTarget(sel.anchorNode.parentElement || sel.anchorNode)) {
-                e.preventDefault();
-                return false;
+    function blockCopyOnly(e) {
+        try {
+            if (!inEditorTarget(e.target)) {
+                const sel = window.getSelection && window.getSelection();
+                if (!(sel && sel.anchorNode && inEditorTarget(sel.anchorNode.parentElement || sel.anchorNode))) {
+                    return;
+                }
             }
-            return;
-        }
-        e.preventDefault();
+            e.preventDefault();
+        } catch (_) {}
         return false;
     }
 
-    document.addEventListener('copy', blockCopyCut, true);
-    document.addEventListener('cut', blockCopyCut, true);
+    document.addEventListener('copy', blockCopyOnly, true);
+    // cut is allowed so selection + delete works on all devices
 
-    // Allow paste everywhere (including editor)
-    // (no preventDefault on paste)
-
-    // Block right-click menu in editor (stops “Copy”)
-    editorRoot.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        return false;
-    }, true);
-
-    // Block common shortcuts: Ctrl/Cmd+C, Ctrl/Cmd+X, Ctrl+Insert (copy)
-    // Keep Ctrl/Cmd+V (paste), Ctrl/Cmd+A still useful for replace-all paste workflows
     editorRoot.addEventListener('keydown', (e) => {
         const key = (e.key || '').toLowerCase();
         const mod = e.ctrlKey || e.metaKey;
         if (!mod) return;
-        if (key === 'c' || key === 'x' || (key === 'insert' && e.ctrlKey && !e.shiftKey)) {
+        // Block copy only — allow X (cut), A (select all), V (paste), Z (undo)
+        if (key === 'c' || (key === 'insert' && e.ctrlKey && !e.shiftKey)) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
     }, true);
 
-    // Also bind on CodeMirror's input field when ready
     try {
-        const ta = editor.getInputField && editor.getInputField();
+        const ta = editor && editor.getInputField && editor.getInputField();
         if (ta) {
             ta.addEventListener('copy', (e) => { e.preventDefault(); }, true);
-            ta.addEventListener('cut', (e) => { e.preventDefault(); }, true);
-            ta.addEventListener('contextmenu', (e) => { e.preventDefault(); }, true);
         }
     } catch (_) {}
 })();
@@ -5369,8 +5446,14 @@ function renderTabs() {
 function switchTab(fn) {
     if (fn === currentFileName) return;
     if (isDirty) {
-        projects[currentProjectName][currentFileName] = editor.getValue();
-        saveState();
+        const stay = !confirm('Unsaved changes in ' + currentFileName + '.\n\nOK = discard and switch\nCancel = stay');
+        if (stay) return;
+        isDirty = false;
+        try {
+            if (savedContent != null && currentFileName && currentProjectName) {
+                projects[currentProjectName][currentFileName] = savedContent;
+            }
+        } catch (_) {}
     }
     openFile(fn);
 }
@@ -5454,10 +5537,18 @@ function saveCurrentFile() {
 
 function closeEditor() {
     if (isDirty && editor) {
-        projects[currentProjectName][currentFileName] = editor.getValue();
-        saveState();
+        const stay = !confirm('You have unsaved changes.\n\nOK = discard and go back\nCancel = keep editing');
+        if (stay) return;
+        // Discard: reload last saved content into projects is already there
         isDirty = false;
+        try {
+            if (savedContent != null && currentFileName && currentProjectName) {
+                // ensure in-memory project keeps last saved version
+                projects[currentProjectName][currentFileName] = savedContent;
+            }
+        } catch (_) {}
     }
+    try { if (editor) editor.getInputField()?.blur(); } catch (_) {}
     renderFiles();
     switchView('files-view');
 }
