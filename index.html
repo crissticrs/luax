@@ -419,6 +419,29 @@
             background: #0f1115; border: 1px solid #333; border-radius: 10px;
             padding: 12px 14px; color: #fff; text-align: left; cursor: pointer; font-size: 0.95rem;
         }
+        .file-preset-btn {
+            text-align: left;
+            padding: 10px 12px;
+            border: 1.5px solid var(--glass-border);
+            background: var(--panel-2, #1a1c23);
+            color: var(--text-color);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+        .file-preset-btn .fp-desc {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: #888;
+            margin-top: 2px;
+        }
+        .file-preset-btn.selected, .file-preset-btn:active {
+            border-color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+        }
+
         .template-btn:active, .template-btn.selected { border-color: var(--accent-color); background: #1a1c23; }
 
         /* Editor tabs */
@@ -2159,6 +2182,153 @@ let currentProjectName = null;
 let currentFileName = null;
 let modalCallback = null;
 let selectedTemplate = "empty";
+let selectedFilePreset = "blank";
+
+/** Presets for "+ Lua file" — each is a full .lua starter */
+const LUA_FILE_PRESETS = {
+    blank: {
+        name: "Blank file",
+        desc: "Empty script with a short comment",
+        code: (fname) => `-- ${fname}\n`
+    },
+    gameloop: {
+        name: "Basic game loop",
+        desc: "_update + _draw skeleton",
+        code: () => `-- Basic game loop
+function _update(dt)
+    -- put logic here
+end
+
+function _draw()
+    gfx.cls("#1a1c28")
+    gfx.text("Hello LuaX", 16, 40, "#fff", "20px sans-serif")
+end
+`
+    },
+    dirs: {
+        name: "4-direction sprite sheet",
+        desc: "2x2 sheet: Front / Right / Left / Back",
+        code: () => `-- 2x2 sprite sheet demo
+-- Import your PNG first, then set SHEET to the exact file name.
+-- Layout:  0 Front | 1 Right
+--          2 Left  | 3 Back
+
+local SHEET = "player.png"   -- change to your imported image name
+local dir = 0
+local names = { "Front", "Right", "Left", "Back" }
+
+function _update(dt)
+    if btn(0) or axis(1) < -0.4 then dir = 3 end  -- up    -> Back
+    if btn(1) or axis(1) >  0.4 then dir = 0 end  -- down  -> Front
+    if btn(2) or axis(0) < -0.4 then dir = 2 end  -- left  -> Left
+    if btn(3) or axis(0) >  0.4 then dir = 1 end  -- right -> Right
+end
+
+function _draw()
+    gfx.cls("#4a6a70")
+
+    local size = 120
+    local cx = gfx.width() / 2 - size / 2
+    local cy = gfx.height() / 2 - size / 2
+
+    -- cols=2, rows=2 auto-splits the sheet
+    gfx.anim(SHEET, dir, cx, cy, 0, 0, size, size, 2, 2)
+
+    gfx.text(names[dir + 1], 12, 28, "#fff", "18px sans-serif")
+    gfx.text("Move: stick / arrows", 12, gfx.height() - 28, "#cde", "14px sans-serif")
+end
+`
+    },
+    walk: {
+        name: "Walk cycle animation",
+        desc: "Horizontal strip — auto frame from time",
+        code: () => `-- Horizontal walk-cycle sheet
+-- Import a strip (e.g. 4 frames in a row), set SHEET + NFRAMES.
+
+local SHEET = "walk.png"   -- your sprite sheet name
+local NFRAMES = 4          -- how many frames in the row
+local FPS = 8              -- animation speed
+local t = 0
+local frame = 0
+
+function _update(dt)
+    t = t + dt
+    frame = math.floor(t * FPS) % NFRAMES
+end
+
+function _draw()
+    gfx.cls("#1a1c28")
+    local size = 96
+    local cx = gfx.width() / 2 - size / 2
+    local cy = gfx.height() / 2 - size / 2
+    -- 1 row, NFRAMES columns
+    gfx.anim(SHEET, frame, cx, cy, 0, 0, size, size, NFRAMES, 1)
+    gfx.text("frame " .. frame, 12, 28, "#fff", "16px sans-serif")
+end
+`
+    },
+    move: {
+        name: "Move a sprite",
+        desc: "Player image + stick movement",
+        code: () => `-- Move an imported sprite with the stick / arrows
+
+local SHEET = "player.png"  -- change to your image name
+local x, y = 160, 200
+local speed = 120
+
+function _update(dt)
+    local ax, ay = axis(0), axis(1)
+    if btn(2) then ax = -1 end
+    if btn(3) then ax =  1 end
+    if btn(0) then ay = -1 end
+    if btn(1) then ay =  1 end
+    x = x + ax * speed * dt
+    y = y + ay * speed * dt
+end
+
+function _draw()
+    gfx.cls("#1a1c28")
+    gfx.sprite(SHEET, x, y, 64, 64)
+    gfx.text("Move with stick / arrows", 12, 28, "#aaa", "14px sans-serif")
+end
+`
+    },
+    bounce: {
+        name: "Bouncing ball",
+        desc: "Simple physics demo, no assets needed",
+        code: () => `-- Bouncing ball — no images required
+
+local x, y = 100, 80
+local vx, vy = 140, 0
+local r = 18
+local g = 500
+
+function _update(dt)
+    vy = vy + g * dt
+    x = x + vx * dt
+    y = y + vy * dt
+    local w, h = gfx.width(), gfx.height()
+    if x < r then x = r; vx = math.abs(vx) end
+    if x > w - r then x = w - r; vx = -math.abs(vx) end
+    if y > h - r then y = h - r; vy = -math.abs(vy) * 0.85 end
+end
+
+function _draw()
+    gfx.cls("#0d1118")
+    gfx.circlefill(x, y, r, "#6c5ce7")
+    gfx.text("Bouncing ball", 12, 28, "#fff", "16px sans-serif")
+end
+`
+    }
+};
+
+function selectFilePreset(k) {
+    selectedFilePreset = k;
+    document.querySelectorAll('.file-preset-btn').forEach(b => {
+        b.classList.toggle('selected', b.dataset.preset === k);
+    });
+}
+
 let isDirty = false;
 let savedContent = "";
 let lastSaveOk = true;
@@ -3673,17 +3843,39 @@ function tryLoadSharedPlay() {
 }
 
 function promptNewFile() {
+    if (!currentProjectName) return alert('Open a project first');
+    if (!LUA_FILE_PRESETS[selectedFilePreset]) selectedFilePreset = 'blank';
+
+    const presetHtml = Object.keys(LUA_FILE_PRESETS).map(k => {
+        const p = LUA_FILE_PRESETS[k];
+        const sel = k === selectedFilePreset ? ' selected' : '';
+        return `<button type="button" class="file-preset-btn${sel}" data-preset="${k}" onclick="selectFilePreset('${k}')">` +
+            `${p.name}<span class="fp-desc">${p.desc}</span></button>`;
+    }).join('');
+
     openModal('New Lua File',
-        `<input type="text" id="modal-input" placeholder="e.g. enemy.lua" autocomplete="off">`,
+        `<input type="text" id="modal-input" placeholder="e.g. player.lua" autocomplete="off">
+         <div style="font-size:0.85rem;color:#888;margin:10px 0 6px">Preset</div>
+         <div class="template-list">${presetHtml}</div>`,
         'Create',
         () => {
             let name = (document.getElementById('modal-input').value || '').trim();
-            if (!name) return;
+            if (!name) return alert('Enter a file name');
             if (!name.endsWith('.lua')) name += '.lua';
             if (projects[currentProjectName][name]) return alert('File exists');
-            projects[currentProjectName][name] = '-- ' + name + '\n';
+
+            const preset = LUA_FILE_PRESETS[selectedFilePreset] || LUA_FILE_PRESETS.blank;
+            let code;
+            try {
+                code = preset.code(name);
+            } catch (_) {
+                code = '-- ' + name + '\n';
+            }
+            projects[currentProjectName][name] = code;
             saveState();
             renderFiles();
+            // open it in the editor
+            try { openFile(name); } catch (_) {}
         }
     );
 }
@@ -3806,7 +3998,7 @@ const LUAX_API_DOCS = [
     { name: 'gfx.text', insert: 'gfx.text(', detail: 'str,x,y,c?,font?', doc: 'Draw text.\ngfx.text("Hi", 16, 30, "#fff", "16px sans-serif")' },
     { name: 'gfx.cam', insert: 'gfx.cam(', detail: 'x,y', doc: 'Set 2D camera offset.\ngfx.cam(player.x - 100, 0)' },
     { name: 'gfx.sprite', insert: 'gfx.sprite(', detail: 'name,x,y,w?,h?', doc: 'Draw an imported PNG asset.\ngfx.sprite("player.png", x, y)\ngfx.sprite("player.png", x, y, 32, 32)' },
-    { name: 'gfx.anim', insert: 'gfx.anim(', detail: 'sheet,frame,x,y,fw?,fh?,dw?,dh?', doc: 'Draw a frame from a sprite sheet (0-based, left→right then top→bottom).\nDefault cell size 16×16.\ngfx.anim("walk.png", frame, x, y)\ngfx.anim("walk.png", frame, x, y, 32, 32)\ngfx.anim("walk.png", frame, x, y, 32, 32, 64, 64)\n-- advance frames:\nframe = math.floor(t * 8) % 4' },
+    { name: 'gfx.anim', insert: 'gfx.anim(', detail: 'sheet,frame,x,y,fw?,fh?,dw?,dh?,cols?,rows?', doc: 'Draw a frame from a sprite sheet (0-based).\nBest for N×M grids:\ngfx.anim("hero.png", frame, x, y, 0, 0, 96, 96, 2, 2)\n-- cols=2 rows=2 auto-splits the image\nOr pixel cells: gfx.anim("walk.png", frame, x, y, 32, 32)\nframe = math.floor(t * 8) % 4' },
     { name: 'gfx.sprites', insert: 'gfx.sprites()', detail: '→ list', doc: 'Return table of asset filenames in this project.' },
     { name: 'gfx.raycast', insert: 'gfx.raycast(', detail: 'opts', doc: 'Wolfenstein-style 3D raycast.\ngfx.raycast({\n  map=map, x=px, y=py,\n  angle=yaw, pitch=pitch,\n  fov=math.pi/3, colors=colors,\n  ceil="#111", floor="#222", fog=14\n})' },
     { name: 'gfx.width', insert: 'gfx.width()', detail: '→ number', doc: 'Logical screen width (CSS pixels).' },
@@ -4712,35 +4904,68 @@ window.LuaDeckAPI = {
          *   gfx.anim("walk.png", frame, x, y)
          *   gfx.anim("walk.png", frame, x, y, fw, fh)
          *   gfx.anim("walk.png", frame, x, y, fw, fh, dw, dh)
+         *   gfx.anim("walk.png", frame, x, y, fw, fh, dw, dh, cols, rows)
          *
-         * fw/fh = cell size in the sheet (default 16×16)
-         * dw/dh = size on screen (default = fw/fh)
-         * cols  = columns in the sheet (default = floor(sheetWidth / fw))
+         * Easiest for a 2×2 sheet (ignore pixel sizes):
+         *   gfx.anim("hero.png", frame, x, y, 0, 0, 96, 96, 2, 2)
+         *   -- cell size is computed as imageWidth/cols × imageHeight/rows
          *
-         * Tip: frame = math.floor(t * fps) % nFrames
+         * fw/fh = cell size in the sheet (optional if cols+rows given)
+         * dw/dh = size on screen
+         * cols/rows = grid size (optional; otherwise derived from fw/fh)
          */
-        anim(name, frame, x, y, fw, fh, dw, dh) {
-            const img = this._spriteImg(name);
+        anim(name, frame, x, y, fw, fh, dw, dh, cols, rows) {
+            const img = (typeof this._spriteImg === 'function')
+                ? this._spriteImg(name)
+                : (window.LuaDeckAPI && window.LuaDeckAPI.gfx._spriteImg(name));
             if (!img) return;
-            const cellW = (fw != null && fw > 0) ? fw : 16;
-            const cellH = (fh != null && fh > 0) ? fh : 16;
-            const cols = Math.max(1, Math.floor(img.naturalWidth / cellW));
-            const rows = Math.max(1, Math.floor(img.naturalHeight / cellH));
-            const total = cols * rows;
-            let fi = Math.floor(Number(frame) || 0);
-            if (total > 0) {
-                // wrap negative / overflow
-                fi = ((fi % total) + total) % total;
+
+            const imgW = img.naturalWidth;
+            const imgH = img.naturalHeight;
+            if (!imgW || !imgH) return;
+
+            let nCols = Number(cols);
+            let nRows = Number(rows);
+            let cellW = Number(fw);
+            let cellH = Number(fh);
+
+            // Preferred: explicit grid (cols × rows) → auto cell size
+            if (nCols > 0 && nRows > 0) {
+                cellW = imgW / nCols;
+                cellH = imgH / nRows;
             } else {
-                fi = 0;
+                // Fallback: cell size in pixels (default 16)
+                if (!(cellW > 0)) cellW = 16;
+                if (!(cellH > 0)) cellH = 16;
+                nCols = Math.max(1, Math.floor(imgW / cellW));
+                nRows = Math.max(1, Math.floor(imgH / cellH));
+                // Recompute exact cell from grid so we don't clip remainder
+                cellW = imgW / nCols;
+                cellH = imgH / nRows;
             }
-            const col = fi % cols;
-            const row = Math.floor(fi / cols);
+
+            const total = Math.max(1, nCols * nRows);
+            let fi = Math.floor(Number(frame) || 0);
+            fi = ((fi % total) + total) % total;
+
+            const col = fi % nCols;
+            const row = Math.floor(fi / nCols);
             const sx = col * cellW;
             const sy = row * cellH;
-            const outW = (dw != null && dw > 0) ? dw : cellW;
-            const outH = (dh != null && dh > 0) ? dh : cellH;
-            ctx.drawImage(img, sx, sy, cellW, cellH, x, y, outW, outH);
+
+            let outW = Number(dw);
+            let outH = Number(dh);
+            if (!(outW > 0)) outW = cellW;
+            if (!(outH > 0)) outH = cellH;
+
+            const dx = Number(x) || 0;
+            const dy = Number(y) || 0;
+
+            ctx.drawImage(
+                img,
+                sx, sy, cellW, cellH,
+                dx, dy, outW, outH
+            );
         },
 
         /** List asset filenames for current project (JS array) */
@@ -4993,8 +5218,9 @@ gfx = {
     -- gfx.anim("walk.png", frame, x, y)
     -- gfx.anim("walk.png", frame, x, y, fw, fh)
     -- gfx.anim("walk.png", frame, x, y, fw, fh, dw, dh)
-    anim = function(name, frame, x, y, fw, fh, dw, dh)
-        api.gfx:anim(name, frame, x, y, fw, fh, dw, dh)
+    -- gfx.anim("hero.png", frame, x, y, 0, 0, 96, 96, 2, 2)  -- 2x2 grid, auto cell size
+    anim = function(name, frame, x, y, fw, fh, dw, dh, cols, rows)
+        api.gfx:anim(name, frame, x, y, fw, fh, dw, dh, cols, rows)
     end,
     sprites = function()
         local arr = api.gfx:sprites()
