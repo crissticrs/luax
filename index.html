@@ -1896,7 +1896,8 @@
                 <div class="files-menu" id="files-menu-more">
                     <button type="button" onclick="closeFilesMenus(); importLuaFile()">Import .lua</button>
                     <button type="button" onclick="closeFilesMenus(); importSpriteFile()">Import PNG</button>
-                    <button type="button" onclick="closeFilesMenus(); exportProject()">Export</button>
+                    <button type="button" onclick="closeFilesMenus(); exportProject()">Export JSON</button>
+                    <button type="button" onclick="closeFilesMenus(); exportStandaloneHtml()">Export HTML game</button>
                     <button type="button" onclick="closeFilesMenus(); sharePlayLink()">Share link</button>
                 </div>
             </div>
@@ -4921,6 +4922,7 @@ function exportProject() {
         files: projects[currentProjectName],
         gamepad: getProjectGamepad(currentProjectName),
         assets: getProjectAssetMap(currentProjectName),
+        music: (typeof getProjectMusicMap === 'function') ? getProjectMusicMap(currentProjectName) : {},
         exportedAt: new Date().toISOString(),
         engine: 'LuaX'
     };
@@ -4930,6 +4932,482 @@ function exportProject() {
     a.download = currentProjectName + '.luax.json';
     a.click();
     URL.revokeObjectURL(a.href);
+}
+
+/**
+ * Export a finished game as ONE self-contained HTML file.
+ * Playable anywhere (browser / itch.io / static host). No LuaX editor required.
+ * APK: not buildable in-browser — use the HTML with Capacitor/PWA (see alert).
+ */
+function exportStandaloneHtml() {
+    if (!currentProjectName) return;
+    if (!projects[currentProjectName] || projects[currentProjectName]['main.lua'] == null) {
+        return alert('Need a main.lua to export a playable game.');
+    }
+    if (!spendCredits('export')) return;
+
+    // Flush dirty editor into project memory (does not force cloud)
+    try {
+        if (typeof editor !== 'undefined' && editor && currentFileName && isDirty) {
+            projects[currentProjectName][currentFileName] = editor.getValue();
+        }
+    } catch (_) {}
+
+    const name = currentProjectName;
+    const files = projects[name] || {};
+    const assets = (typeof getProjectAssetMap === 'function') ? getProjectAssetMap(name) : {};
+    const music = (typeof getProjectMusicMap === 'function') ? getProjectMusicMap(name) : {};
+    const gamepad = (typeof getProjectGamepad === 'function') ? getProjectGamepad(name) !== false : true;
+
+    let html;
+    try {
+        html = buildStandaloneHtml({
+            name: name,
+            files: files,
+            assets: assets,
+            music: music,
+            gamepad: gamepad
+        });
+    } catch (err) {
+        alert('Export failed: ' + (err && err.message ? err.message : err));
+        return;
+    }
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name.replace(/[^\w.\-]+/g, '_') + '.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    setTimeout(() => {
+        alert(
+            'Exported standalone HTML game.\n\n' +
+            '• Open the file in any browser, or upload to itch.io / Netlify / GitHub Pages.\n' +
+            '• Needs internet once for the Lua engine (Fengari CDN), or host fengari yourself.\n\n' +
+            'APK / iOS app:\n' +
+            'Cannot be built inside the browser. Wrap this HTML with Capacitor, Cordova, or a Trusted Web Activity.'
+        );
+    }, 200);
+}
+
+function buildStandaloneHtml(pack) {
+    const payload = {
+        name: pack.name || 'Game',
+        files: pack.files || {},
+        assets: pack.assets || {},
+        music: pack.music || {},
+        gamepad: pack.gamepad !== false
+    };
+    // Embed as JSON — escape </script> in strings
+    const json = JSON.stringify(payload).replace(/</g, '\\u003c');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>${String(payload.name).replace(/[<>&"]/g, '')}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#000;color:#fff;font-family:system-ui,sans-serif;overflow:hidden;touch-action:none}
+#boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0c0a12;z-index:9;flex-direction:column;gap:12px}
+#boot button{padding:14px 28px;font-size:1.1rem;font-weight:800;border:none;border-radius:14px;background:#8b5cf6;color:#fff;cursor:pointer}
+#wrap{position:fixed;inset:0}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+#hud{position:absolute;top:max(8px,env(safe-area-inset-top));left:8px;right:8px;display:flex;gap:8px;z-index:5;pointer-events:none}
+#hud button{pointer-events:auto;padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.45);color:#fff;font-weight:700;backdrop-filter:blur(8px)}
+#joy{position:absolute;bottom:28px;left:24px;width:110px;height:110px;border-radius:50%;border:2px solid rgba(139,92,246,.5);background:rgba(139,92,246,.12);display:none;touch-action:none;z-index:4}
+#stick{position:absolute;width:44px;height:44px;border-radius:50%;background:#8b5cf6;left:50%;top:50%;margin:-22px 0 0 -22px;pointer-events:none}
+#acts{position:absolute;bottom:36px;right:28px;width:120px;height:120px;display:none;z-index:4;pointer-events:none}
+.ab{position:absolute;width:44px;height:44px;border-radius:50%;background:rgba(139,92,246,.35);border:1.5px solid rgba(139,92,246,.65);color:#fff;font-weight:800;pointer-events:auto;display:flex;align-items:center;justify-content:center}
+#err{display:none;position:absolute;top:60px;left:50%;transform:translateX(-50%);background:rgba(200,0,0,.9);padding:12px 16px;border-radius:12px;max-width:90%;z-index:8;font-family:monospace;font-size:12px}
+body.mobile #joy,body.mobile #acts{display:block}
+body.nocontrols #joy,body.nocontrols #acts{display:none!important}
+</style>
+</head>
+<body>
+<div id="boot"><p style="opacity:.7">Tap to start</p><button id="startBtn">▶ Play</button></div>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <button type="button" id="btnFS">Fullscreen</button>
+    <button type="button" id="btnMute">Mute</button>
+  </div>
+  <div id="joy"><div id="stick"></div></div>
+  <div id="acts">
+    <div class="ab" style="top:0;left:50%;transform:translateX(-50%)" data-b="7">Y</div>
+    <div class="ab" style="top:50%;left:0;transform:translateY(-50%)" data-b="6">X</div>
+    <div class="ab" style="bottom:0;left:50%;transform:translateX(-50%)" data-b="5">B</div>
+    <div class="ab" style="top:50%;right:0;transform:translateY(-50%)" data-b="4">A</div>
+  </div>
+  <div id="err"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/fengari-web@0.1.4/dist/fengari-web.js"><\/script>
+<script>
+const PACK = ${json};
+(function(){
+"use strict";
+const files = PACK.files || {};
+const assets = PACK.assets || {};
+const musicPatterns = PACK.music || {};
+const showPad = PACK.gamepad !== false;
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let cam = {x:0,y:0};
+let audioCtx = null, muted = false;
+const btnState = [false,false,false,false,false,false,false,false];
+const btnPrev = [false,false,false,false,false,false,false,false];
+const stickAxis = {x:0,y:0};
+const pointer = {x:0,y:0,btn:false};
+let lookDX=0, lookDY=0, keyLook=0;
+const spriteCache = {};
+const fxParts = [];
+const dataStore = {};
+const DATA_KEY = 'luax_standalone_data:' + (PACK.name||'game');
+try { Object.assign(dataStore, JSON.parse(localStorage.getItem(DATA_KEY)||'{}')); } catch(_){}
+
+function isMobile(){
+  return !!(window.matchMedia&&(window.matchMedia('(pointer:coarse)').matches||window.matchMedia('(hover:none)').matches))
+    || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
+}
+if (isMobile() && showPad) document.body.classList.add('mobile');
+if (!showPad) document.body.classList.add('nocontrols');
+
+function resize(){
+  const dpr = window.devicePixelRatio||1;
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.floor(r.width*dpr);
+  canvas.height = Math.floor(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', resize);
+
+function ensureAudio(){
+  if (!audioCtx) { try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(_){} }
+  if (audioCtx && audioCtx.state==='suspended') audioCtx.resume();
+}
+function playBeep(freq,dur,type,vol){
+  if (muted) return;
+  ensureAudio(); if(!audioCtx) return;
+  try{
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type||'square'; o.frequency.value=Math.max(20,+freq||440);
+    const v=Math.min(0.2, vol!=null?+vol:0.08);
+    g.gain.value=v; o.connect(g); g.connect(audioCtx.destination);
+    o.start(); const d=Math.max(0.02,+dur||0.1);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+d);
+    o.stop(audioCtx.currentTime+d+0.02);
+  }catch(_){}
+}
+
+// minimal music
+const musicState={active:false,bpm:120,steps:16,step:0,acc:0,channels:[],wave:'square',loop:true,vol:0.08};
+const NOTE_FREQ={'C3':130.81,'D3':146.83,'E3':164.81,'F3':174.61,'G3':196,'A3':220,'B3':246.94,'C4':261.63,'D4':293.66,'E4':329.63,'F4':349.23,'G4':392,'A4':440,'B4':493.88,'C5':523.25,'D5':587.33,'E5':659.25,'F5':698.46,'G5':783.99};
+function noteToFreq(n){ if(n==null||n===0||n==='')return 0; if(typeof n==='number')return n>0?n:0; const s=String(n).toUpperCase(); return NOTE_FREQ[s]||(+n||0); }
+function startMusic(spec){
+  if(typeof spec==='string'){
+    const p=musicPatterns[spec]||musicPatterns[spec+'.music']||musicPatterns[String(spec).replace(/\\.music$/i,'')];
+    if(!p)return;
+    spec={bpm:p.bpm||120,wave:p.wave||'square',steps:p.steps||16,loop:true,vol:0.08,
+      channels:(p.channels||[]).map(ch=>(ch||[]).map(n=>typeof n==='number'?n:noteToFreq(n)))};
+  }
+  if(!spec||typeof spec!=='object')return;
+  ensureAudio();
+  const steps=Math.max(4,Math.min(64,+spec.steps||16));
+  musicState.bpm=+spec.bpm||120; musicState.steps=steps; musicState.wave=spec.wave||'square';
+  musicState.loop=spec.loop!==false; musicState.vol=spec.vol||0.08; musicState.step=0; musicState.acc=0; musicState.active=true;
+  let rows=spec.channels||[];
+  musicState.channels=[];
+  for(let c=0;c<Math.max(4,rows.length);c++){
+    const row=[]; for(let i=0;i<steps;i++){ const cell=rows[c]&&rows[c][i]; row[i]=typeof cell==='number'?cell:noteToFreq(cell); }
+    musicState.channels[c]=row;
+  }
+  playMusicStep(0); musicState.step=1;
+}
+function playMusicStep(i){
+  if(!audioCtx||muted)return;
+  const stepDur=(60/musicState.bpm)*(4/musicState.steps);
+  for(let c=0;c<musicState.channels.length;c++){
+    const f=musicState.channels[c][i]; if(f>0) playBeep(f,stepDur*0.85,musicState.wave,musicState.vol);
+  }
+}
+function tickMusic(dt){
+  if(!musicState.active)return;
+  const stepDur=(60/musicState.bpm)*(4/musicState.steps);
+  musicState.acc+=dt;
+  while(musicState.acc>=stepDur){
+    musicState.acc-=stepDur; playMusicStep(musicState.step); musicState.step++;
+    if(musicState.step>=musicState.steps){ if(musicState.loop) musicState.step=0; else { musicState.active=false; break; } }
+  }
+}
+function stopMusic(){ musicState.active=false; }
+
+// particles
+function fxSpawn(o){
+  const n=Math.max(1,Math.min(60,+(o.count)||12));
+  for(let i=0;i<n;i++){
+    const a=(o.angle||0)+(Math.random()-0.5)*(o.spread!=null?o.spread:Math.PI*2);
+    const sp=(o.speed||120)*(0.35+Math.random()*0.9);
+    fxParts.push({x:+o.x||0,y:+o.y||0,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
+      life:(o.life||0.5)*(0.6+Math.random()*0.6),max:(o.life||0.5),size:(o.size||3)*(0.5+Math.random()*0.9),
+      color:o.color||'#fff',g:o.gravity!=null?+o.gravity:280,drag:o.drag||0.92,shape:o.shape||'circle'});
+  }
+}
+function fxUpdate(dt){
+  for(let i=fxParts.length-1;i>=0;i--){
+    const p=fxParts[i]; p.life-=dt; if(p.life<=0){fxParts.splice(i,1);continue;}
+    p.vx*=Math.pow(p.drag,dt*60); p.vy*=Math.pow(p.drag,dt*60); p.vy+=p.g*dt; p.x+=p.vx*dt; p.y+=p.vy*dt;
+  }
+}
+function fxDraw(){
+  for(const p of fxParts){
+    const t=Math.max(0,p.life/p.max); ctx.globalAlpha=t*t; ctx.fillStyle=p.color;
+    const s=p.size*(0.6+0.4*t);
+    if(p.shape==='square'){ ctx.fillRect(p.x-s,p.y-s,s*2,s*2); }
+    else { ctx.beginPath(); ctx.arc(p.x,p.y,s,0,Math.PI*2); ctx.fill(); }
+  }
+  ctx.globalAlpha=1;
+}
+
+function loadSprite(name){
+  const src=assets[name]; if(!src) return null;
+  if(!spriteCache[name]){ const img=new Image(); img.src=src; spriteCache[name]=img; }
+  const img=spriteCache[name]; return (img.complete&&img.naturalWidth)?img:null;
+}
+
+window.LuaDeckAPI = {
+  gfx: {
+    cls(c){ const dpr=window.devicePixelRatio||1; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle=c||'#000';
+      ctx.fillRect(0,0,canvas.width,canvas.height); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.translate(-cam.x,-cam.y); },
+    rect(x,y,w,h,c){ ctx.strokeStyle=c||'#fff'; ctx.strokeRect(x,y,w,h); },
+    rectfill(x,y,w,h,c){ ctx.fillStyle=c||'#fff'; ctx.fillRect(x,y,w,h); },
+    circle(x,y,r,c){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.strokeStyle=c||'#fff'; ctx.stroke(); },
+    circlefill(x,y,r,c){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=c||'#fff'; ctx.fill(); },
+    line(x1,y1,x2,y2,c){ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.strokeStyle=c||'#fff'; ctx.stroke(); },
+    pixel(x,y,c){ ctx.fillStyle=c||'#fff'; ctx.fillRect(Math.floor(x),Math.floor(y),1,1); },
+    text(s,x,y,c,f){ ctx.font=f||'16px sans-serif'; ctx.fillStyle=c||'#fff'; ctx.fillText(String(s),x,y); },
+    cam(x,y){ cam.x=x||0; cam.y=y||0; },
+    sprite(name,x,y,w,h){ const img=loadSprite(name); if(!img)return; if(w!=null&&h!=null) ctx.drawImage(img,x,y,w,h); else ctx.drawImage(img,x,y); },
+    anim(name,frame,x,y,fw,fh,dw,dh,cols,rows){
+      const img=loadSprite(name); if(!img)return;
+      let nCols=+cols, nRows=+rows, cellW=+fw, cellH=+fh;
+      if(nCols>0&&nRows>0){ cellW=img.naturalWidth/nCols; cellH=img.naturalHeight/nRows; }
+      else { if(!(cellW>0))cellW=16; if(!(cellH>0))cellH=16; nCols=Math.max(1,Math.floor(img.naturalWidth/cellW)); nRows=Math.max(1,Math.floor(img.naturalHeight/cellH)); cellW=img.naturalWidth/nCols; cellH=img.naturalHeight/nRows; }
+      const total=Math.max(1,nCols*nRows); let fi=((Math.floor(+frame||0)%total)+total)%total;
+      const col=fi%nCols, row=Math.floor(fi/nCols);
+      let outW=+dw, outH=+dh; if(!(outW>0))outW=cellW; if(!(outH>0))outH=cellH;
+      ctx.drawImage(img,col*cellW,row*cellH,cellW,cellH,+x||0,+y||0,outW,outH);
+    },
+    sprites(){ return Object.keys(assets); },
+    width(){ return canvas.width/(window.devicePixelRatio||1); },
+    height(){ return canvas.height/(window.devicePixelRatio||1); },
+    raycast(){}
+  },
+  input: {
+    btn:i=>!!btnState[i|0], btnp:i=>!!(btnState[i|0]&&!btnPrev[i|0]), btnr:i=>!(!btnState[i|0]&&btnPrev[i|0]),
+    axis:i=>(i|0)===0?stickAxis.x:stickAxis.y, lookx:()=>lookDX+keyLook*0.045, looky:()=>lookDY,
+    mouseX:()=>pointer.x, mouseY:()=>pointer.y, mouseBtn:()=>!!pointer.btn
+  },
+  sfx: {
+    beep:(f,d,t)=>playBeep(f,d,t), music(s){startMusic(s);}, stop(){stopMusic();},
+    playing(){return!!musicState.active;}, note(n){return noteToFreq(n);}
+  },
+  fx: {
+    burst(x,y,c,n){fxSpawn({x,y,color:c||'#ff8844',count:n||16,life:0.5,speed:160,size:3.5});},
+    spark(x,y,c,n){fxSpawn({x,y,color:c||'#ffe566',count:n||10,life:0.35,speed:220,size:2.2,shape:'spark'});},
+    dust(x,y,c,n){fxSpawn({x,y,color:c||'#c4b5a0',count:n||8,life:0.7,speed:50,size:4,gravity:-20,angle:-Math.PI/2});},
+    smoke(x,y,c,n){fxSpawn({x,y,color:c||'#8899aa',count:n||6,life:1.1,speed:35,size:5,gravity:-40,angle:-Math.PI/2});},
+    confetti(x,y,c,n){fxSpawn({x,y,color:c||'#8b5cf6',count:n||20,life:0.9,speed:140,size:3.5,shape:'square'});},
+    spawn(o){fxSpawn(o||{});}, clear(){fxParts.length=0;}, count(){return fxParts.length;}
+  },
+  data: {
+    save(k,v){ dataStore[String(k)]=v; try{localStorage.setItem(DATA_KEY,JSON.stringify(dataStore));}catch(_){} return true; },
+    load(k,d){ const key=String(k); return Object.prototype.hasOwnProperty.call(dataStore,key)?dataStore[key]:(d!==undefined?d:null); },
+    has(k){ return Object.prototype.hasOwnProperty.call(dataStore,String(k)); },
+    remove(k){ delete dataStore[String(k)]; try{localStorage.setItem(DATA_KEY,JSON.stringify(dataStore));}catch(_){} return true; },
+    clear(){ for(const k of Object.keys(dataStore)) delete dataStore[k]; try{localStorage.removeItem(DATA_KEY);}catch(_){} return true; },
+    keys(){ return Object.keys(dataStore); }
+  },
+  sys: {
+    getFileContent(fn){ const c=files[fn]; return typeof c==='string'?c:null; },
+    log(m){ console.log(m); },
+    isMobile:()=>isMobile(),
+    setControlsVisible(v){ document.body.classList.toggle('nocontrols',!v); },
+    controlsVisible(){ return !document.body.classList.contains('nocontrols'); }
+  }
+};
+
+const LuaShim = `
+local _orig_require = require
+local js = _orig_require("js")
+local api = js.global.LuaDeckAPI
+local function tojs(val)
+  if type(val) ~= "table" then return val end
+  local is_array, n = true, 0
+  for k,_ in pairs(val) do
+    if type(k)~="number" or k<1 or k~=math.floor(k) then is_array=false break end
+    if k>n then n=k end
+  end
+  if is_array then
+    local arr = js.new(js.global.Array)
+    for i=1,n do arr[i-1]=tojs(val[i]) end
+    return arr
+  else
+    local obj = js.new(js.global.Object)
+    for k,v in pairs(val) do obj[tostring(k)]=tojs(v) end
+    return obj
+  end
+end
+gfx={
+  cls=function(c) api.gfx:cls(c) end,
+  rect=function(x,y,w,h,c) api.gfx:rect(x,y,w,h,c) end,
+  rectfill=function(x,y,w,h,c) api.gfx:rectfill(x,y,w,h,c) end,
+  circle=function(x,y,r,c) api.gfx:circle(x,y,r,c) end,
+  circlefill=function(x,y,r,c) api.gfx:circlefill(x,y,r,c) end,
+  line=function(x1,y1,x2,y2,c) api.gfx:line(x1,y1,x2,y2,c) end,
+  pixel=function(x,y,c) api.gfx:pixel(x,y,c) end,
+  text=function(s,x,y,c,f) api.gfx:text(tostring(s),x,y,c,f) end,
+  cam=function(x,y) api.gfx:cam(x,y) end,
+  sprite=function(name,x,y,w,h) api.gfx:sprite(name,x,y,w,h) end,
+  anim=function(name,frame,x,y,fw,fh,dw,dh,cols,rows) api.gfx:anim(name,frame,x,y,fw,fh,dw,dh,cols,rows) end,
+  sprites=function() local arr=api.gfx:sprites() local t={} if arr then local n=tonumber(arr.length)or 0 for i=0,n-1 do t[#t+1]=arr[i] end end return t end,
+  width=function() return api.gfx:width() end,
+  height=function() return api.gfx:height() end,
+}
+function btn(i) return api.input:btn(i) end
+function btnp(i) return api.input:btnp(i) end
+function btnr(i) return api.input:btnr(i) end
+function axis(i) return api.input:axis(i) end
+function lookx() return api.input:lookx() end
+function looky() return api.input:looky() end
+function look() return api.input:lookx(), api.input:looky() end
+mouse=setmetatable({},{__index=function(_,k) if k=="x" then return api.input:mouseX() elseif k=="y" then return api.input:mouseY() elseif k=="btn" then return api.input:mouseBtn() end end})
+sfx={beep=function(f,d,t) api.sfx:beep(f,d,t) end, music=function(o) if type(o)=="string" then api.sfx:music(o) elseif type(o)=="table" then api.sfx:music(tojs(o)) end end, stop=function() api.sfx:stop() end, playing=function() return api.sfx:playing() end, note=function(n) return api.sfx:note(tostring(n or "")) end}
+fx={burst=function(x,y,c,n) api.fx:burst(x,y,c,n) end, spark=function(x,y,c,n) api.fx:spark(x,y,c,n) end, dust=function(x,y,c,n) api.fx:dust(x,y,c,n) end, smoke=function(x,y,c,n) api.fx:smoke(x,y,c,n) end, confetti=function(x,y,c,n) api.fx:confetti(x,y,c,n) end, spawn=function(o) if type(o)=="table" then api.fx:spawn(tojs(o)) end end, clear=function() api.fx:clear() end, count=function() return api.fx:count() end}
+data={save=function(k,v) if type(v)=="table" then return api.data:save(tostring(k),tojs(v)) end return api.data:save(tostring(k),v) end, load=function(k,d) local v=api.data:load(tostring(k),nil) if v==nil or v==js.null then return d end return v end, has=function(k) return api.data:has(tostring(k)) end, remove=function(k) return api.data:remove(tostring(k)) end, clear=function() return api.data:clear() end, keys=function() local a=api.data:keys() local t={} if a then local n=tonumber(a.length)or 0 for i=0,n-1 do t[#t+1]=a[i] end end return t end}
+dt=0.016
+function print(...) local n=select("#",...) local p={} for i=1,n do p[i]=tostring(select(i,...)) end api.sys:log(table.concat(p,"\\t")) end
+function is_mobile() return api.sys:isMobile() end
+function set_controls_visible(v) api.sys:setControlsVisible(not not v) end
+function controls_visible() return api.sys:controlsVisible() end
+do local keep={js=true,package=true,coroutine=true,string=true,table=true,math=true,io=true,os=true,debug=true,utf8=true,_G=true}
+  for k in pairs(package.loaded) do if not keep[k] then package.loaded[k]=nil end end end
+function require(modname)
+  if modname=="js" then return _orig_require("js") end
+  if package.loaded[modname] then return package.loaded[modname] end
+  local filename=modname
+  if not string.match(filename,"%.lua$") then filename=filename..".lua" end
+  local content=api.sys:getFileContent(filename)
+  if type(content)=="string" then
+    local f,err=load(content,"@"..filename)
+    if f then local res=f() if res==nil then res=true end package.loaded[modname]=res return res
+    else error("Syntax Error in "..filename..": "..tostring(err)) end
+  end
+  error("Module not found: "..modname)
+end
+`;
+
+function setLuaGlobal(name,value){
+  const L=fengari.L;
+  if(typeof value==='number') fengari.lua.lua_pushnumber(L,value);
+  else if(typeof value==='string') fengari.lua.lua_pushstring(L,fengari.to_luastring(value));
+  else if(typeof value==='boolean') fengari.lua.lua_pushboolean(L,value);
+  else return;
+  fengari.lua.lua_setglobal(L,fengari.to_luastring(name));
+}
+function callLua(name,arg){
+  const L=fengari.L;
+  fengari.lua.lua_getglobal(L,fengari.to_luastring(name));
+  if(!fengari.lua.lua_isfunction(L,-1)){ fengari.lua.lua_pop(L,1); return true; }
+  let n=0; if(typeof arg==='number'){ fengari.lua.lua_pushnumber(L,arg); n=1; }
+  if(fengari.lua.lua_pcall(L,n,0,0)!==fengari.lua.LUA_OK){
+    const err=fengari.to_jsstring(fengari.lua.lua_tostring(L,-1));
+    fengari.lua.lua_pop(L,1);
+    const el=document.getElementById('err'); el.style.display='block'; el.textContent=err;
+    console.error(err); return false;
+  }
+  return true;
+}
+
+// input
+const keys={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3,KeyZ:4,KeyX:5,KeyC:6,KeyV:7,KeyA:4,KeyS:5,KeyD:6,KeyF:7,Space:4};
+window.addEventListener('keydown',e=>{
+  if(e.code==='KeyQ'||e.code==='KeyE'){ keyLook=e.code==='KeyQ'?-1:1; }
+  const i=keys[e.code]; if(i!=null){ btnState[i]=true; e.preventDefault(); }
+});
+window.addEventListener('keyup',e=>{
+  if(e.code==='KeyQ'||e.code==='KeyE') keyLook=0;
+  const i=keys[e.code]; if(i!=null) btnState[i]=false;
+});
+canvas.addEventListener('pointerdown',e=>{ pointer.btn=true; pointer.x=e.clientX; pointer.y=e.clientY; });
+canvas.addEventListener('pointerup',()=>{ pointer.btn=false; });
+canvas.addEventListener('pointermove',e=>{
+  if(pointer.btn || document.pointerLockElement===canvas){
+    lookDX += (e.movementX||0)*0.0025; lookDY += (e.movementY||0)*0.0025;
+  }
+  pointer.x=e.clientX; pointer.y=e.clientY;
+});
+// joystick
+(function(){
+  const zone=document.getElementById('joy'), stick=document.getElementById('stick');
+  let pid=null, cx=0, cy=0;
+  function setStick(x,y){
+    const max=40, dx=x-cx, dy=y-cy, len=Math.hypot(dx,dy)||1;
+    const cl=Math.min(max,len), nx=dx/len*cl, ny=dy/len*cl;
+    stick.style.transform='translate('+nx+'px,'+ny+'px)';
+    stickAxis.x=nx/max; stickAxis.y=ny/max;
+    btnState[0]=stickAxis.x<-0.35; btnState[1]=stickAxis.x>0.35;
+    btnState[2]=stickAxis.y<-0.35; btnState[3]=stickAxis.y>0.35;
+  }
+  function reset(){ stick.style.transform=''; stickAxis.x=0; stickAxis.y=0; btnState[0]=btnState[1]=btnState[2]=btnState[3]=false; }
+  zone.addEventListener('pointerdown',e=>{ pid=e.pointerId; zone.setPointerCapture(pid); const r=zone.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; setStick(e.clientX,e.clientY); });
+  zone.addEventListener('pointermove',e=>{ if(pid===e.pointerId) setStick(e.clientX,e.clientY); });
+  zone.addEventListener('pointerup',e=>{ if(pid===e.pointerId){ pid=null; reset(); } });
+  zone.addEventListener('pointercancel',()=>{ pid=null; reset(); });
+})();
+document.querySelectorAll('.ab').forEach(el=>{
+  const i=+el.dataset.b;
+  el.addEventListener('pointerdown',e=>{ btnState[i]=true; e.preventDefault(); });
+  el.addEventListener('pointerup',()=>{ btnState[i]=false; });
+  el.addEventListener('pointercancel',()=>{ btnState[i]=false; });
+});
+
+document.getElementById('btnFS').onclick=()=>{ const el=document.documentElement; if(!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.(); };
+document.getElementById('btnMute').onclick=function(){ muted=!muted; this.textContent=muted?'Unmute':'Mute'; if(muted) stopMusic(); };
+
+let last=0, running=false;
+function loop(ts){
+  if(!running) return;
+  if(!last) last=ts; let dt=(ts-last)/1000; last=ts; if(dt>0.1) dt=0.1;
+  tickMusic(dt); setLuaGlobal('dt',dt); cam.x=cam.y=0;
+  if(!callLua('_update',dt)){ running=false; return; }
+  lookDX=0; lookDY=0; fxUpdate(dt);
+  if(!callLua('_draw')){ running=false; return; }
+  fxDraw();
+  for(let i=0;i<8;i++) btnPrev[i]=btnState[i];
+  requestAnimationFrame(loop);
+}
+
+function boot(){
+  document.getElementById('boot').style.display='none';
+  resize(); ensureAudio();
+  if(typeof fengari==='undefined'){ alert('Lua engine failed to load (need network for CDN).'); return; }
+  const L=fengari.L;
+  let st=fengari.lauxlib.luaL_dostring(L, fengari.to_luastring(LuaShim));
+  if(st!==fengari.lua.LUA_OK){ alert(fengari.to_jsstring(fengari.lua.lua_tostring(L,-1))); return; }
+  const main=files['main.lua']; if(main==null){ alert('No main.lua'); return; }
+  st=fengari.lauxlib.luaL_dostring(L, fengari.to_luastring(main));
+  if(st!==fengari.lua.LUA_OK){ alert(fengari.to_jsstring(fengari.lua.lua_tostring(L,-1))); return; }
+  running=true; last=0; requestAnimationFrame(loop);
+}
+document.getElementById('startBtn').onclick=boot;
+})();
+<\/script>
+</body>
+</html>`;
 }
 
 function importProject() {
