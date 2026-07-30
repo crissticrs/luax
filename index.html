@@ -1342,13 +1342,14 @@
             min-width: max-content;
         }
         .mus-cell {
-            width: 26px; height: 22px; border-radius: 4px;
+            width: 30px; height: 24px; border-radius: 4px;
             border: 1px solid rgba(255,255,255,0.08);
             background: rgba(255,255,255,0.03); color: var(--text-color);
-            font-size: 0.55rem; font-weight: 800; cursor: pointer;
+            font-size: 0.58rem; font-weight: 800; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             padding: 0; line-height: 1;
             transition: transform 0.05s, background 0.08s;
+            letter-spacing: -0.02em;
         }
         .mus-cell:active { transform: scale(0.92); }
         .mus-cell.on {
@@ -1362,7 +1363,7 @@
             z-index: 1;
         }
         .mus-row-label {
-            width: 36px; height: 22px; display: flex; align-items: center; justify-content: center;
+            width: 36px; height: 24px; display: flex; align-items: center; justify-content: center;
             font-size: 0.58rem; font-weight: 800; color: var(--ch-color, var(--muted));
             border-radius: 4px;
             background: color-mix(in srgb, var(--ch-color, var(--muted)) 18%, transparent);
@@ -6789,7 +6790,7 @@ function renderMusicGrid() {
     }
     if (musEd.channels.length > nCh) musEd.channels = musEd.channels.slice(0, nCh);
     // Compact cells: label 36px + 26px steps
-    grid.style.gridTemplateColumns = '36px repeat(' + steps + ', 26px)';
+    grid.style.gridTemplateColumns = '36px repeat(' + steps + ', 30px)';
     grid.innerHTML = '';
     const playStep = (musicState.active && musicState.lastPlayedStep >= 0)
         ? musicState.lastPlayedStep : -1;
@@ -6808,7 +6809,8 @@ function renderMusicGrid() {
             cell.type = 'button';
             const val = musEd.channels[c][s] || '';
             cell.className = 'mus-cell' + (val ? ' on' : '') + (s === playStep ? ' playhead' : '');
-            cell.textContent = val ? String(val).replace(/[0-9]/g, '') : '';
+            // Full note name (C3, D4…) so octaves stay distinct
+            cell.textContent = val || '';
             cell.title = val ? ('Ch' + (c + 1) + ' · ' + val) : ('Ch' + (c + 1) + ' · step ' + (s + 1));
             cell.style.setProperty('--ch-color', color);
             if (!val) {
