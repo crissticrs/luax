@@ -866,17 +866,20 @@
             background-color: #1a1a22;
         }
         .spr-palette-inline {
-            flex: 1; min-width: 0;
+            flex: 1; min-width: 0; min-height: 44px;
         }
         .spr-paint-grid {
             display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 6px;
+            grid-template-columns: repeat(10, minmax(18px, 1fr));
+            gap: 5px;
+            width: 100%;
         }
         .spr-swatch {
-            width: 100%; aspect-ratio: 1; border-radius: 8px;
-            border: 1.5px solid transparent;
+            width: 100%; min-width: 18px; min-height: 18px;
+            aspect-ratio: 1; border-radius: 8px;
+            border: 1.5px solid rgba(255,255,255,0.12);
             cursor: pointer; padding: 0;
+            -webkit-appearance: none; appearance: none;
         }
         .spr-swatch.active {
             border-color: var(--accent-color);
@@ -905,6 +908,14 @@
                         inset 0 0 0 1px color-mix(in srgb, var(--accent-color) 12%, transparent);
             background: #121218;
             position: relative; touch-action: none;
+            -webkit-user-select: none; user-select: none;
+            cursor: crosshair;
+        }
+        #sprite-editor-view .spr-body {
+            overscroll-behavior: contain;
+        }
+        #sprite-editor-view.spr-drawing .spr-body {
+            overflow: hidden;
         }
         #sprite-pixel-canvas {
             image-rendering: pixelated;
@@ -929,16 +940,15 @@
         }
         .spr-layers-list {
             display: flex; flex-direction: column; gap: 6px;
-            flex: 1; overflow-y: auto; overflow-x: visible; max-height: 240px;
+            flex: 1; overflow-y: auto; max-height: 240px;
         }
         .spr-layer-item {
-            display: flex; align-items: center; gap: 4px;
-            padding: 8px 6px; border-radius: 12px;
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px; border-radius: 12px;
             border: 1.5px solid var(--glass-border);
             background: transparent; color: var(--text-color);
             font-size: 0.72rem; font-weight: 700; cursor: pointer;
             text-align: left; width: 100%;
-            position: relative;
         }
         .spr-layer-item.active {
             border-color: var(--accent-color);
@@ -954,9 +964,7 @@
             flex: 1; min-width: 0; overflow: hidden;
             text-overflow: ellipsis; white-space: nowrap;
         }
-        .spr-layer-menu-wrap {
-            position: relative; flex-shrink: 0;
-        }
+        .spr-layer-menu-wrap { position: relative; flex-shrink: 0; }
         .spr-layer-more {
             border: none; background: none; color: inherit;
             cursor: pointer; padding: 0 2px; margin: 0;
@@ -1010,6 +1018,8 @@
             text-align: center; font-size: 0.68rem; color: var(--muted);
             padding: 4px 0 2px;
         }
+
+
         /* Custom HSV spectrum — works with finger drag on mobile */
         #spr-spectrum-overlay {
             display: none; position: fixed; inset: 0; z-index: 4500;
@@ -1150,11 +1160,13 @@
         .spr-spectrum-actions .btn { flex: 1; }
         @media (max-width: 480px) {
             .spr-paint-grid {
-                grid-template-columns: repeat(14, 20px);
-                grid-template-rows: repeat(2, 20px);
-                gap: 4px; padding: 8px;
+                grid-template-columns: repeat(7, minmax(22px, 1fr));
+                gap: 5px;
             }
-            .spr-swatch { width: 20px; height: 20px; border-radius: 6px; }
+            .spr-swatch {
+                width: 100%; min-width: 22px; min-height: 22px;
+                height: auto; aspect-ratio: 1; border-radius: 6px;
+            }
             .spr-paint-active { width: 40px; height: 40px; }
         }
     </style>
@@ -1287,7 +1299,7 @@
                 <span id="current-project-title">Project</span>
             </h1>
             <div class="header-actions">
-                <button class="btn btn-play" onclick="startPlayMode()">▶ PLAY</button>
+                <button type="button" class="btn btn-play" id="btn-start-play" onclick="event.stopPropagation(); startPlayMode();">▶ PLAY</button>
             </div>
         </div>
         <div class="files-toolbar">
@@ -1311,7 +1323,7 @@
                 <button type="button" class="spr-back" onclick="closeSpriteEditor()">‹ Back</button>
                 <span class="spr-title" id="sprite-editor-title">New Sprite</span>
             </div>
-            <button type="button" class="spr-save" onclick="saveSpriteFromEditor()">▶ SAVE</button>
+            <button type="button" class="spr-save" onclick="saveSpriteFromEditor()">SAVE</button>
         </div>
         <div class="spr-body">
             <div class="spr-row-split">
@@ -1419,6 +1431,9 @@
             </div>
         </div>
     </div>
+
+
+
 
     <!-- Editor -->
     <div id="editor-view" class="view">
@@ -2082,6 +2097,7 @@ function getProjectAssetMap(name) {
     return projectAssets[name];
 }
 
+
 function getProjectGamepad(name) {
     if (!name) return true;
     const s = projectSettings[name];
@@ -2471,6 +2487,7 @@ function renderFiles() {
         list.appendChild(div);
     });
 }
+
 
 function promptRenameFile(oldName) {
     openModal('Rename file',
@@ -3245,16 +3262,22 @@ function clearSpriteCanvas() {
 
 function canvasToGridPos(clientX, clientY) {
     const canvas = document.getElementById('sprite-pixel-canvas');
+    if (!canvas) return { x: 0, y: 0, valid: false };
     const rect = canvas.getBoundingClientRect();
-    const d = spriteEd._draw || { ox: 0, oy: 0, scale: 1, dispW: rect.width, dispH: rect.height };
-    // Map client → canvas buffer coords
-    const cx = ((clientX - rect.left) / rect.width) * d.dispW;
-    const cy = ((clientY - rect.top) / rect.height) * d.dispH;
-    const x = Math.floor((cx - d.ox) / d.scale);
-    const y = Math.floor((cy - d.oy) / d.scale);
+    if (rect.width < 1 || rect.height < 1) return { x: 0, y: 0, valid: false };
+    const d = spriteEd._draw || { ox: 0, oy: 0, scale: 1, dispW: canvas.width || rect.width, dispH: canvas.height || rect.height };
+    const scaleX = (d.dispW || canvas.width) / rect.width;
+    const scaleY = (d.dispH || canvas.height) / rect.height;
+    const cx = (clientX - rect.left) * scaleX;
+    const cy = (clientY - rect.top) * scaleY;
+    const sc = Math.max(1, d.scale || 1);
+    const x = Math.floor((cx - (d.ox || 0)) / sc);
+    const y = Math.floor((cy - (d.oy || 0)) / sc);
+    const valid = x >= 0 && y >= 0 && x < spriteEd.w && y < spriteEd.h;
     return {
         x: Math.max(0, Math.min(spriteEd.w - 1, x)),
         y: Math.max(0, Math.min(spriteEd.h - 1, y)),
+        valid
     };
 }
 
@@ -3276,7 +3299,10 @@ function floodFill(sx, sy, target, replace) {
 }
 
 function applySpriteToolAt(clientX, clientY, isDown) {
-    const { x, y } = canvasToGridPos(clientX, clientY);
+    ensureSpritePixels();
+    const pos = canvasToGridPos(clientX, clientY);
+    if (!pos.valid && !isDown) return;
+    const x = pos.x, y = pos.y;
     if (spriteEd.tool === 'picker') {
         const p = getSpritePixel(x, y);
         if (p[3] < 8) {
@@ -3288,7 +3314,8 @@ function applySpriteToolAt(clientX, clientY, isDown) {
     }
     if (spriteEd.tool === 'fill' && isDown) {
         pushSpriteHistory();
-        floodFill(x, y, getSpritePixel(x, y), hexToRgba(spriteEd.color));
+        const fillColor = spriteEd.tool === 'eraser' ? [0,0,0,0] : hexToRgba(spriteEd.color || '#ffffff');
+        floodFill(x, y, getSpritePixel(x, y), fillColor);
         pushSpriteHistory();
         redrawSpriteCanvas();
         return;
@@ -3296,47 +3323,86 @@ function applySpriteToolAt(clientX, clientY, isDown) {
     if (spriteEd.tool === 'eraser') {
         setSpritePixel(x, y, [0, 0, 0, 0]);
     } else {
-        setSpritePixel(x, y, hexToRgba(spriteEd.color));
+        setSpritePixel(x, y, hexToRgba(spriteEd.color || '#ffffff'));
     }
     redrawSpriteCanvas();
 }
 
 function setupSpriteCanvasInput() {
     const canvas = document.getElementById('sprite-pixel-canvas');
-    if (!canvas || canvas._luaxBound) return;
-    canvas._luaxBound = true;
+    const wrap = document.getElementById('spr-canvas-wrap');
+    if (!canvas) return;
+    // Re-bind every open so a previous broken state cannot stick
+    if (canvas._luaxCleanup) {
+        try { canvas._luaxCleanup(); } catch (_) {}
+        canvas._luaxCleanup = null;
+    }
+
+    const ptrPos = (e) => {
+        if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        if (e.changedTouches && e.changedTouches.length) {
+            return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    };
 
     const down = (e) => {
+        // Only primary button / touches
+        if (e.button != null && e.button !== 0) return;
         e.preventDefault();
+        e.stopPropagation();
+        document.getElementById('sprite-editor-view')?.classList.add('spr-drawing');
         spriteEd.drawing = true;
         if (spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
             pushSpriteHistory();
         }
-        const t = e.touches ? e.touches[0] : e;
-        applySpriteToolAt(t.clientX, t.clientY, true);
+        const p = ptrPos(e);
+        applySpriteToolAt(p.x, p.y, true);
     };
     const move = (e) => {
         if (!spriteEd.drawing) return;
         e.preventDefault();
-        const t = e.touches ? e.touches[0] : e;
         if (spriteEd.tool === 'fill' || spriteEd.tool === 'picker') return;
-        applySpriteToolAt(t.clientX, t.clientY, false);
+        const p = ptrPos(e);
+        applySpriteToolAt(p.x, p.y, false);
     };
-    const up = () => {
-        if (spriteEd.drawing && spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
+    const up = (e) => {
+        if (!spriteEd.drawing) return;
+        if (e) e.preventDefault();
+        if (spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
             pushSpriteHistory();
         }
         spriteEd.drawing = false;
+        document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
     };
 
-    canvas.addEventListener('mousedown', down);
+    const targets = [canvas];
+    if (wrap) targets.push(wrap);
+    targets.forEach(el => {
+        el.addEventListener('mousedown', down);
+        el.addEventListener('touchstart', down, { passive: false });
+        el.addEventListener('touchmove', move, { passive: false });
+        el.addEventListener('touchend', up, { passive: false });
+        el.addEventListener('touchcancel', up, { passive: false });
+        el.addEventListener('contextmenu', e => e.preventDefault());
+    });
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', up);
-    canvas.addEventListener('touchstart', down, { passive: false });
-    canvas.addEventListener('touchmove', move, { passive: false });
-    canvas.addEventListener('touchend', up);
-    canvas.addEventListener('touchcancel', up);
-    canvas.addEventListener('contextmenu', e => e.preventDefault());
+    window.addEventListener('blur', up);
+
+    canvas._luaxCleanup = () => {
+        targets.forEach(el => {
+            el.removeEventListener('mousedown', down);
+            el.removeEventListener('touchstart', down);
+            el.removeEventListener('touchmove', move);
+            el.removeEventListener('touchend', up);
+            el.removeEventListener('touchcancel', up);
+        });
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+        window.removeEventListener('blur', up);
+    };
+    canvas._luaxBound = true;
 }
 
 /**
@@ -3377,13 +3443,17 @@ function openSpriteEditor(existingName) {
     }
 
     setSpriteTool('pencil');
+    if (!spriteEd.color) spriteEd.color = '#ffffff';
     renderSpritePalette();
     setupSpriteCanvasInput();
     switchView('sprite-editor-view');
     setTimeout(() => {
         renderSpriteLayersUI();
+        renderSpritePalette();
         redrawSpriteCanvas();
-    }, 40);
+        setupSpriteCanvasInput();
+    }, 50);
+    setTimeout(() => { redrawSpriteCanvas(); }, 200);
     if (!window._sprResizeBound) {
         window._sprResizeBound = true;
         window.addEventListener('resize', () => {
@@ -3489,6 +3559,10 @@ function saveSpriteFromEditor() {
     switchView('files-view');
     renderFiles();
 }
+
+
+
+
 
 /** Encode project into a shareable play URL (hash). Free. */
 function encodeSharePayload(obj) {
@@ -3647,6 +3721,10 @@ function handleImport(ev) {
             if (data.assets && typeof data.assets === 'object') {
                 projectAssets[name] = data.assets;
                 saveProjectAssets();
+            }
+            if (data.maps && typeof data.maps === 'object') {
+                projectMaps[name] = data.maps;
+                saveProjectMaps();
             }
             saveState();
             renderProjects();
@@ -4588,6 +4666,7 @@ window.LuaDeckAPI = {
             return Object.keys(getProjectAssetMap(currentProjectName));
         },
 
+
         /**
          * Raycast renderer (Wolfenstein-style solid walls).
          * opts = {
@@ -5020,17 +5099,31 @@ function gameLoop(timestamp) {
 
 async function startPlayMode() {
     if (!isAuthed()) { applyAuthGate(); return; }
-    if (!currentProjectName || !projects[currentProjectName]['main.lua']) {
-        return alert('Missing main.lua');
+    if (!currentProjectName) {
+        return alert('Open a project first.');
     }
+    if (!projects[currentProjectName] || projects[currentProjectName]['main.lua'] == null) {
+        return alert('This project has no main.lua.\n\nPLAY runs your Lua script (main.lua), not the sprite editor.\nAdd or open main.lua, write your game code, then press PLAY.');
+    }
+    // Leave any editor sub-views; PLAY always goes to the game
+    try {
+        document.getElementById('sprite-editor-view')?.classList.remove('active');
+        document.getElementById('scene-editor-view')?.classList.remove('active');
+        document.getElementById('editor-view')?.classList.remove('active');
+    } catch (_) {}
+
     // Re-apply in case device rotated / URL changed
     applyControlsVisibility();
 
-    // flush dirty editor
+    // flush dirty editor (safe if CodeMirror not ready)
     if (currentFileName && isDirty) {
-        projects[currentProjectName][currentFileName] = editor.getValue();
-        saveState();
-        isDirty = false;
+        try {
+            if (typeof editor !== 'undefined' && editor && editor.getValue) {
+                projects[currentProjectName][currentFileName] = editor.getValue();
+            }
+            saveState();
+            isDirty = false;
+        } catch (_) {}
     }
 
     clearConsole();
