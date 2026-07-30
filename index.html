@@ -1564,10 +1564,7 @@
         <div class="header">
             <h1>
                 <button type="button" class="btn btn-back" onclick="switchView('projects-view')">◀ Back</button>
-                <span class="project-title-row">
-                    <span id="current-project-title">Project</span>
-                    <button type="button" class="btn-gamepad-emoji" id="btn-gamepad-emoji" onclick="toggleProjectGamepad()" title="Toggle on-screen gamepad">🎮</button>
-                </span>
+                <span id="current-project-title">Project</span>
             </h1>
             <div class="header-actions">
                 <button type="button" class="btn btn-play" id="btn-start-play" data-action="run-game">▶ PLAY</button>
@@ -1577,9 +1574,9 @@
             <div class="files-menu-wrap">
                 <button type="button" class="btn btn-sm" onclick="toggleFilesMenu('create')">+ Create ▾</button>
                 <div class="files-menu" id="files-menu-create">
-                    <button type="button" onclick="closeFilesMenus(); promptNewFile()">📄 + Lua file</button>
-                    <button type="button" onclick="closeFilesMenus(); openSpriteEditor()">🎨 Draw image</button>
-                    <button type="button" onclick="closeFilesMenus(); openMusicEditor()">♪ Music</button>
+                    <button type="button" onclick="closeFilesMenus(); promptNewFile()">+ Lua file</button>
+                    <button type="button" onclick="closeFilesMenus(); openSpriteEditor()">Draw image</button>
+                    <button type="button" onclick="closeFilesMenus(); openMusicEditor()">Music</button>
                 </div>
             </div>
             <div class="files-menu-wrap">
@@ -1727,7 +1724,7 @@
             <div class="mus-grid-wrap">
                 <div class="mus-grid" id="mus-grid"></div>
             </div>
-            <p class="lx-hint" style="margin:0">4 channels × steps. Empty = rest. SAVE stores the pattern — use <code>sfx.music("name")</code> in Lua.</p>
+            <p class="lx-hint" style="margin:0">4 channels × steps. Empty = rest. Saves as <code>name.music</code>. Lua: <code>sfx.music("name")</code> or <code>sfx.music("name.music")</code>.</p>
         </div>
     </div>
 
@@ -2499,33 +2496,28 @@ document.addEventListener('click', (e) => {
 });
 
 function updateGamepadToggleUI() {
-    const btn = document.getElementById('btn-gamepad-emoji');
-    if (!btn) return;
-    // Desktop: hide — keyboard/mouse only
-    if (typeof isMobileDevice !== 'undefined' && !isMobileDevice) {
-        btn.style.display = 'none';
-        return;
-    }
-    btn.style.display = '';
-    if (!currentProjectName) return;
-    const on = getProjectGamepad(currentProjectName);
-    btn.classList.toggle('off', !on);
-    btn.title = on ? 'Gamepad ON — tap to disable' : 'Gamepad OFF — tap to enable';
-    btn.setAttribute('aria-label', on ? 'Gamepad enabled' : 'Gamepad disabled');
+    try {
+        const pv = document.getElementById('projects-view');
+        if (pv && pv.classList.contains('active')) renderProjects();
+    } catch (_) {}
 }
 
 function toggleProjectGamepad() {
-    if (!currentProjectName) return;
+    if (currentProjectName) toggleProjectGamepadFor(currentProjectName);
+}
+
+function toggleProjectGamepadFor(name) {
+    if (!name) return;
     if (typeof isMobileDevice !== 'undefined' && !isMobileDevice) {
         alert('On-screen gamepad is for phones / tablets.\nDesktop uses keyboard (WASD) + mouse.');
         return;
     }
-    const next = !getProjectGamepad(currentProjectName);
-    setProjectGamepad(currentProjectName, next);
-    updateGamepadToggleUI();
+    const next = !getProjectGamepad(name);
+    setProjectGamepad(name, next);
+    renderProjects();
     alert(next
-        ? 'Gamepad enabled\n\nOn-screen joystick + buttons will show when you press PLAY.'
-        : 'Gamepad disabled\n\nOn-screen controls are hidden during PLAY.');
+        ? ('Gamepad enabled for "' + name + '"\n\nJoystick + buttons will show when you PLAY.')
+        : ('Gamepad disabled for "' + name + '"\n\nOn-screen controls stay hidden during PLAY.'));
 }
 
 let currentProjectName = null;
@@ -2846,6 +2838,7 @@ function renderProjects() {
     names.forEach(name => {
         const div = document.createElement('div');
         div.className = 'list-item';
+        const gpOn = getProjectGamepad(name);
         div.innerHTML = `
             <div class="item-title" onclick="openProject('${esc(name)}')">
                 <span class="item-icon-svg">${LX_SVG.folder}</span>
@@ -2853,6 +2846,8 @@ function renderProjects() {
                 <span class="item-badge">Lua</span>
             </div>
             <div class="item-actions">
+                <button type="button" class="btn-gamepad-emoji${gpOn ? '' : ' off'}" title="${gpOn ? 'Gamepad ON' : 'Gamepad OFF'}"
+                    onclick="event.stopPropagation();toggleProjectGamepadFor('${esc(name)}')">🎮</button>
                 <button class="btn-icon-sm" title="Rename" onclick="event.stopPropagation();promptRenameProject('${esc(name)}')">✎</button>
                 <button class="btn-icon-sm" title="Duplicate" onclick="event.stopPropagation();duplicateProject('${esc(name)}')">⧉</button>
                 <span class="item-chevron" onclick="openProject('${esc(name)}')">${LX_SVG.chevron}</span>
@@ -5455,9 +5450,11 @@ function playBeep(freq, dur, type, vol) {
 
 const musicState = {
     active: false, loop: true, bpm: 120, steps: 16, step: 0, acc: 0,
-    wave: 'square', vol: 0.05,
+    wave: 'square', vol: 0.08,
     channels: [[], [], [], []],
     waves: ['square', 'square', 'square', 'square'],
+    _clockId: null,
+    _clockLast: 0,
 };
 
 const NOTE_FREQ = {
@@ -5534,12 +5531,14 @@ function startMusic(spec) {
     musicState.vol = vol;
     musicState.channels = channels;
     musicState.waves = waves;
+    musicState.vol = (vol > 0 ? vol : 0.08);
     playMusicStep(0);
     musicState.step = 1;
     if (musicState.step >= steps) {
         if (loop) musicState.step = 0;
         else musicState.active = false;
     }
+    ensureMusicClock();
 }
 
 function playMusicStep(stepIdx) {
@@ -5585,10 +5584,39 @@ function stopMusic() {
     musicState.active = false;
     musicState.acc = 0;
     musicState.step = 0;
+    if (musicState._clockId) {
+        cancelAnimationFrame(musicState._clockId);
+        musicState._clockId = null;
+    }
+    musicState._clockLast = 0;
 }
 
 function isMusicPlaying() {
     return !!musicState.active;
+}
+
+/** Advance the sequencer outside PLAY (music editor preview). */
+function ensureMusicClock() {
+    if (musicState._clockId) return;
+    musicState._clockLast = 0;
+    const tick = (ts) => {
+        if (!musicState.active) {
+            musicState._clockId = null;
+            musicState._clockLast = 0;
+            return;
+        }
+        if (!(typeof isPlaying !== 'undefined' && isPlaying && !isPaused)) {
+            if (!musicState._clockLast) musicState._clockLast = ts;
+            let dt = (ts - musicState._clockLast) / 1000;
+            musicState._clockLast = ts;
+            if (dt > 0.1) dt = 0.1;
+            tickMusic(dt);
+        } else {
+            musicState._clockLast = ts;
+        }
+        musicState._clockId = requestAnimationFrame(tick);
+    };
+    musicState._clockId = requestAnimationFrame(tick);
 }
 
 // ============================================================
@@ -5735,8 +5763,30 @@ function musicEditorSpec() {
     return { bpm, wave, steps, loop: true, channels };
 }
 
+function normalizeMusicName(name) {
+    name = String(name || '').trim().replace(/[^\w.\-]+/g, '_');
+    if (!name) return '';
+    if (!/\.music$/i.test(name)) name += '.music';
+    return name;
+}
+
+function resolveMusicPattern(name) {
+    if (!currentProjectName || !name) return null;
+    const map = getProjectMusicMap(currentProjectName);
+    if (map[name]) return map[name];
+    if (/\.music$/i.test(name)) {
+        const bare = name.replace(/\.music$/i, '');
+        if (map[bare]) return map[bare];
+    } else if (map[name + '.music']) {
+        return map[name + '.music'];
+    }
+    return null;
+}
+
 function previewMusicEditor() {
+    ensureAudio();
     const spec = musicEditorSpec();
+    spec.vol = 0.1;
     startMusic(spec);
 }
 
@@ -5746,9 +5796,9 @@ function saveMusicFromEditor() {
     if (!name) {
         name = prompt('Pattern name (e.g. theme)', 'theme');
         if (!name) return;
-        name = name.trim().replace(/[^\w\-]+/g, '_');
-        if (!name) return;
     }
+    name = normalizeMusicName(name);
+    if (!name) return;
     const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || 120;
     const wave = (document.getElementById('mus-wave') || {}).value || 'square';
     const steps = musEd.steps;
@@ -5759,18 +5809,18 @@ function saveMusicFromEditor() {
     musEd.name = name;
     const title = document.getElementById('music-editor-title');
     if (title) title.textContent = name;
-    alert('Saved pattern "' + name + '".\\n\\nIn Lua:\\nsfx.music("' + name + '")');
+    const bare = name.replace(/\.music$/i, '');
+    alert('Saved "' + name + '".\n\nIn Lua (both work):\nsfx.music("' + name + '")\nsfx.music("' + bare + '")');
     renderFiles();
 }
 
-// Allow sfx.music("patternName") to load saved patterns
-const _startMusicRaw = startMusic;
+const _startMusicRaw = typeof startMusic === 'function' ? startMusic : null;
 startMusic = function(spec) {
     if (typeof spec === 'string') {
-        const map = currentProjectName ? getProjectMusicMap(currentProjectName) : {};
-        const p = map[spec];
+        const p = resolveMusicPattern(spec);
         if (!p) {
             console.warn('Music pattern not found:', spec);
+            try { pushConsole('Music not found: ' + spec, 'err'); } catch (_) {}
             return;
         }
         const channels = (p.channels || []).map(ch =>
@@ -5779,11 +5829,17 @@ startMusic = function(spec) {
                 return n ? noteToFreq(n) : 0;
             })
         );
-        spec = { bpm: p.bpm, wave: p.wave, steps: p.steps, loop: true, channels: channels };
+        spec = {
+            bpm: p.bpm || 120,
+            wave: p.wave || 'square',
+            steps: p.steps || 16,
+            loop: true,
+            vol: 0.08,
+            channels: channels
+        };
     }
-    return _startMusicRaw(spec);
+    if (_startMusicRaw) return _startMusicRaw(spec);
 };
-
 
 // ============================================================
 // CONSOLE
