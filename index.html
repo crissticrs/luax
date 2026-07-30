@@ -1164,6 +1164,35 @@
             border: 1.5px solid rgba(255,82,82,0.45);
         }
         .mus-btn.clear:active { background: rgba(255,82,82,0.12); }
+        .mus-btn.random {
+            background: color-mix(in srgb, var(--accent-color) 22%, transparent);
+            color: var(--accent-color);
+            border: 1.5px solid var(--accent-color);
+        }
+        .mus-gen-opt {
+            display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px;
+        }
+        .mus-gen-opt button {
+            flex: 1; min-width: 72px;
+            border: 1.5px solid var(--glass-border);
+            background: var(--panel-2, #1a1c23);
+            color: var(--text-color);
+            border-radius: 10px; padding: 10px 8px;
+            font-weight: 700; font-size: 0.8rem; cursor: pointer;
+        }
+        .mus-gen-opt button.selected {
+            border-color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+            color: var(--accent-color);
+        }
+        .mus-gen-label {
+            font-size: 0.75rem; font-weight: 700; color: var(--muted);
+            margin: 0 0 6px;
+        }
+        .mus-pro-hint {
+            font-size: 0.72rem; color: var(--muted); margin: 4px 0 0;
+        }
+        .mus-pro-hint b { color: var(--accent-color); }
         .mus-btn.playing {
             background: #ff5252; color: #fff;
             box-shadow: 0 0 12px rgba(255,82,82,0.35);
@@ -1741,11 +1770,24 @@
         <div class="mus-body">
             <div class="mus-controls">
                 <label>BPM <input type="number" id="mus-bpm" min="40" max="240" value="120" onchange="syncMusicFromEditorLive()" oninput="syncMusicFromEditorLive()"></label>
+                <label>Channels
+                    <select id="mus-channels" onchange="musicEditorResizeChannels()">
+                        <option value="4">4</option>
+                        <option value="6">6</option>
+                        <option value="8">8</option>
+                        <option value="10" selected>10</option>
+                        <option value="12">12 ★</option>
+                        <option value="16">16 ★</option>
+                    </select>
+                </label>
                 <label>Steps
                     <select id="mus-steps" onchange="musicEditorResizeSteps()">
                         <option value="8">8</option>
                         <option value="16" selected>16</option>
-                        <option value="32">32</option>
+                        <option value="24">24 ★</option>
+                        <option value="32">32 ★</option>
+                        <option value="48">48 ★</option>
+                        <option value="64">64 ★</option>
                     </select>
                 </label>
                 <label>Wave
@@ -1757,8 +1799,10 @@
                     </select>
                 </label>
                 <button type="button" class="mus-btn play" id="mus-play-btn" onclick="toggleMusicPreview()">▶ Play</button>
+                <button type="button" class="mus-btn random" onclick="openMusicGenerator()">🎲 Random</button>
                 <button type="button" class="mus-btn clear" onclick="clearMusicEditorNotes()">Clear all</button>
             </div>
+            <p class="mus-pro-hint" id="mus-limit-hint">Free: up to <b>10</b> channels × <b>16</b> steps · Pro unlocks more</p>
             <div class="spr-card">
                 <div class="spr-card-label">Now playing</div>
                 <div class="mus-live-bar" id="mus-live-bar">
@@ -1774,7 +1818,7 @@
             <div class="mus-grid-wrap">
                 <div class="mus-grid" id="mus-grid"></div>
             </div>
-            <p class="lx-hint" style="margin:0">10 channels × steps. Empty = rest. Changes while playing update live. Saves as <code>name.music</code>. Lua: <code>sfx.music("name")</code> or <code>sfx.music("name.music")</code>.</p>
+            <p class="lx-hint" style="margin:0">Empty = rest. Changes while playing update live. Free max 10×16 · Pro up to 16×64. Saves as <code>name.music</code>. Lua: <code>sfx.music("name")</code>.</p>
         </div>
     </div>
 
@@ -5498,13 +5542,37 @@ function playBeep(freq, dur, type, vol) {
     } catch (_) {}
 }
 
-const MUS_CHANNEL_COUNT = 10;
+const MUS_FREE_MAX_CHANNELS = 10;
+const MUS_FREE_MAX_STEPS = 16;
+const MUS_PRO_MAX_CHANNELS = 16;
+const MUS_PRO_MAX_STEPS = 64;
+/** Default / free max; actual row count is musEd.channelCount */
+const MUS_CHANNEL_COUNT = MUS_FREE_MAX_CHANNELS;
+
+function musicMaxChannels() {
+    try { return isPro() ? MUS_PRO_MAX_CHANNELS : MUS_FREE_MAX_CHANNELS; } catch (_) { return MUS_FREE_MAX_CHANNELS; }
+}
+function musicMaxSteps() {
+    try { return isPro() ? MUS_PRO_MAX_STEPS : MUS_FREE_MAX_STEPS; } catch (_) { return MUS_FREE_MAX_STEPS; }
+}
+function clampMusicChannels(n) {
+    n = Math.max(1, Math.min(MUS_PRO_MAX_CHANNELS, parseInt(n, 10) || MUS_CHANNEL_COUNT));
+    const max = musicMaxChannels();
+    if (n > max) return max;
+    return n;
+}
+function clampMusicSteps(n) {
+    n = Math.max(4, Math.min(MUS_PRO_MAX_STEPS, parseInt(n, 10) || 16));
+    const max = musicMaxSteps();
+    if (n > max) return max;
+    return n;
+}
 
 const musicState = {
     active: false, loop: true, bpm: 120, steps: 16, step: 0, acc: 0,
     wave: 'square', vol: 0.08,
-    channels: Array.from({ length: MUS_CHANNEL_COUNT }, () => []),
-    waves: Array.from({ length: MUS_CHANNEL_COUNT }, () => 'square'),
+    channels: Array.from({ length: MUS_PRO_MAX_CHANNELS }, () => []),
+    waves: Array.from({ length: MUS_PRO_MAX_CHANNELS }, () => 'square'),
     _clockId: null,
     _clockLast: 0,
     lastPlayedStep: -1,
@@ -5696,12 +5764,181 @@ function toggleMusicPreview() {
 function clearMusicEditorNotes() {
     if (!musEd.channels) return;
     const steps = musEd.steps || 16;
+    const nCh = musEd.channelCount || musEd.channels.length || 10;
     const hasAny = musEd.channels.some(ch => ch && ch.some(n => n));
     if (hasAny && !confirm('Clear all notes on all channels?')) return;
-    musEd.channels = musicEmptyGrid(steps);
+    musEd.channels = musicEmptyGrid(steps, nCh);
     renderMusicGrid();
     syncMusicFromEditorLive();
     if (musicState.active && musicState.lastPlayedStep >= 0) {
+        updateMusicLiveBar(musicState.lastPlayedStep);
+    }
+}
+
+// ============================================================
+// RANDOM MUSIC GENERATOR
+// ============================================================
+const MUS_GEN_LOW = ['C3','D3','E3','F3','G3','A3','B3','C4'];
+const MUS_GEN_MID = ['C4','D4','E4','F4','G4','A4','B4','C5'];
+const MUS_GEN_HIGH = ['G4','A4','B4','C5','D5','E5','F5','G5'];
+// D5+ need to be in NOTE_FREQ - we already have up to C6
+
+let musGenPitch = 'mid';
+let musGenStyle = 'melody';
+
+function openMusicGenerator() {
+    musGenPitch = 'mid';
+    musGenStyle = 'melody';
+    openModal(
+        'Random music',
+        `<div style="font-size:0.9rem;color:var(--text-color)">
+          <p class="mus-gen-label">Pitch range</p>
+          <div class="mus-gen-opt" id="mus-gen-pitch">
+            <button type="button" data-v="low" onclick="musGenSelect('pitch', this)">Low · bass</button>
+            <button type="button" data-v="mid" class="selected" onclick="musGenSelect('pitch', this)">Mid</button>
+            <button type="button" data-v="high" onclick="musGenSelect('pitch', this)">High · lead</button>
+            <button type="button" data-v="mixed" onclick="musGenSelect('pitch', this)">Mixed</button>
+          </div>
+          <p class="mus-gen-label">Style</p>
+          <div class="mus-gen-opt" id="mus-gen-style">
+            <button type="button" data-v="melody" class="selected" onclick="musGenSelect('style', this)">Melody</button>
+            <button type="button" data-v="basslead" onclick="musGenSelect('style', this)">Bass + lead</button>
+            <button type="button" data-v="chords" onclick="musGenSelect('style', this)">Chords</button>
+            <button type="button" data-v="sparse" onclick="musGenSelect('style', this)">Sparse</button>
+            <button type="button" data-v="dense" onclick="musGenSelect('style', this)">Dense</button>
+            <button type="button" data-v="arpeggio" onclick="musGenSelect('style', this)">Arpeggio</button>
+          </div>
+          <p style="margin:0;font-size:0.78rem;color:var(--muted)">Fills the current grid (${musEd.channelCount || 10} ch × ${musEd.steps || 16} steps). You can edit after.</p>
+        </div>`,
+        'Generate',
+        () => { generateRandomMusic(musGenPitch, musGenStyle); }
+    );
+}
+
+function musGenSelect(kind, btn) {
+    const v = btn.getAttribute('data-v');
+    if (kind === 'pitch') {
+        musGenPitch = v;
+        document.querySelectorAll('#mus-gen-pitch button').forEach(b => b.classList.toggle('selected', b === btn));
+    } else {
+        musGenStyle = v;
+        document.querySelectorAll('#mus-gen-style button').forEach(b => b.classList.toggle('selected', b === btn));
+    }
+}
+
+function musGenPool(pitch) {
+    if (pitch === 'low') return MUS_GEN_LOW.slice();
+    if (pitch === 'high') return MUS_GEN_HIGH.slice();
+    if (pitch === 'mixed') return MUS_GEN_LOW.concat(MUS_GEN_MID, MUS_GEN_HIGH);
+    return MUS_GEN_MID.slice();
+}
+
+function musGenPick(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function generateRandomMusic(pitch, style) {
+    const steps = musEd.steps || 16;
+    const nCh = musEd.channelCount || 10;
+    const grid = musicEmptyGrid(steps, nCh);
+    const mid = musGenPool(pitch === 'mixed' ? 'mid' : pitch);
+    const low = pitch === 'high' ? mid : MUS_GEN_LOW;
+    const high = pitch === 'low' ? mid : MUS_GEN_HIGH;
+    const scale = musGenPool(pitch);
+
+    const density = style === 'dense' ? 0.7 : style === 'sparse' ? 0.22 : style === 'chords' ? 0.45 : 0.4;
+
+    if (style === 'basslead') {
+        // Ch1 bass root pattern
+        const roots = low.filter((_, i) => i % 2 === 0);
+        for (let s = 0; s < steps; s++) {
+            if (s % 4 === 0 || Math.random() < 0.35) grid[0][s] = musGenPick(roots.length ? roots : low);
+        }
+        // Ch2 melody
+        let note = musGenPick(high);
+        for (let s = 0; s < steps; s++) {
+            if (Math.random() < 0.55) {
+                const idx = Math.max(0, scale.indexOf(note));
+                const next = scale[Math.min(scale.length - 1, Math.max(0, idx + (Math.random() < 0.5 ? -1 : 1) * (1 + (Math.random() * 2 | 0))))] || musGenPick(scale);
+                note = next;
+                grid[1][s] = note;
+            }
+        }
+        // remaining channels light fills
+        for (let c = 2; c < nCh; c++) {
+            for (let s = 0; s < steps; s++) {
+                if (Math.random() < density * 0.35) grid[c][s] = musGenPick(scale);
+            }
+        }
+    } else if (style === 'chords') {
+        // stack 3-note chords on first channels every 2–4 steps
+        const chordTones = [0, 2, 4]; // scale degrees
+        for (let s = 0; s < steps; s++) {
+            if (s % 2 !== 0 && Math.random() > 0.25) continue;
+            const rootIdx = Math.floor(Math.random() * Math.max(1, scale.length - 4));
+            for (let t = 0; t < chordTones.length && t < nCh; t++) {
+                const ni = Math.min(scale.length - 1, rootIdx + chordTones[t]);
+                grid[t][s] = scale[ni];
+            }
+            // optional higher sparkle
+            if (nCh > 3 && Math.random() < 0.4) grid[3][s] = musGenPick(high);
+        }
+    } else if (style === 'arpeggio') {
+        const arp = scale.slice(0, Math.min(6, scale.length));
+        for (let s = 0; s < steps; s++) {
+            const note = arp[s % arp.length];
+            grid[0][s] = note;
+            if (nCh > 1 && s % 2 === 0) grid[1][s] = arp[(s + 2) % arp.length];
+            if (nCh > 2 && Math.random() < 0.3) grid[2][s] = musGenPick(low);
+        }
+        for (let c = 3; c < nCh; c++) {
+            for (let s = 0; s < steps; s++) {
+                if (Math.random() < 0.15) grid[c][s] = musGenPick(scale);
+            }
+        }
+    } else if (style === 'melody') {
+        let note = musGenPick(scale);
+        for (let s = 0; s < steps; s++) {
+            if (Math.random() < 0.65) {
+                const idx = scale.indexOf(note);
+                const step = (Math.random() < 0.7 ? 1 : 2) * (Math.random() < 0.5 ? -1 : 1);
+                const ni = Math.min(scale.length - 1, Math.max(0, (idx < 0 ? 0 : idx) + step));
+                note = scale[ni];
+                grid[0][s] = note;
+            }
+        }
+        // soft harmony / rhythm on other channels
+        for (let c = 1; c < nCh; c++) {
+            for (let s = 0; s < steps; s++) {
+                if (c === 1 && s % 4 === 0) grid[c][s] = musGenPick(low);
+                else if (Math.random() < density * 0.25) grid[c][s] = musGenPick(scale);
+            }
+        }
+    } else {
+        // sparse / dense generic
+        for (let c = 0; c < nCh; c++) {
+            const pool = c === 0 ? low : (c === 1 ? mid : scale);
+            for (let s = 0; s < steps; s++) {
+                if (Math.random() < density) grid[c][s] = musGenPick(pool);
+            }
+        }
+    }
+
+    musEd.channels = grid;
+    // mild BPM variety
+    const bpmEl = document.getElementById('mus-bpm');
+    if (bpmEl && Math.random() < 0.5) {
+        const bpms = [90, 100, 110, 120, 128, 140, 150];
+        const b = musGenPick(bpms);
+        bpmEl.value = b;
+        musEd.bpm = b;
+    }
+    renderMusicGrid();
+    syncMusicFromEditorLive();
+    if (!musicState.active) {
+        // auto-preview so user hears it
+        try { previewMusicEditor(); } catch (_) {}
+    } else if (musicState.lastPlayedStep >= 0) {
         updateMusicLiveBar(musicState.lastPlayedStep);
     }
 }
@@ -5753,15 +5990,64 @@ const musEd = {
     name: '',
     bpm: 120,
     steps: 16,
+    channelCount: 10,
     wave: 'square',
-    channels: null, // MUS_CHANNEL_COUNT x steps of note strings or ''
+    channels: null, // channelCount x steps of note strings or ''
     paintNote: 'C4',
 };
 
 const MUS_NOTES = ['', 'C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'];
 
-function musicEmptyGrid(steps) {
-    return Array.from({ length: MUS_CHANNEL_COUNT }, () => Array(steps).fill(''));
+function musicEmptyGrid(steps, chCount) {
+    const n = chCount != null ? chCount : (musEd.channelCount || MUS_CHANNEL_COUNT);
+    return Array.from({ length: n }, () => Array(steps).fill(''));
+}
+
+function refreshMusicLimitUI() {
+    const maxCh = musicMaxChannels();
+    const maxSt = musicMaxSteps();
+    const chSel = document.getElementById('mus-channels');
+    const stSel = document.getElementById('mus-steps');
+    if (chSel) {
+        Array.from(chSel.options).forEach(opt => {
+            const v = parseInt(opt.value, 10);
+            const locked = v > maxCh;
+            opt.disabled = locked;
+            // keep star label for pro tiers
+        });
+        if (parseInt(chSel.value, 10) > maxCh) chSel.value = String(maxCh);
+    }
+    if (stSel) {
+        Array.from(stSel.options).forEach(opt => {
+            const v = parseInt(opt.value, 10);
+            opt.disabled = v > maxSt;
+        });
+        if (parseInt(stSel.value, 10) > maxSt) stSel.value = String(maxSt);
+    }
+    const hint = document.getElementById('mus-limit-hint');
+    if (hint) {
+        if (typeof isPro === 'function' && isPro()) {
+            hint.innerHTML = '<b>Pro</b>: up to ' + MUS_PRO_MAX_CHANNELS + ' channels × ' + MUS_PRO_MAX_STEPS + ' steps';
+        } else {
+            hint.innerHTML = 'Free: up to <b>' + MUS_FREE_MAX_CHANNELS + '</b> channels × <b>' + MUS_FREE_MAX_STEPS + '</b> steps · <span style="color:var(--accent-color);cursor:pointer;font-weight:700" onclick="openSubscriptionInfo()">Pro unlocks more</span>';
+        }
+    }
+}
+
+function requireMusicProFor(nChannels, nSteps) {
+    const needPro = (nChannels > MUS_FREE_MAX_CHANNELS) || (nSteps > MUS_FREE_MAX_STEPS);
+    if (!needPro) return true;
+    if (typeof isPro === 'function' && isPro()) return true;
+    openModal(
+        'Pro feature',
+        '<div style="font-size:0.9rem;line-height:1.45">' +
+        '<p style="margin:0 0 10px">More than <b>' + MUS_FREE_MAX_CHANNELS + ' channels</b> or <b>' + MUS_FREE_MAX_STEPS + ' steps</b> needs <b>LuaX Pro</b>.</p>' +
+        '<p style="margin:0;color:var(--muted);font-size:0.85rem">Free: ' + MUS_FREE_MAX_CHANNELS + '×' + MUS_FREE_MAX_STEPS +
+        ' · Pro: ' + MUS_PRO_MAX_CHANNELS + '×' + MUS_PRO_MAX_STEPS + '</p></div>',
+        'Upgrade — €5/mo',
+        () => { openSubscriptionInfo(); }
+    );
+    return false;
 }
 
 /** Hot-reload playing pattern from the editor without restarting the step clock. */
@@ -5771,7 +6057,7 @@ function syncMusicFromEditorLive() {
     const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || musEd.bpm;
     const wave = (document.getElementById('mus-wave') || {}).value || musEd.wave;
     const steps = musEd.steps;
-    const nCh = MUS_CHANNEL_COUNT;
+    const nCh = musEd.channelCount || (musEd.channels && musEd.channels.length) || MUS_CHANNEL_COUNT;
     const channels = [];
     const waves = [];
     for (let c = 0; c < nCh; c++) {
@@ -5840,30 +6126,66 @@ function openMusicEditor(existingName) {
     const map = getProjectMusicMap(currentProjectName);
     if (existingName && map[existingName]) {
         const p = map[existingName];
-        musEd.bpm = p.bpm || 120;
-        musEd.steps = p.steps || 16;
-        musEd.wave = p.wave || 'square';
-        const loaded = (p.channels || musicEmptyGrid(musEd.steps)).map(ch => {
-            const row = Array(musEd.steps).fill('');
-            for (let i = 0; i < musEd.steps; i++) row[i] = (ch && ch[i]) || '';
+        let steps = p.steps || 16;
+        let loaded = (p.channels || []).map(ch => {
+            const row = Array(steps).fill('');
+            for (let i = 0; i < steps; i++) row[i] = (ch && ch[i]) || '';
             return row;
         });
-        while (loaded.length < MUS_CHANNEL_COUNT) {
-            loaded.push(Array(musEd.steps).fill(''));
+        if (!loaded.length) loaded = musicEmptyGrid(steps, 10);
+        let chCount = loaded.length;
+        // Clamp to plan limits (still allow opening, but trim for free)
+        if (!isPro()) {
+            if (chCount > MUS_FREE_MAX_CHANNELS) {
+                loaded = loaded.slice(0, MUS_FREE_MAX_CHANNELS);
+                chCount = MUS_FREE_MAX_CHANNELS;
+            }
+            if (steps > MUS_FREE_MAX_STEPS) {
+                steps = MUS_FREE_MAX_STEPS;
+                loaded = loaded.map(ch => ch.slice(0, steps));
+            }
+        } else {
+            chCount = Math.min(chCount, MUS_PRO_MAX_CHANNELS);
+            steps = Math.min(steps, MUS_PRO_MAX_STEPS);
         }
-        musEd.channels = loaded.slice(0, Math.max(MUS_CHANNEL_COUNT, loaded.length));
+        musEd.bpm = p.bpm || 120;
+        musEd.steps = steps;
+        musEd.wave = p.wave || 'square';
+        musEd.channelCount = chCount;
+        musEd.channels = loaded;
     } else {
         musEd.bpm = 120;
         musEd.steps = 16;
+        musEd.channelCount = 10;
         musEd.wave = 'square';
-        musEd.channels = musicEmptyGrid(16);
+        musEd.channels = musicEmptyGrid(16, 10);
     }
     const title = document.getElementById('music-editor-title');
     if (title) title.textContent = musEd.name || 'New pattern';
     const bpm = document.getElementById('mus-bpm');
     if (bpm) bpm.value = musEd.bpm;
+    refreshMusicLimitUI();
     const st = document.getElementById('mus-steps');
-    if (st) st.value = String(musEd.steps);
+    if (st) {
+        // ensure option exists for current steps
+        if (![...st.options].some(o => o.value === String(musEd.steps))) {
+            const o = document.createElement('option');
+            o.value = String(musEd.steps);
+            o.textContent = String(musEd.steps);
+            st.appendChild(o);
+        }
+        st.value = String(musEd.steps);
+    }
+    const ch = document.getElementById('mus-channels');
+    if (ch) {
+        if (![...ch.options].some(o => o.value === String(musEd.channelCount))) {
+            const o = document.createElement('option');
+            o.value = String(musEd.channelCount);
+            o.textContent = String(musEd.channelCount);
+            ch.appendChild(o);
+        }
+        ch.value = String(musEd.channelCount);
+    }
     const wv = document.getElementById('mus-wave');
     if (wv) wv.value = musEd.wave;
     renderMusicNoteBar();
@@ -5878,12 +6200,42 @@ function closeMusicEditor() {
 
 function musicEditorResizeSteps() {
     const st = document.getElementById('mus-steps');
-    const n = Math.max(4, Math.min(32, parseInt(st && st.value, 10) || 16));
+    let n = parseInt(st && st.value, 10) || 16;
+    if (!requireMusicProFor(musEd.channelCount || 10, n)) {
+        if (st) st.value = String(musEd.steps);
+        refreshMusicLimitUI();
+        return;
+    }
+    n = clampMusicSteps(n);
+    if (st) st.value = String(n);
     const old = musEd.channels || musicEmptyGrid(n);
+    const chCount = musEd.channelCount || old.length || 10;
     musEd.steps = n;
-    musEd.channels = Array.from({ length: MUS_CHANNEL_COUNT }, (_, c) => {
+    musEd.channels = Array.from({ length: chCount }, (_, c) => {
         const row = Array(n).fill('');
         for (let i = 0; i < n; i++) row[i] = (old[c] && old[c][i]) || '';
+        return row;
+    });
+    renderMusicGrid();
+    syncMusicFromEditorLive();
+}
+
+function musicEditorResizeChannels() {
+    const chSel = document.getElementById('mus-channels');
+    let n = parseInt(chSel && chSel.value, 10) || 10;
+    if (!requireMusicProFor(n, musEd.steps || 16)) {
+        if (chSel) chSel.value = String(musEd.channelCount || 10);
+        refreshMusicLimitUI();
+        return;
+    }
+    n = clampMusicChannels(n);
+    if (chSel) chSel.value = String(n);
+    const steps = musEd.steps || 16;
+    const old = musEd.channels || musicEmptyGrid(steps, n);
+    musEd.channelCount = n;
+    musEd.channels = Array.from({ length: n }, (_, c) => {
+        const row = Array(steps).fill('');
+        for (let i = 0; i < steps; i++) row[i] = (old[c] && old[c][i]) || '';
         return row;
     });
     renderMusicGrid();
@@ -5912,14 +6264,17 @@ function renderMusicGrid() {
     const grid = document.getElementById('mus-grid');
     if (!grid || !musEd.channels) return;
     const steps = musEd.steps;
-    while (musEd.channels.length < MUS_CHANNEL_COUNT) {
+    const nCh = musEd.channelCount || musEd.channels.length || 10;
+    musEd.channelCount = nCh;
+    while (musEd.channels.length < nCh) {
         musEd.channels.push(Array(steps).fill(''));
     }
+    if (musEd.channels.length > nCh) musEd.channels = musEd.channels.slice(0, nCh);
     grid.style.gridTemplateColumns = '56px repeat(' + steps + ', 36px)';
     grid.innerHTML = '';
     const playStep = (musicState.active && musicState.lastPlayedStep >= 0)
         ? musicState.lastPlayedStep : -1;
-    for (let c = 0; c < MUS_CHANNEL_COUNT; c++) {
+    for (let c = 0; c < nCh; c++) {
         if (!musEd.channels[c]) musEd.channels[c] = Array(steps).fill('');
         const lab = document.createElement('div');
         lab.className = 'mus-row-label';
