@@ -4010,10 +4010,50 @@ function setupSpriteCanvasInput() {
         return { x: e.clientX, y: e.clientY };
     };
 
+    const touchDist = (t0, t1) => {
+        const dx = t0.clientX - t1.clientX;
+        const dy = t0.clientY - t1.clientY;
+        return Math.hypot(dx, dy) || 1;
+    };
+    const touchMid = (t0, t1) => ({
+        x: (t0.clientX + t1.clientX) / 2,
+        y: (t0.clientY + t1.clientY) / 2
+    });
+
+    // Pinch state
+    let pinch = null; // { startDist, startZoom, startPanX, startPanY, startMid }
+
+    const endPinch = () => {
+        pinch = null;
+        spriteEd._panning = false;
+        spriteEd._panLast = null;
+        document.getElementById('spr-canvas-wrap')?.classList.remove('dragging');
+    };
+
     const down = (e) => {
+        // Two-finger pinch starts
+        if (e.touches && e.touches.length >= 2) {
+            e.preventDefault();
+            e.stopPropagation();
+            // cancel any single-finger draw
+            spriteEd.drawing = false;
+            const t0 = e.touches[0], t1 = e.touches[1];
+            pinch = {
+                startDist: touchDist(t0, t1),
+                startZoom: Math.max(0.25, Math.min(8, Number(spriteEd.zoom) || 1)),
+                startPanX: spriteEd.panX || 0,
+                startPanY: spriteEd.panY || 0,
+                startMid: touchMid(t0, t1)
+            };
+            document.getElementById('sprite-editor-view')?.classList.add('spr-drawing');
+            document.getElementById('spr-canvas-wrap')?.classList.add('dragging');
+            return;
+        }
+
         if (e.button != null && e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
+        if (pinch) return;
         const p = ptrPos(e);
         if (spriteEd.tool === 'hand') {
             spriteEd._panning = true;
@@ -4031,6 +4071,33 @@ function setupSpriteCanvasInput() {
         applySpriteToolAt(p.x, p.y, true);
     };
     const move = (e) => {
+        // Pinch zoom + pan with two fingers
+        if (e.touches && e.touches.length >= 2) {
+            e.preventDefault();
+            const t0 = e.touches[0], t1 = e.touches[1];
+            if (!pinch) {
+                pinch = {
+                    startDist: touchDist(t0, t1),
+                    startZoom: Math.max(0.25, Math.min(8, Number(spriteEd.zoom) || 1)),
+                    startPanX: spriteEd.panX || 0,
+                    startPanY: spriteEd.panY || 0,
+                    startMid: touchMid(t0, t1)
+                };
+                spriteEd.drawing = false;
+            }
+            const dist = touchDist(t0, t1);
+            const mid = touchMid(t0, t1);
+            let z = pinch.startZoom * (dist / pinch.startDist);
+            z = Math.max(0.25, Math.min(8, z));
+            spriteEd.zoom = z;
+            // pan follows midpoint movement
+            spriteEd.panX = pinch.startPanX + (mid.x - pinch.startMid.x);
+            spriteEd.panY = pinch.startPanY + (mid.y - pinch.startMid.y);
+            if (typeof updateSpriteZoomLabel === 'function') updateSpriteZoomLabel();
+            redrawSpriteCanvas();
+            return;
+        }
+
         if (!spriteEd.drawing) return;
         e.preventDefault();
         const p = ptrPos(e);
@@ -4045,8 +4112,15 @@ function setupSpriteCanvasInput() {
         applySpriteToolAt(p.x, p.y, false);
     };
     const up = (e) => {
-        if (!spriteEd.drawing) return;
         if (e) e.preventDefault();
+        // Still one finger left after lifting from pinch? end pinch
+        if (e && e.touches && e.touches.length >= 2) return;
+        if (pinch) {
+            endPinch();
+            document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
+            return;
+        }
+        if (!spriteEd.drawing) return;
         if (spriteEd.tool === 'hand') {
             spriteEd._panning = false;
             spriteEd._panLast = null;
@@ -4058,6 +4132,13 @@ function setupSpriteCanvasInput() {
         document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
     };
 
+    // Mouse wheel zoom (desktop)
+    const wheel = (e) => {
+        e.preventDefault();
+        const dir = e.deltaY < 0 ? 1 : -1;
+        spriteZoom(dir);
+    };
+
     const targets = [canvas];
     if (wrap) targets.push(wrap);
     targets.forEach(el => {
@@ -4066,6 +4147,7 @@ function setupSpriteCanvasInput() {
         el.addEventListener('touchmove', move, { passive: false });
         el.addEventListener('touchend', up, { passive: false });
         el.addEventListener('touchcancel', up, { passive: false });
+        el.addEventListener('wheel', wheel, { passive: false });
         el.addEventListener('contextmenu', e => e.preventDefault());
     });
     window.addEventListener('mousemove', move);
@@ -4079,6 +4161,7 @@ function setupSpriteCanvasInput() {
             el.removeEventListener('touchmove', move);
             el.removeEventListener('touchend', up);
             el.removeEventListener('touchcancel', up);
+            el.removeEventListener('wheel', wheel);
         });
         window.removeEventListener('mousemove', move);
         window.removeEventListener('mouseup', up);
