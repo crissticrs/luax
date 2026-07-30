@@ -1193,6 +1193,123 @@
             font-size: 0.72rem; color: var(--muted); margin: 4px 0 0;
         }
         .mus-pro-hint b { color: var(--accent-color); }
+
+        /* —— Pro / upgrade full page —— */
+        #pro-view {
+            background: var(--bg-color);
+            overflow: hidden;
+        }
+        #pro-view.active { display: flex; flex-direction: column; }
+        .pro-header {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; padding: 12px 16px; flex-shrink: 0;
+            background: var(--panel-color);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .pro-header h1 {
+            margin: 0; font-size: 1.15rem; font-weight: 800;
+            color: var(--text-color);
+        }
+        .pro-scroll {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 20px 16px calc(28px + var(--safe-bottom));
+        }
+        .pro-hero {
+            text-align: center; padding: 8px 8px 20px;
+        }
+        .pro-badge {
+            display: inline-block;
+            font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+            border: 1px solid color-mix(in srgb, var(--accent-color) 40%, transparent);
+            border-radius: 999px; padding: 6px 12px; margin-bottom: 12px;
+        }
+        .pro-price {
+            margin: 0 0 6px; font-size: 2.4rem; font-weight: 800;
+            color: var(--text-color); letter-spacing: -0.03em;
+        }
+        .pro-price span {
+            font-size: 1rem; font-weight: 600; color: var(--muted);
+        }
+        .pro-tagline {
+            margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.4;
+        }
+        .pro-status-card {
+            background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+            border: 1.5px solid var(--accent-color);
+            border-radius: 16px; padding: 16px; margin-bottom: 18px;
+            text-align: center;
+        }
+        .pro-status-card h2 {
+            margin: 0 0 6px; font-size: 1.1rem; color: var(--accent-color);
+        }
+        .pro-status-card p { margin: 0; font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
+        .pro-section-title {
+            margin: 0 0 12px; font-size: 0.8rem; font-weight: 800;
+            color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .pro-benefits {
+            display: flex; flex-direction: column; gap: 10px;
+            margin-bottom: 22px;
+        }
+        .pro-benefit {
+            display: flex; gap: 12px; align-items: flex-start;
+            background: var(--panel-color);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px; padding: 14px 14px;
+        }
+        .pro-benefit-ico {
+            flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.15rem;
+            background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+            color: var(--accent-color);
+        }
+        .pro-benefit h3 {
+            margin: 0 0 4px; font-size: 0.95rem; font-weight: 700; color: var(--text-color);
+        }
+        .pro-benefit p {
+            margin: 0; font-size: 0.82rem; color: var(--muted); line-height: 1.4;
+        }
+        .pro-compare {
+            width: 100%; border-collapse: collapse;
+            margin-bottom: 22px; font-size: 0.85rem;
+            background: var(--panel-color);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px; overflow: hidden;
+        }
+        .pro-compare th, .pro-compare td {
+            padding: 12px 14px; text-align: left;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .pro-compare th {
+            background: var(--panel-2, #1a1c23);
+            color: var(--muted); font-weight: 700; font-size: 0.75rem;
+            text-transform: uppercase; letter-spacing: 0.03em;
+        }
+        .pro-compare td { color: var(--text-color); }
+        .pro-compare tr:last-child td { border-bottom: none; }
+        .pro-compare .yes { color: #00e676; font-weight: 700; }
+        .pro-compare .no { color: var(--muted); }
+        .pro-compare .hl { color: var(--accent-color); font-weight: 800; }
+        .pro-cta {
+            position: sticky; bottom: 0;
+            padding: 14px 0 4px;
+            background: linear-gradient(to top, var(--bg-color) 70%, transparent);
+        }
+        .pro-cta .btn {
+            width: 100%; min-height: 52px; font-size: 1.05rem; font-weight: 800;
+            border-radius: 14px;
+        }
+        .pro-cta-note {
+            text-align: center; margin: 10px 0 0;
+            font-size: 0.75rem; color: var(--muted); line-height: 1.35;
+        }
+        .pro-actions-row {
+            display: flex; flex-direction: column; gap: 8px; margin-top: 8px;
+        }
         .mus-btn.playing {
             background: #ff5252; color: #fff;
             box-shadow: 0 0 12px rgba(255,82,82,0.35);
@@ -1535,6 +1652,18 @@
             </button>
             <p class="login-error" id="login-error"></p>
             <p class="login-hint">An account is required. Local editing unlocks after you sign in.</p>
+        </div>
+    </div>
+
+    <!-- Pro / upgrade (full page) -->
+    <div id="pro-view" class="view">
+        <div class="pro-header">
+            <button type="button" class="btn btn-back" id="pro-back-btn" onclick="closeProView()">◀ Back</button>
+            <h1 id="pro-page-title">LuaX Pro</h1>
+            <span style="width:44px"></span>
+        </div>
+        <div class="pro-scroll" id="pro-scroll-body">
+            <!-- filled by renderProPage() -->
         </div>
     </div>
 
@@ -6038,15 +6167,7 @@ function requireMusicProFor(nChannels, nSteps) {
     const needPro = (nChannels > MUS_FREE_MAX_CHANNELS) || (nSteps > MUS_FREE_MAX_STEPS);
     if (!needPro) return true;
     if (typeof isPro === 'function' && isPro()) return true;
-    openModal(
-        'Pro feature',
-        '<div style="font-size:0.9rem;line-height:1.45">' +
-        '<p style="margin:0 0 10px">More than <b>' + MUS_FREE_MAX_CHANNELS + ' channels</b> or <b>' + MUS_FREE_MAX_STEPS + ' steps</b> needs <b>LuaX Pro</b>.</p>' +
-        '<p style="margin:0;color:var(--muted);font-size:0.85rem">Free: ' + MUS_FREE_MAX_CHANNELS + '×' + MUS_FREE_MAX_STEPS +
-        ' · Pro: ' + MUS_PRO_MAX_CHANNELS + '×' + MUS_PRO_MAX_STEPS + '</p></div>',
-        'Upgrade — €5/mo',
-        () => { openSubscriptionInfo(); }
-    );
+    openSubscriptionInfo();
     return false;
 }
 
@@ -7626,43 +7747,213 @@ function spendCredits(action, opts) {
 
 function openSubscriptionInfo() {
     closeAccountMenu();
+    try { closeModal(); } catch (_) {}
+    // Remember where to return
+    const active = document.querySelector('.view.active');
+    window._proReturnView = (active && active.id && active.id !== 'pro-view')
+        ? active.id
+        : 'projects-view';
+    renderProPage();
+    switchView('pro-view');
+    try {
+        const sc = document.getElementById('pro-scroll-body');
+        if (sc) sc.scrollTop = 0;
+    } catch (_) {}
+}
+
+function closeProView() {
+    const back = window._proReturnView || 'projects-view';
+    window._proReturnView = null;
+    // Prefer files/music if still in a project context
+    if (back === 'pro-view' || !document.getElementById(back)) {
+        switchView('projects-view');
+    } else {
+        switchView(back);
+    }
+}
+
+function renderProPage() {
+    const body = document.getElementById('pro-scroll-body');
+    const title = document.getElementById('pro-page-title');
+    if (!body) return;
     const pro = isPro();
     const stripeReady = !!STRIPE_PAYMENT_LINK;
+    if (title) title.textContent = pro ? 'Your Pro plan' : 'Upgrade to Pro';
+
+    const cloudCost = (typeof CREDIT_COSTS !== 'undefined' && CREDIT_COSTS.cloud_save) || 2;
+    const exportCost = (typeof CREDIT_COSTS !== 'undefined' && CREDIT_COSTS.export) || 2;
+    const freeCred = (typeof CREDIT_WEEKLY_FREE !== 'undefined') ? CREDIT_WEEKLY_FREE : 25;
+    const proCred = (typeof CREDIT_WEEKLY_PRO !== 'undefined') ? CREDIT_WEEKLY_PRO : 250;
+    const freeCh = (typeof MUS_FREE_MAX_CHANNELS !== 'undefined') ? MUS_FREE_MAX_CHANNELS : 10;
+    const freeSt = (typeof MUS_FREE_MAX_STEPS !== 'undefined') ? MUS_FREE_MAX_STEPS : 16;
+    const proCh = (typeof MUS_PRO_MAX_CHANNELS !== 'undefined') ? MUS_PRO_MAX_CHANNELS : 16;
+    const proSt = (typeof MUS_PRO_MAX_STEPS !== 'undefined') ? MUS_PRO_MAX_STEPS : 64;
 
     if (pro) {
-        openModal(
-            'LuaX Pro',
-            `<div style="font-size:0.9rem;line-height:1.45;color:var(--text-color)">
-              <p style="margin:0 0 8px;color:var(--accent-color);font-weight:600">Pro is active on this account.</p>
-              <p style="margin:0 0 12px;color:var(--muted);font-size:0.85rem">${CREDIT_WEEKLY_PRO} credits / week · cloud + export limits raised.</p>
-              <button type="button" class="btn btn-sm btn-block" style="margin-bottom:8px" onclick="closeModal(); openBillingManage();">Manage billing</button>
-              <button type="button" class="btn btn-sm btn-block btn-danger-outline" onclick="closeModal(); cancelSubscription();">Cancel subscription</button>
-              <p style="margin:10px 0 0;font-size:0.75rem;color:var(--muted)">Full billing is also under Settings → Billing.</p>
-            </div>`,
-            'Close',
-            () => {}
-        );
+        const st = loadProStatus() || {};
+        const email = currentAccountEmail() || st.email || '';
+        const since = st.since ? new Date(st.since).toLocaleDateString() : '';
+        const until = st.activeUntil ? new Date(st.activeUntil).toLocaleDateString() : '';
+        body.innerHTML = `
+            <div class="pro-status-card">
+                <h2>✓ LuaX Pro is active</h2>
+                <p>${email ? email + '<br>' : ''}${since ? 'Since ' + since : ''}${until ? ' · Renews / ends around ' + until : ''}</p>
+            </div>
+            <p class="pro-section-title">Your Pro benefits</p>
+            <div class="pro-benefits">
+                <div class="pro-benefit">
+                    <div class="pro-benefit-ico">⚡</div>
+                    <div>
+                        <h3>${proCred} credits every week</h3>
+                        <p>10× the free plan (${freeCred}/week). Cloud backup (${cloudCost}/hour) and export (${exportCost}) last much longer.</p>
+                    </div>
+                </div>
+                <div class="pro-benefit">
+                    <div class="pro-benefit-ico">🎵</div>
+                    <div>
+                        <h3>Bigger music grids</h3>
+                        <p>Up to <b>${proCh} channels</b> and <b>${proSt} steps</b> (free is ${freeCh}×${freeSt}). Build richer sequences.</p>
+                    </div>
+                </div>
+                <div class="pro-benefit">
+                    <div class="pro-benefit-ico">☁️</div>
+                    <div>
+                        <h3>Faster cloud sync</h3>
+                        <p>Saves push to Drive sooner so projects stay in sync across devices.</p>
+                    </div>
+                </div>
+                <div class="pro-benefit">
+                    <div class="pro-benefit-ico">📦</div>
+                    <div>
+                        <h3>Export without stress</h3>
+                        <p>Higher weekly allowance for project exports — share and back up more often.</p>
+                    </div>
+                </div>
+                <div class="pro-benefit">
+                    <div class="pro-benefit-ico">🎮</div>
+                    <div>
+                        <h3>Everything else stays free</h3>
+                        <p>Editor, play mode, sprite tools, and the engine itself never lock behind Pro.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="pro-actions-row">
+                <button type="button" class="btn btn-primary" onclick="openBillingManage()">Manage billing</button>
+                <button type="button" class="btn btn-danger-outline" onclick="cancelSubscription()">Cancel subscription</button>
+            </div>
+            <p class="pro-cta-note">Billing is handled securely by Stripe. You can also open this from Settings → Billing.</p>
+        `;
         return;
     }
 
-    openModal(
-        'Upgrade to LuaX Pro',
-        `<div style="font-size:0.9rem;line-height:1.45;color:var(--text-color)">
-          <p style="margin:0 0 10px"><b>€5 / month</b> — engine stays free. Pro raises weekly credits.</p>
-          <p style="margin:0 0 8px;color:var(--muted)">Credits are used for:</p>
-          <ul style="margin:0 0 12px;padding-left:18px;color:var(--muted)">
-            <li>Cloud backup — ${CREDIT_COSTS.cloud_save} credits / hour</li>
-            <li>Export project — ${CREDIT_COSTS.export} credits</li>
-          </ul>
-          <p style="margin:0 0 8px"><b>Free:</b> ${CREDIT_WEEKLY_FREE} / week · <b>Pro:</b> ${CREDIT_WEEKLY_PRO} / week</p>
-          <p style="margin:0;color:var(--muted);font-size:0.8rem">Pay with card, Apple Pay, or Google Pay (via Stripe).</p>
-          ${stripeReady
-            ? '<p style="margin:12px 0 0;font-size:0.8rem;color:var(--muted)">Opens secure Stripe Checkout. Pro unlocks after payment redirects back to this site.</p>'
-            : '<p style="margin:12px 0 0;font-size:0.8rem;color:#ff8a80">Stripe Payment Link not set yet.</p>'}
-        </div>`,
-        stripeReady ? 'Subscribe — €5/mo' : 'Close',
-        () => { if (stripeReady) startStripeCheckout(); }
-    );
+    body.innerHTML = `
+        <div class="pro-hero">
+            <div class="pro-badge">LuaX Pro</div>
+            <p class="pro-price">€5 <span>/ month</span></p>
+            <p class="pro-tagline">Unlock higher limits. The editor and play engine stay free forever.</p>
+        </div>
+
+        <p class="pro-section-title">Everything you get</p>
+        <div class="pro-benefits">
+            <div class="pro-benefit">
+                <div class="pro-benefit-ico">⚡</div>
+                <div>
+                    <h3>${proCred} credits / week</h3>
+                    <p>Free accounts get ${freeCred}. Pro gives you <b>${proCred}</b> — enough for heavy cloud backup and many exports.</p>
+                </div>
+            </div>
+            <div class="pro-benefit">
+                <div class="pro-benefit-ico">🎵</div>
+                <div>
+                    <h3>Music: ${proCh} channels × ${proSt} steps</h3>
+                    <p>Free tops out at ${freeCh} channels and ${freeSt} steps. Pro unlocks wider grids for complex tracks, random generator patterns, and long loops.</p>
+                </div>
+            </div>
+            <div class="pro-benefit">
+                <div class="pro-benefit-ico">☁️</div>
+                <div>
+                    <h3>Priority cloud backup</h3>
+                    <p>Projects sync to your private Google Drive app folder more often (${cloudCost} credits/hour). Great if you switch devices.</p>
+                </div>
+            </div>
+            <div class="pro-benefit">
+                <div class="pro-benefit-ico">📤</div>
+                <div>
+                    <h3>More project exports</h3>
+                    <p>Each export costs ${exportCost} credits. With ${proCred}/week you can ship builds and backups without running dry mid-week.</p>
+                </div>
+            </div>
+            <div class="pro-benefit">
+                <div class="pro-benefit-ico">🎲</div>
+                <div>
+                    <h3>Full music toolkit</h3>
+                    <p>Random generator, live playhead, 10+ channels, and long step counts — all available under the higher Pro grid limits.</p>
+                </div>
+            </div>
+            <div class="pro-benefit">
+                <div class="pro-benefit-ico">💳</div>
+                <div>
+                    <h3>Simple billing</h3>
+                    <p>Pay with card, Apple Pay, or Google Pay via Stripe. Cancel anytime in the customer portal.</p>
+                </div>
+            </div>
+        </div>
+
+        <p class="pro-section-title">Free vs Pro</p>
+        <table class="pro-compare">
+            <thead>
+                <tr><th>Feature</th><th>Free</th><th>Pro</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Weekly credits</td>
+                    <td>${freeCred}</td>
+                    <td class="hl">${proCred}</td>
+                </tr>
+                <tr>
+                    <td>Music channels</td>
+                    <td>up to ${freeCh}</td>
+                    <td class="hl">up to ${proCh}</td>
+                </tr>
+                <tr>
+                    <td>Music steps</td>
+                    <td>up to ${freeSt}</td>
+                    <td class="hl">up to ${proSt}</td>
+                </tr>
+                <tr>
+                    <td>Cloud backup</td>
+                    <td class="yes">Yes</td>
+                    <td class="yes">Yes · faster</td>
+                </tr>
+                <tr>
+                    <td>Export projects</td>
+                    <td class="yes">Yes</td>
+                    <td class="yes">Yes · more room</td>
+                </tr>
+                <tr>
+                    <td>Code editor &amp; PLAY</td>
+                    <td class="yes">Free</td>
+                    <td class="yes">Free</td>
+                </tr>
+                <tr>
+                    <td>Sprite &amp; music editors</td>
+                    <td class="yes">Free</td>
+                    <td class="yes">Free</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="pro-cta">
+            <button type="button" class="btn btn-primary" id="pro-subscribe-btn"
+                onclick="${stripeReady ? 'startStripeCheckout()' : 'alert(\'Stripe is not configured yet.\')'}">
+                ${stripeReady ? 'Subscribe — €5/mo' : 'Stripe not configured'}
+            </button>
+            <p class="pro-cta-note">
+                Secure checkout opens in Stripe. Apple Pay &amp; Google Pay appear when available.<br>
+                Pro unlocks after payment redirects back to this site.
+            </p>
+        </div>
+    `;
 }
 
 const GOOGLE_CLIENT_ID = '996784289780-lrl7mub599dn6eti14h3nvfre2ov6027.apps.googleusercontent.com';
