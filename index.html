@@ -8050,7 +8050,7 @@ const AD_REWARD_KEY = 'luax_ad_rewards';
 const AD_REWARD_COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes between claims
 const AD_REWARD_DAILY_CAP = 20;               // max +credits from ads per day
 const AD_REWARD_AMOUNT = 1;
-const AD_REWARD_WATCH_SEC = 20;               // must stay on ad screen this long
+const AD_REWARD_WATCH_SEC = 15;               // must stay on ad screen this long
 const AD_SCRIPT_SRC = 'https://chalkedwhiningromance.com/3e/9e/5b/3e9e5b9fabc6f3e221e6e9abe70ea980.js';
 
 let adRewardTimerId = null;
@@ -8129,34 +8129,38 @@ function ensureAdRewardModal() {
     el.setAttribute('aria-hidden', 'true');
     el.innerHTML = `
       <div class="ad-reward-card" onclick="event.stopPropagation()">
-        <h2>Watch ad</h2>
-        <p class="ad-reward-copy">Ads help keep LuaX free. Stay on this screen while the ad network loads. Credit unlocks when the timer ends.</p>
-        <div class="ad-reward-timer" id="ad-reward-timer">20</div>
-        <p class="ad-reward-hint" id="ad-reward-hint">Loading ad network…</p>
+        <h2>Earn 1 credit</h2>
+        <p class="ad-reward-copy">
+          The ad network may open a <b>new tab or window</b> — that is normal.<br>
+          Keep <b>this</b> screen open until the timer hits 0, then press <b>Collect</b>.<br>
+          Pressing <b>Cancel</b> gives <b>no</b> credit.
+        </p>
+        <div class="ad-reward-timer" id="ad-reward-timer">15</div>
+        <p class="ad-reward-hint" id="ad-reward-hint">Starting…</p>
         <div class="ad-reward-actions">
-          <button type="button" class="btn" id="ad-reward-cancel" onclick="cancelAdRewardWatch()">Cancel</button>
-          <button type="button" class="btn btn-primary" id="ad-reward-collect" disabled onclick="finishAdRewardWatch()">Collect +1</button>
+          <button type="button" class="btn" id="ad-reward-cancel" onclick="cancelAdRewardWatch()">Cancel (no credit)</button>
+          <button type="button" class="btn btn-primary" id="ad-reward-collect" disabled onclick="finishAdRewardWatch()">Wait…</button>
         </div>
       </div>`;
+    // Clicking the dark backdrop = cancel (no credit)
     el.addEventListener('click', function (e) {
         if (e.target === el) cancelAdRewardWatch();
     });
     document.body.appendChild(el);
 
-    // Styles once
     if (!document.getElementById('ad-reward-styles')) {
         var css = document.createElement('style');
         css.id = 'ad-reward-styles';
         css.textContent = `
 #ad-reward-modal {
   display: none; position: fixed; inset: 0; z-index: 6000;
-  background: rgba(0,0,0,0.72); backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.78); backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   align-items: center; justify-content: center; padding: 20px;
 }
 #ad-reward-modal.open { display: flex; }
 .ad-reward-card {
-  width: 100%; max-width: 360px;
+  width: 100%; max-width: 380px;
   background: var(--panel-color, #16131f);
   border: 1px solid var(--glass-border, rgba(139,92,246,0.25));
   border-radius: 18px; padding: 22px 20px;
@@ -8165,7 +8169,7 @@ function ensureAdRewardModal() {
 }
 .ad-reward-card h2 { margin: 0 0 10px; font-size: 1.2rem; }
 .ad-reward-copy {
-  margin: 0 0 16px; font-size: 0.88rem; line-height: 1.45;
+  margin: 0 0 16px; font-size: 0.84rem; line-height: 1.5;
   color: var(--muted, #aaa);
 }
 .ad-reward-timer {
@@ -8175,11 +8179,12 @@ function ensureAdRewardModal() {
   font-variant-numeric: tabular-nums;
 }
 .ad-reward-hint {
-  margin: 0 0 16px; font-size: 0.8rem; color: var(--muted, #888);
+  margin: 0 0 16px; font-size: 0.8rem; color: var(--muted, #888); min-height: 2.4em;
 }
-.ad-reward-actions { display: flex; gap: 8px; }
-.ad-reward-actions .btn { flex: 1; }
+.ad-reward-actions { display: flex; flex-direction: column; gap: 8px; }
+.ad-reward-actions .btn { width: 100%; }
 #ad-reward-collect:disabled { opacity: 0.45; cursor: not-allowed; }
+#ad-reward-cancel { border: 1px solid rgba(255,82,82,0.35); color: #ff8a80; }
 `;
         document.head.appendChild(css);
     }
@@ -8193,9 +8198,13 @@ function openAdRewardModal() {
     var collect = document.getElementById('ad-reward-collect');
     var timerEl = document.getElementById('ad-reward-timer');
     var hint = document.getElementById('ad-reward-hint');
-    if (collect) { collect.disabled = true; collect.textContent = 'Collect +1'; }
+    if (collect) {
+        collect.disabled = true;
+        collect.textContent = 'Wait…';
+        collect.onclick = finishAdRewardWatch;
+    }
     if (timerEl) timerEl.textContent = String(AD_REWARD_WATCH_SEC);
-    if (hint) hint.textContent = 'Ad network loading… keep this screen open.';
+    if (hint) hint.textContent = 'Loading ad… a new tab may open. Stay on this screen.';
 }
 
 function closeAdRewardModal() {
@@ -8206,6 +8215,7 @@ function closeAdRewardModal() {
     }
 }
 
+/** Cancel always means NO credit. */
 function cancelAdRewardWatch() {
     if (adRewardTimerId) {
         clearInterval(adRewardTimerId);
@@ -8213,28 +8223,37 @@ function cancelAdRewardWatch() {
     }
     adRewardBusy = false;
     adRewardSecondsLeft = 0;
+    // Do NOT touch claimed / lastAt / bonus
     closeAdRewardModal();
     updateAdRewardButton();
 }
 
+/**
+ * Credit ONLY here, and only after the full timer finished.
+ * Cancel never calls this.
+ */
 function finishAdRewardWatch() {
-    if (adRewardSecondsLeft > 0) return; // timer not done
+    // Hard guards: timer must be finished, session must still be active
     if (!adRewardBusy) return;
-
-    const status = adRewardStatus();
-    // status.canClaim may be false because adRewardBusy is true — check caps manually
-    const st = loadAdRewardState();
-    const leftToday = Math.max(0, AD_REWARD_DAILY_CAP - (st.claimed || 0));
-    if (leftToday <= 0) {
-        cancelAdRewardWatch();
-        alert('Daily ad credit limit reached.');
+    if (adRewardSecondsLeft > 0) {
+        alert('Wait for the timer to reach 0, then press Collect.');
         return;
     }
 
+    const st = loadAdRewardState();
+    const leftToday = Math.max(0, AD_REWARD_DAILY_CAP - (st.claimed || 0));
+    if (leftToday <= 0) {
+        adRewardBusy = false;
+        closeAdRewardModal();
+        alert('Daily ad credit limit reached.');
+        updateAdRewardButton();
+        return;
+    }
+
+    // Mark claimed only at successful collect
     st.claimed = (st.claimed || 0) + 1;
     st.lastAt = Date.now();
     saveAdRewardState(st);
-
     addBonusCredits(AD_REWARD_AMOUNT);
 
     if (adRewardTimerId) {
@@ -8247,13 +8266,12 @@ function finishAdRewardWatch() {
     updateAdRewardButton();
 
     const left = loadCreditsState().left;
-    alert('+' + AD_REWARD_AMOUNT + ' credit earned!\n\nYou now have ' + left + ' credits.\n' +
+    alert('+' + AD_REWARD_AMOUNT + ' credit collected.\n\nBalance: ' + left + ' credits\n' +
           (AD_REWARD_DAILY_CAP - st.claimed) + ' ad credits left today.');
 }
 
 /**
- * Start timed ad-watch flow. Credit is only granted after the timer
- * (this ad unit has no "ad completed" callback from the network).
+ * Start timed watch. No credit until user presses Collect after timer = 0.
  */
 function claimAdReward() {
     if (adRewardBusy) return false;
@@ -8263,7 +8281,7 @@ function claimAdReward() {
         return false;
     }
     if (typeof isPlaying !== 'undefined' && isPlaying) {
-        alert('Finish or exit PLAY before claiming ad credits.');
+        alert('Exit PLAY before claiming ad credits.');
         return false;
     }
 
@@ -8272,7 +8290,7 @@ function claimAdReward() {
     const waitMs = Math.max(0, (st0.lastAt || 0) + AD_REWARD_COOLDOWN_MS - now);
     const leftToday = Math.max(0, AD_REWARD_DAILY_CAP - (st0.claimed || 0));
     if (leftToday <= 0) {
-        alert('Daily ad credit limit reached (' + AD_REWARD_DAILY_CAP + '). Come back tomorrow.');
+        alert('Daily ad credit limit reached (' + AD_REWARD_DAILY_CAP + '). Try again tomorrow.');
         updateAdRewardButton();
         return false;
     }
@@ -8287,11 +8305,16 @@ function claimAdReward() {
     openAdRewardModal();
     updateAdRewardButton();
 
-    // Trigger / refresh the ad network when user starts watching
+    // Fire ad network immediately when the user opts in
     try { reloadAdNetworkScript(); } catch (_) {}
 
     if (adRewardTimerId) clearInterval(adRewardTimerId);
     adRewardTimerId = setInterval(function () {
+        if (!adRewardBusy) {
+            clearInterval(adRewardTimerId);
+            adRewardTimerId = null;
+            return;
+        }
         adRewardSecondsLeft -= 1;
         var timerEl = document.getElementById('ad-reward-timer');
         var hint = document.getElementById('ad-reward-hint');
@@ -8303,17 +8326,15 @@ function claimAdReward() {
             adRewardTimerId = null;
             adRewardSecondsLeft = 0;
             if (timerEl) timerEl.textContent = '0';
-            if (hint) hint.textContent = 'Ready — tap Collect to get your credit.';
+            if (hint) hint.textContent = 'Timer done. Press Collect to get +1 credit (Cancel = no credit).';
             if (collect) {
                 collect.disabled = false;
                 collect.textContent = 'Collect +' + AD_REWARD_AMOUNT + ' credit';
             }
-        } else {
-            if (hint) {
-                hint.textContent = adRewardSecondsLeft > 12
-                    ? 'Ad network loading… keep this screen open.'
-                    : 'Almost done — stay on this screen.';
-            }
+        } else if (hint) {
+            hint.textContent = adRewardSecondsLeft > 8
+                ? 'Ad may open in a new tab. Leave this screen open.'
+                : 'Almost done — do not press Cancel if you want the credit.';
         }
     }, 1000);
 
