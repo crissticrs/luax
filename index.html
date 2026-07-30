@@ -1520,6 +1520,7 @@
                     <div class="account-credits" id="account-credits-line">Credits: —</div>
                     <button class="btn btn-sm btn-block" id="account-signin-btn" onclick="googleSignInOrOut(); closeAccountMenu();">Sign in with Google</button>
                     <button class="btn btn-sm btn-block btn-primary" id="account-sub-btn" onclick="openSubscriptionInfo();">LuaX Pro — €5/mo</button>
+                    <button class="btn btn-sm btn-block" id="account-ad-btn" onclick="closeAccountMenu(); claimAdReward();">Watch ad · +1 credit</button>
                 </div>
 
                 <div id="save-indicator" style="display:none"></div>
@@ -7092,6 +7093,11 @@ function renderBillingPanel() {
     const st = loadProStatus();
     const email = currentAccountEmail() || (st && st.email) || '';
     const since = st && st.since ? new Date(st.since).toLocaleDateString() : '';
+    const credits = loadCreditsState();
+
+    const adBtn = `
+            <button type="button" class="btn btn-sm btn-block" id="btn-ad-reward" onclick="claimAdReward()" style="margin-top:8px">Watch ad · +1 credit</button>
+            <p class="lx-hint" id="ad-reward-meta" style="margin:6px 0 0">Earn +1 credit per ad · limited daily · helps keep LuaX free.</p>`;
 
     if (pro) {
         el.innerHTML = `
@@ -7099,22 +7105,29 @@ function renderBillingPanel() {
             <p class="billing-meta">
               ${email ? 'Account: ' + email + '<br>' : ''}
               ${since ? 'Since: ' + since + '<br>' : ''}
-              ${CREDIT_WEEKLY_PRO} credits / week · €5 / month
+              ${CREDIT_WEEKLY_PRO} credits / week · €5 / month<br>
+              Balance: <b>${credits.left}</b> left this week
             </p>
             <div class="billing-actions">
               <button type="button" class="btn btn-primary btn-sm" onclick="openBillingManage()">Manage billing</button>
               <button type="button" class="btn btn-sm btn-danger-outline" onclick="cancelSubscription()">Cancel subscription</button>
+              ${adBtn}
             </div>
             <p class="lx-hint" style="margin-top:10px;margin-bottom:0">Cancel only through Stripe Customer Portal so billing and app status stay in sync.</p>`;
     } else {
         el.innerHTML = `
             <p class="billing-status free">Free plan</p>
-            <p class="billing-meta">${CREDIT_WEEKLY_FREE} credits / week · upgrade anytime for ${CREDIT_WEEKLY_PRO}/week</p>
+            <p class="billing-meta">${CREDIT_WEEKLY_FREE} credits / week · upgrade anytime for ${CREDIT_WEEKLY_PRO}/week<br>
+              Balance: <b>${credits.left}</b> left this week
+              ${(credits.bonus ? ' · including +' + credits.bonus + ' from ads' : '')}
+            </p>
             <div class="billing-actions">
               <button type="button" class="btn btn-primary btn-sm" onclick="openSubscriptionInfo()">Upgrade to Pro — €5/mo</button>
               ${STRIPE_PORTAL_LINK ? '<button type="button" class="btn btn-sm" onclick="openBillingManage()">Open billing portal</button>' : ''}
+              ${adBtn}
             </div>`;
     }
+    setTimeout(function () { try { updateAdRewardButton(); } catch (_) {} }, 0);
 }
 
 /**
@@ -7241,14 +7254,29 @@ function loadCreditsState() {
     try { st = JSON.parse(localStorage.getItem(CREDITS_KEY) || 'null'); } catch (_) { st = null; }
     const weekly = isPro() ? CREDIT_WEEKLY_PRO : CREDIT_WEEKLY_FREE;
     if (!st || st.week !== wid) {
-        st = { week: wid, used: 0 };
+        // New week: keep unused ad bonus? Reset bonus with the week for fairness
+        st = { week: wid, used: 0, bonus: 0 };
         try { localStorage.setItem(CREDITS_KEY, JSON.stringify(st)); } catch (_) {}
     }
-    return { ...st, weekly, left: Math.max(0, weekly - (st.used || 0)) };
+    const bonus = Math.max(0, st.bonus || 0);
+    const used = Math.max(0, st.used || 0);
+    return {
+        ...st,
+        bonus,
+        used,
+        weekly,
+        left: Math.max(0, weekly + bonus - used)
+    };
 }
 
 function saveCreditsState(st) {
-    try { localStorage.setItem(CREDITS_KEY, JSON.stringify({ week: st.week, used: st.used })); } catch (_) {}
+    try {
+        localStorage.setItem(CREDITS_KEY, JSON.stringify({
+            week: st.week,
+            used: st.used || 0,
+            bonus: st.bonus || 0
+        }));
+    } catch (_) {}
 }
 
 function spendCredits(action, opts) {
@@ -8009,5 +8037,154 @@ window.startPlayMode = startPlayMode;
     };
 })();
 </script>
+
+<!-- Adsterra / CPM network ad unit -->
+<script src="https://pl30607670.effectivecpmnetwork.com/3e/9e/5b/3e9e5b9fabc6f3e221e6e9abe70ea980.js"></script>
+<script>
+// ============================================================
+// AD REWARDS — +1 credit per claim (cooldown-limited)
+// Note: this ad format has no completion callback, so rewards
+// use a time cooldown + daily cap to limit abuse.
+// ============================================================
+const AD_REWARD_KEY = 'luax_ad_rewards';
+const AD_REWARD_COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes between claims
+const AD_REWARD_DAILY_CAP = 20;               // max +credits from ads per day
+const AD_REWARD_AMOUNT = 1;
+
+function adRewardDayId() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function loadAdRewardState() {
+    let st = null;
+    try { st = JSON.parse(localStorage.getItem(AD_REWARD_KEY) || 'null'); } catch (_) { st = null; }
+    const day = adRewardDayId();
+    if (!st || st.day !== day) {
+        st = { day: day, claimed: 0, lastAt: 0 };
+        try { localStorage.setItem(AD_REWARD_KEY, JSON.stringify(st)); } catch (_) {}
+    }
+    return st;
+}
+
+function saveAdRewardState(st) {
+    try { localStorage.setItem(AD_REWARD_KEY, JSON.stringify(st)); } catch (_) {}
+}
+
+function adRewardStatus() {
+    const st = loadAdRewardState();
+    const now = Date.now();
+    const waitMs = Math.max(0, (st.lastAt || 0) + AD_REWARD_COOLDOWN_MS - now);
+    const leftToday = Math.max(0, AD_REWARD_DAILY_CAP - (st.claimed || 0));
+    return {
+        canClaim: waitMs <= 0 && leftToday > 0,
+        waitMs: waitMs,
+        leftToday: leftToday,
+        claimed: st.claimed || 0
+    };
+}
+
+/** Add bonus credits (does not count against weekly free pool as "used"). */
+function addBonusCredits(n) {
+    const amount = Math.max(0, Math.floor(Number(n) || 0));
+    if (!amount) return loadCreditsState();
+    const st = loadCreditsState();
+    st.bonus = (st.bonus || 0) + amount;
+    // Persist week + used + bonus
+    try {
+        localStorage.setItem(CREDITS_KEY, JSON.stringify({
+            week: st.week,
+            used: st.used || 0,
+            bonus: st.bonus
+        }));
+    } catch (_) {}
+    try { updateProfileUI(); } catch (_) {}
+    try { renderBillingPanel(); } catch (_) {}
+    return loadCreditsState();
+}
+
+/**
+ * User taps "Watch ad · +1 credit".
+ * Ensures ad script is present, applies cooldown/daily cap, then grants credit.
+ */
+function claimAdReward() {
+    if (typeof isAuthed === 'function' && !isAuthed()) {
+        alert('Sign in to earn ad credits.');
+        return false;
+    }
+    // Avoid claiming while playing fullscreen game
+    if (typeof isPlaying !== 'undefined' && isPlaying) {
+        alert('Finish or exit PLAY before claiming ad credits.');
+        return false;
+    }
+
+    const status = adRewardStatus();
+    if (status.leftToday <= 0) {
+        alert('Daily ad credit limit reached (' + AD_REWARD_DAILY_CAP + '). Come back tomorrow.');
+        updateAdRewardButton();
+        return false;
+    }
+    if (status.waitMs > 0) {
+        const sec = Math.ceil(status.waitMs / 1000);
+        alert('Please wait ' + sec + 's before claiming another ad credit.');
+        updateAdRewardButton();
+        return false;
+    }
+
+    // Soft check: ad network script tag should exist
+    const hasAd = !!document.querySelector('script[src*="effectivecpmnetwork.com"]');
+    if (!hasAd) {
+        alert('Ad script is missing. Reload the page and try again.');
+        return false;
+    }
+
+    const st = loadAdRewardState();
+    st.claimed = (st.claimed || 0) + 1;
+    st.lastAt = Date.now();
+    saveAdRewardState(st);
+
+    addBonusCredits(AD_REWARD_AMOUNT);
+    updateAdRewardButton();
+
+    const left = loadCreditsState().left;
+    alert('+' + AD_REWARD_AMOUNT + ' credit from ad!\n\nYou now have ' + left + ' credits.\n' +
+          (AD_REWARD_DAILY_CAP - st.claimed) + ' ad credits left today.');
+    return true;
+}
+
+function updateAdRewardButton() {
+    const btn = document.getElementById('btn-ad-reward');
+    const meta = document.getElementById('ad-reward-meta');
+    if (!btn && !meta) return;
+    const status = adRewardStatus();
+    if (btn) {
+        if (!status.canClaim) {
+            if (status.leftToday <= 0) {
+                btn.textContent = 'Ad limit reached today';
+                btn.disabled = true;
+            } else {
+                const sec = Math.ceil(status.waitMs / 1000);
+                btn.textContent = 'Next credit in ' + sec + 's';
+                btn.disabled = true;
+            }
+        } else {
+            btn.textContent = 'Watch ad · +' + AD_REWARD_AMOUNT + ' credit';
+            btn.disabled = false;
+        }
+    }
+    if (meta) {
+        meta.textContent = status.claimed + ' / ' + AD_REWARD_DAILY_CAP + ' ad credits claimed today · ' +
+            status.leftToday + ' left';
+    }
+}
+
+// Refresh cooldown label while settings is visible
+setInterval(function () {
+    try {
+        if (document.getElementById('btn-ad-reward')) updateAdRewardButton();
+    } catch (_) {}
+}, 1000);
+</script>
+
 </body>
 </html>
