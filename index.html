@@ -686,11 +686,14 @@
             border-bottom: 1px solid var(--glass-border);
         }
         #files-view .btn-play {
-            background: var(--accent-color) !important;
-            color: #fff !important;
-            box-shadow: 0 3px 14px color-mix(in srgb, var(--accent-color) 45%, transparent) !important;
+            background: #00e676 !important;
+            color: #000 !important;
+            box-shadow: 0 3px 14px rgba(0,230,118,0.45) !important;
             border-radius: 12px;
             font-weight: 800;
+            min-width: 88px;
+            z-index: 5;
+            position: relative;
         }
         #files-view .btn-back {
             background: var(--panel-2, var(--panel-color));
@@ -1299,7 +1302,7 @@
                 <span id="current-project-title">Project</span>
             </h1>
             <div class="header-actions">
-                <button type="button" class="btn btn-play" id="btn-start-play" onclick="event.stopPropagation(); startPlayMode();">▶ PLAY</button>
+                <button type="button" class="btn btn-play" id="btn-start-play">▶ PLAY</button>
             </div>
         </div>
         <div class="files-toolbar">
@@ -3864,16 +3867,26 @@ function luaxHint(cm) {
     };
 }
 
-const editor = CodeMirror(document.getElementById('editor'), {
-    mode: 'lua', theme: 'material-ocean',
-    lineNumbers: true, matchBrackets: true, indentUnit: 4,
-    styleActiveLine: true, viewportMargin: Infinity,
-    gutters: ['CodeMirror-linenumbers', 'luax-error-gutter'],
-    extraKeys: {
-        'Ctrl-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
-        'Cmd-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
-    },
-});
+let editor = null;
+try {
+    if (typeof CodeMirror !== 'undefined' && document.getElementById('editor')) {
+        editor = CodeMirror(document.getElementById('editor'), {
+            mode: 'lua', theme: 'material-ocean',
+            lineNumbers: true, matchBrackets: true, indentUnit: 4,
+            styleActiveLine: true, viewportMargin: Infinity,
+            gutters: ['CodeMirror-linenumbers', 'luax-error-gutter'],
+            extraKeys: {
+                'Ctrl-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
+                'Cmd-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
+            },
+        });
+    } else {
+        console.warn('CodeMirror not available — code editor disabled, PLAY still works');
+    }
+} catch (e) {
+    console.warn('CodeMirror init failed', e);
+    editor = null;
+}
 
 /** Active error widgets/markers in the editor */
 let editorErrorState = { widgets: [], lineHandle: null, line: null };
@@ -3969,6 +3982,7 @@ function applyEditorSyntaxCheck(code, filename) {
     return err;
 }
 
+if (editor) {
 editor.on('change', () => {
     if (!currentFileName) return;
     const now = editor.getValue();
@@ -3993,9 +4007,11 @@ editor.on('inputRead', function (cm, change) {
     if (tok && (tok.type === 'string' || tok.type === 'comment')) return;
     CodeMirror.commands.autocomplete(cm, null, { hint: luaxHint, completeSingle: false });
 });
+}
 
 // Hover documentation tooltip
 (function setupLuaxHoverDocs() {
+    if (!editor) return;
     const tip = document.createElement('div');
     tip.className = 'luax-hover-tip';
     tip.innerHTML = '<div class="tip-sig"></div><div class="tip-body"></div>';
@@ -4162,16 +4178,21 @@ function openFile(name) {
     savedContent = content;
     isDirty = false;
     clearEditorErrors();
-    editor.setValue(content);
-    switchView('editor-view');
-    renderTabs();
-    updateDirtyUI();
-    setStatus('');
-    setTimeout(() => {
-        editor.refresh();
-        editor.focus();
-        applyEditorSyntaxCheck(content, name);
-    }, 40);
+    if (editor) {
+        editor.setValue(content);
+        switchView('editor-view');
+        renderTabs();
+        updateDirtyUI();
+        setStatus('');
+        setTimeout(() => {
+            try { editor.refresh(); editor.focus(); } catch (_) {}
+            applyEditorSyntaxCheck(content, name);
+        }, 40);
+    } else {
+        // CodeMirror missing — still allow PLAY; show plain alert for editing
+        alert('Code editor failed to load, but PLAY still works.\n\nFile: ' + name + '\n\nReload the page on a stable connection to edit code.');
+        switchView('files-view');
+    }
 }
 
 function setStatus(msg, type) {
@@ -4203,6 +4224,7 @@ function checkSyntax(code, filename) {
 
 function saveCurrentFile() {
     if (!currentProjectName || !currentFileName) return;
+    if (!editor) { alert('Code editor not loaded'); return; }
     const code = editor.getValue();
     projects[currentProjectName][currentFileName] = code;
     saveState();
@@ -4227,7 +4249,7 @@ function saveCurrentFile() {
 }
 
 function closeEditor() {
-    if (isDirty) {
+    if (isDirty && editor) {
         projects[currentProjectName][currentFileName] = editor.getValue();
         saveState();
         isDirty = false;
@@ -4293,7 +4315,7 @@ window.LuaDeckControls = {
 // INPUT STATE
 // ============================================================
 const canvas = document.getElementById('game-canvas');
-const ctx = canvas.getContext('2d', { alpha: false });
+const ctx = canvas ? canvas.getContext('2d', { alpha: false }) : null;
 
 let loopId = null;
 let isPlaying = false;
@@ -6418,6 +6440,22 @@ try {
 } catch (_) {}
 if (!lastSaveAt) saveState();
 updateSaveIndicator();
+
+// Always expose PLAY — must work even if the code editor failed to load
+window.startPlayMode = startPlayMode;
+(function bindPlayButton() {
+    const btn = document.getElementById('btn-start-play');
+    if (!btn) return;
+    btn.onclick = function (e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        try {
+            startPlayMode();
+        } catch (err) {
+            console.error(err);
+            alert('PLAY failed: ' + (err && err.message ? err.message : err));
+        }
+    };
+})();
 </script>
 </body>
 </html>
