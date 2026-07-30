@@ -1340,11 +1340,14 @@
             font-size: 0.72rem; font-weight: 800; color: var(--muted);
         }
         .mus-live-bar {
-            display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-            min-height: 40px; padding: 8px 10px;
+            display: flex; flex-direction: column; gap: 8px;
+            min-height: 40px; padding: 10px 12px;
             background: color-mix(in srgb, var(--accent-color) 10%, transparent);
             border: 1px solid var(--glass-border);
             border-radius: 12px;
+        }
+        .mus-live-top {
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
         }
         .mus-live-label {
             font-size: 0.72rem; font-weight: 800; color: var(--muted);
@@ -1362,12 +1365,70 @@
             background: color-mix(in srgb, var(--accent-color) 28%, transparent);
             border: 1px solid var(--accent-color); color: #fff;
         }
-        .mus-live-chip.empty {
-            background: transparent; border-color: var(--glass-border);
-            color: var(--muted); opacity: 0.7;
-        }
         .mus-live-empty {
             font-size: 0.8rem; color: var(--muted); font-weight: 600;
+        }
+        .mus-wave-canvas-wrap {
+            width: 100%; height: 88px; border-radius: 10px; overflow: hidden;
+            background: #0a0c12;
+            border: 1px solid var(--glass-border);
+            position: relative;
+        }
+        #mus-wave-canvas {
+            width: 100%; height: 100%; display: block;
+        }
+        .mus-synth-panel {
+            display: none; flex-direction: column; gap: 10px;
+            margin-top: 4px;
+        }
+        .mus-synth-panel.open { display: flex; }
+        .mus-synth-row {
+            display: grid; grid-template-columns: 64px 1fr 40px;
+            align-items: center; gap: 8px;
+        }
+        .mus-synth-row label {
+            font-size: 0.75rem; font-weight: 800; color: var(--muted);
+            margin: 0;
+        }
+        .mus-synth-row input[type="range"] {
+            width: 100%; height: 28px; margin: 0;
+            -webkit-appearance: none; appearance: none;
+            background: transparent;
+        }
+        .mus-synth-row input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px; border-radius: 6px;
+            background: linear-gradient(to right,
+                color-mix(in srgb, var(--accent-color) 55%, #222),
+                color-mix(in srgb, var(--accent-color) 25%, #1a1c23));
+            border: 1px solid var(--glass-border);
+        }
+        .mus-synth-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff;
+            border: 2px solid var(--accent-color);
+            margin-top: -6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        }
+        .mus-synth-row input[type="range"]::-moz-range-track {
+            height: 8px; border-radius: 6px;
+            background: color-mix(in srgb, var(--accent-color) 30%, #1a1c23);
+            border: 1px solid var(--glass-border);
+        }
+        .mus-synth-row input[type="range"]::-moz-range-thumb {
+            width: 16px; height: 16px; border-radius: 50%;
+            background: #fff; border: 2px solid var(--accent-color);
+        }
+        .mus-synth-val {
+            font-size: 0.72rem; font-weight: 800; color: var(--accent-color);
+            text-align: right; font-variant-numeric: tabular-nums;
+        }
+        .mus-synth-preview {
+            align-self: flex-start;
+            height: 34px; padding: 0 12px; border-radius: 10px;
+            border: 1.5px solid var(--glass-border);
+            background: var(--panel-2, #1a1c23);
+            color: var(--text-color); font-weight: 800; font-size: 0.8rem;
+            cursor: pointer;
         }
         .mus-note-bar {
             display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
@@ -1920,11 +1981,12 @@
                     </select>
                 </label>
                 <label>Wave
-                    <select id="mus-wave" onchange="syncMusicFromEditorLive()">
+                    <select id="mus-wave" onchange="onMusWaveChange()">
                         <option value="square">square</option>
                         <option value="sine">sine</option>
                         <option value="triangle">triangle</option>
                         <option value="sawtooth">sawtooth</option>
+                        <option value="custom">custom ▾</option>
                     </select>
                 </label>
                 <button type="button" class="mus-btn play" id="mus-play-btn" onclick="toggleMusicPreview()">▶ Play</button>
@@ -1933,11 +1995,52 @@
             </div>
             <p class="mus-pro-hint" id="mus-limit-hint">Free: up to <b>10</b> channels × <b>16</b> steps · Pro unlocks more</p>
             <div class="spr-card">
-                <div class="spr-card-label">Now playing</div>
+                <div class="spr-card-label">Waveform · now playing</div>
                 <div class="mus-live-bar" id="mus-live-bar">
-                    <span class="mus-live-label">Step</span>
-                    <span class="mus-live-step" id="mus-live-step">—</span>
-                    <span class="mus-live-empty" id="mus-live-notes">Press ▶ Play to hear notes live</span>
+                    <div class="mus-live-top">
+                        <span class="mus-live-label">Step</span>
+                        <span class="mus-live-step" id="mus-live-step">—</span>
+                        <span class="mus-live-empty" id="mus-live-notes">Press ▶ Play</span>
+                    </div>
+                    <div class="mus-wave-canvas-wrap">
+                        <canvas id="mus-wave-canvas" width="640" height="88"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="spr-card" id="mus-synth-card" style="display:none">
+                <div class="spr-card-label">Custom sound</div>
+                <div class="mus-synth-panel open" id="mus-synth-panel">
+                    <div class="mus-synth-row">
+                        <label>Pitch</label>
+                        <input type="range" id="mus-syn-pitch" min="0" max="100" value="50" oninput="onMusSynthChange()">
+                        <span class="mus-synth-val" id="mus-syn-pitch-v">50</span>
+                    </div>
+                    <div class="mus-synth-row">
+                        <label>Length</label>
+                        <input type="range" id="mus-syn-length" min="0" max="100" value="40" oninput="onMusSynthChange()">
+                        <span class="mus-synth-val" id="mus-syn-length-v">40</span>
+                    </div>
+                    <div class="mus-synth-row">
+                        <label>Volume</label>
+                        <input type="range" id="mus-syn-volume" min="0" max="100" value="55" oninput="onMusSynthChange()">
+                        <span class="mus-synth-val" id="mus-syn-volume-v">55</span>
+                    </div>
+                    <div class="mus-synth-row">
+                        <label>Slide</label>
+                        <input type="range" id="mus-syn-slide" min="0" max="100" value="15" oninput="onMusSynthChange()">
+                        <span class="mus-synth-val" id="mus-syn-slide-v">15</span>
+                    </div>
+                    <div class="mus-synth-row">
+                        <label>Noise</label>
+                        <input type="range" id="mus-syn-noise" min="0" max="100" value="0" oninput="onMusSynthChange()">
+                        <span class="mus-synth-val" id="mus-syn-noise-v">0</span>
+                    </div>
+                    <div class="mus-synth-row">
+                        <label>Echo</label>
+                        <input type="range" id="mus-syn-echo" min="0" max="100" value="10" oninput="onMusSynthChange()">
+                        <span class="mus-synth-val" id="mus-syn-echo-v">10</span>
+                    </div>
+                    <button type="button" class="mus-synth-preview" onclick="previewMusSynth()">▶ Test sound</button>
                 </div>
             </div>
             <div class="spr-card">
@@ -5646,29 +5749,257 @@ function consumeLook() {
 // AUDIO
 // ============================================================
 let audioCtx = null;
+let audioMaster = null;   // GainNode → analyser → destination
+let audioAnalyser = null;
+let audioWaveData = null;
+let musWaveAnimId = null;
+
 function ensureAudio() {
     if (!audioCtx) {
         try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
     }
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx && !audioMaster) {
+        try {
+            audioMaster = audioCtx.createGain();
+            audioMaster.gain.value = 1;
+            audioAnalyser = audioCtx.createAnalyser();
+            audioAnalyser.fftSize = 2048;
+            audioAnalyser.smoothingTimeConstant = 0.75;
+            audioWaveData = new Uint8Array(audioAnalyser.fftSize);
+            audioMaster.connect(audioAnalyser);
+            audioAnalyser.connect(audioCtx.destination);
+            startMusWaveVisualizer();
+        } catch (_) {
+            audioMaster = null;
+            audioAnalyser = null;
+        }
+    }
 }
-function playBeep(freq, dur, type, vol) {
+
+function audioOut() {
+    return audioMaster || (audioCtx && audioCtx.destination);
+}
+
+/** Default / custom synth params (0–100 UI scale). */
+const musSynth = {
+    pitch: 50,   // 0 = -1 octave, 50 = unison, 100 = +1 octave
+    length: 40,  // note duration scale
+    volume: 55,
+    slide: 15,   // pitch bend amount
+    noise: 0,
+    echo: 10,
+    baseWave: 'square'
+};
+
+function readMusSynthFromUI() {
+    const ids = ['pitch', 'length', 'volume', 'slide', 'noise', 'echo'];
+    ids.forEach(k => {
+        const el = document.getElementById('mus-syn-' + k);
+        if (el) {
+            musSynth[k] = Math.max(0, Math.min(100, parseInt(el.value, 10) || 0));
+            const lab = document.getElementById('mus-syn-' + k + '-v');
+            if (lab) lab.textContent = String(musSynth[k]);
+        }
+    });
+}
+
+function onMusSynthChange() {
+    readMusSynthFromUI();
+    syncMusicFromEditorLive();
+}
+
+function onMusWaveChange() {
+    const wv = document.getElementById('mus-wave');
+    const wave = (wv && wv.value) || 'square';
+    musSynth.baseWave = wave === 'custom' ? 'square' : wave;
+    const card = document.getElementById('mus-synth-card');
+    if (card) card.style.display = wave === 'custom' ? 'block' : 'none';
+    if (wave === 'custom') readMusSynthFromUI();
+    syncMusicFromEditorLive();
+}
+
+function getActiveSynthParams() {
+    const wv = (document.getElementById('mus-wave') || {}).value || musSynth.baseWave || 'square';
+    if (wv === 'custom') {
+        readMusSynthFromUI();
+        return {
+            wave: musSynth.baseWave || 'square',
+            pitch: musSynth.pitch,
+            length: musSynth.length,
+            volume: musSynth.volume,
+            slide: musSynth.slide,
+            noise: musSynth.noise,
+            echo: musSynth.echo,
+            custom: true
+        };
+    }
+    return {
+        wave: wv,
+        pitch: 50,
+        length: 40,
+        volume: 55,
+        slide: 0,
+        noise: 0,
+        echo: 0,
+        custom: false
+    };
+}
+
+function playBeep(freq, dur, type, vol, opts) {
     ensureAudio();
     if (!audioCtx) return;
+    opts = opts || {};
     try {
+        const t0 = audioCtx.currentTime;
+        const baseF = Math.max(20, Number(freq) || 440);
+        // pitch 0–100 → multiply 0.5 … 2.0
+        const pitchAmt = (opts.pitch != null ? opts.pitch : 50) / 100;
+        const fMul = 0.5 + pitchAmt * 1.5; // 0.5 .. 2.0
+        const fStartSlide = opts.slide != null ? opts.slide : 0;
+        // slide: start higher or lower then settle
+        const slideAmt = fStartSlide / 100;
+        const f0 = baseF * fMul * (1 + slideAmt * 0.85);
+        const f1 = baseF * fMul;
+
+        const lenScale = (opts.length != null ? opts.length : 40) / 100;
+        const d = Math.max(0.03, (Number(dur) || 0.1) * (0.35 + lenScale * 1.8));
+
+        const volUI = opts.volume != null ? opts.volume : 55;
+        let v = (vol != null && vol > 0) ? Number(vol) : (0.03 + (volUI / 100) * 0.18);
+        v = Math.min(0.28, Math.max(0.01, v));
+
+        const oscType = type || opts.wave || 'square';
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = type || 'square';
-        osc.frequency.value = Math.max(20, Number(freq) || 440);
-        const v = (vol != null && vol > 0) ? Math.min(0.25, Number(vol)) : 0.08;
-        gain.gain.value = v;
+        osc.type = (oscType === 'custom') ? 'square' : oscType;
+        osc.frequency.setValueAtTime(f0, t0);
+        if (slideAmt > 0.02) {
+            osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + d * 0.55);
+        } else {
+            osc.frequency.setValueAtTime(f1, t0);
+        }
+        gain.gain.setValueAtTime(v, t0);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + d);
+
+        const mix = audioCtx.createGain();
+        mix.gain.value = 1;
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        const d = Math.max(0.02, Number(dur) || 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d);
-        osc.stop(audioCtx.currentTime + d + 0.02);
+        gain.connect(mix);
+
+        // Noise mix
+        const noiseAmt = (opts.noise != null ? opts.noise : 0) / 100;
+        if (noiseAmt > 0.02) {
+            const nLen = Math.floor(audioCtx.sampleRate * d);
+            const buf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < nLen; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buf;
+            const ng = audioCtx.createGain();
+            ng.gain.setValueAtTime(v * noiseAmt * 0.7, t0);
+            ng.gain.exponentialRampToValueAtTime(0.001, t0 + d);
+            noise.connect(ng);
+            ng.connect(mix);
+            noise.start(t0);
+            noise.stop(t0 + d + 0.02);
+        }
+
+        // Echo (delay)
+        const echoAmt = (opts.echo != null ? opts.echo : 0) / 100;
+        if (echoAmt > 0.02) {
+            const delay = audioCtx.createDelay(1.0);
+            delay.delayTime.value = 0.12 + echoAmt * 0.22;
+            const fb = audioCtx.createGain();
+            fb.gain.value = Math.min(0.55, 0.15 + echoAmt * 0.4);
+            const echoGain = audioCtx.createGain();
+            echoGain.gain.value = echoAmt * 0.7;
+            mix.connect(delay);
+            delay.connect(fb);
+            fb.connect(delay);
+            delay.connect(echoGain);
+            echoGain.connect(audioOut());
+        }
+
+        mix.connect(audioOut());
+        osc.start(t0);
+        osc.stop(t0 + d + 0.05);
     } catch (_) {}
+}
+
+function previewMusSynth() {
+    const p = getActiveSynthParams();
+    playBeep(440, 0.12, p.wave, null, p);
+}
+
+function startMusWaveVisualizer() {
+    if (musWaveAnimId) return;
+    const draw = () => {
+        musWaveAnimId = requestAnimationFrame(draw);
+        drawMusWaveform();
+    };
+    musWaveAnimId = requestAnimationFrame(draw);
+}
+
+function drawMusWaveform() {
+    const canvas = document.getElementById('mus-wave-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    // background
+    ctx.fillStyle = '#0a0c12';
+    ctx.fillRect(0, 0, w, h);
+    // center line
+    ctx.strokeStyle = 'rgba(139,92,246,0.15)';
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2);
+    ctx.stroke();
+
+    let accent = '#8b5cf6';
+    try {
+        accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || accent;
+    } catch (_) {}
+
+    if (audioAnalyser && audioWaveData) {
+        audioAnalyser.getByteTimeDomainData(audioWaveData);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = accent;
+        ctx.beginPath();
+        const slice = w / audioWaveData.length;
+        for (let i = 0; i < audioWaveData.length; i++) {
+            const v = audioWaveData[i] / 128.0;
+            const y = (v * h) / 2;
+            const x = i * slice;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        // soft glow fill
+        ctx.globalAlpha = 0.12;
+        ctx.lineTo(w, h / 2);
+        ctx.lineTo(0, h / 2);
+        ctx.closePath();
+        ctx.fillStyle = accent;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    } else {
+        // idle sine
+        const t = performance.now() / 1000;
+        ctx.strokeStyle = accent;
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let x = 0; x < w; x++) {
+            const y = h / 2 + Math.sin(x * 0.04 + t * 3) * 8;
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+    }
 }
 
 const MUS_FREE_MAX_CHANNELS = 10;
@@ -5787,6 +6118,7 @@ function startMusic(spec) {
     musicState.channels = channels;
     musicState.waves = waves;
     musicState.vol = (vol > 0 ? vol : 0.08);
+    musicState.synth = (spec && spec.synth) ? spec.synth : getActiveSynthParams();
     musicState.lastPlayedStep = 0;
     playMusicStep(0);
     musicState.step = 1;
@@ -5806,12 +6138,16 @@ function playMusicStep(stepIdx) {
     const stepDur = (60 / musicState.bpm) * (4 / steps);
     const noteDur = stepDur * 0.85;
     const nCh = (musicState.channels && musicState.channels.length) || MUS_CHANNEL_COUNT;
+    const synth = (musicState.synth && typeof musicState.synth === 'object')
+        ? musicState.synth
+        : getActiveSynthParams();
     for (let c = 0; c < nCh; c++) {
         const row = musicState.channels[c];
         if (!row) continue;
         const cell = row[stepIdx];
         if (!cell) continue;
-        let f = 0, w = (musicState.waves && musicState.waves[c]) || musicState.wave || 'square', dur = noteDur, v = musicState.vol;
+        let f = 0, w = (musicState.waves && musicState.waves[c]) || musicState.wave || synth.wave || 'square';
+        let dur = noteDur, v = musicState.vol;
         if (typeof cell === 'object') {
             f = cell.f || 0;
             if (cell.wave) w = cell.wave;
@@ -5820,7 +6156,10 @@ function playMusicStep(stepIdx) {
         } else {
             f = cell;
         }
-        if (f > 0) playBeep(f, dur, w, v);
+        if (f > 0) {
+            if (w === 'custom') w = synth.wave || 'square';
+            playBeep(f, dur, w, v, synth);
+        }
     }
     musicState.lastPlayedStep = stepIdx;
     updateMusicLiveBar(stepIdx);
@@ -6190,8 +6529,9 @@ function syncMusicFromEditorLive() {
         waves[c] = wave || 'square';
     }
     musicState.bpm = Math.max(40, Math.min(240, bpm));
-    musicState.wave = wave;
-    musicState.waves = waves;
+    musicState.wave = wave === 'custom' ? 'square' : wave;
+    musicState.waves = waves.map(() => (wave === 'custom' ? (musSynth.baseWave || 'square') : wave));
+    musicState.synth = getActiveSynthParams();
     if (musicState.steps !== steps) {
         musicState.steps = steps;
         if (musicState.step >= steps) musicState.step = 0;
@@ -6272,6 +6612,8 @@ function openMusicEditor(existingName) {
         musEd.bpm = p.bpm || 120;
         musEd.steps = steps;
         musEd.wave = p.wave || 'square';
+        musEd.synth = p.synth || null;
+        if (p.synth && p.synth.custom) musEd.wave = 'custom';
         musEd.channelCount = chCount;
         musEd.channels = loaded;
     } else {
@@ -6308,9 +6650,26 @@ function openMusicEditor(existingName) {
         ch.value = String(musEd.channelCount);
     }
     const wv = document.getElementById('mus-wave');
-    if (wv) wv.value = musEd.wave;
+    if (wv) {
+        const w = musEd.wave || 'square';
+        if (w === 'custom' || (musEd.synth && musEd.synth.custom)) wv.value = 'custom';
+        else wv.value = w;
+    }
+    if (musEd.synth) {
+        ['pitch','length','volume','slide','noise','echo'].forEach(k => {
+            if (musEd.synth[k] == null) return;
+            const el = document.getElementById('mus-syn-' + k);
+            if (el) el.value = musEd.synth[k];
+            const lab = document.getElementById('mus-syn-' + k + '-v');
+            if (lab) lab.textContent = String(musEd.synth[k]);
+            musSynth[k] = musEd.synth[k];
+        });
+    }
+    onMusWaveChange();
     renderMusicNoteBar();
     renderMusicGrid();
+    ensureAudio();
+    startMusWaveVisualizer();
     switchView('music-editor-view');
 }
 
@@ -6431,12 +6790,14 @@ function renderMusicGrid() {
 
 function musicEditorSpec() {
     const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || musEd.bpm;
-    const wave = (document.getElementById('mus-wave') || {}).value || musEd.wave;
+    let wave = (document.getElementById('mus-wave') || {}).value || musEd.wave;
     const steps = musEd.steps;
     const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch =>
         ch.map(n => n ? noteToFreq(n) : 0)
     );
-    return { bpm, wave, steps, loop: true, channels };
+    const synth = getActiveSynthParams();
+    if (wave === 'custom') wave = synth.wave || 'square';
+    return { bpm, wave, steps, loop: true, channels, synth };
 }
 
 function normalizeMusicName(name) {
@@ -6477,11 +6838,15 @@ function saveMusicFromEditor() {
     name = normalizeMusicName(name);
     if (!name) return;
     const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || 120;
-    const wave = (document.getElementById('mus-wave') || {}).value || 'square';
+    let wave = (document.getElementById('mus-wave') || {}).value || 'square';
     const steps = musEd.steps;
     const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch => ch.slice());
+    const synth = getActiveSynthParams();
+    if (wave === 'custom') {
+        musEd.synth = synth;
+    }
     const map = getProjectMusicMap(currentProjectName);
-    map[name] = { bpm, wave, steps, channels };
+    map[name] = { bpm, wave, steps, channels, synth: wave === 'custom' ? synth : undefined };
     saveProjectMusic();
     musEd.name = name;
     const title = document.getElementById('music-editor-title');
@@ -6512,7 +6877,8 @@ startMusic = function(spec) {
             steps: p.steps || 16,
             loop: true,
             vol: 0.08,
-            channels: channels
+            channels: channels,
+            synth: p.synth || null
         };
     }
     if (_startMusicRaw) return _startMusicRaw(spec);
