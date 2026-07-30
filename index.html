@@ -980,127 +980,136 @@
             padding: 4px 0 2px;
         }
 
-        /* —— Tilemap / level editor —— */
-        #map-editor-view {
+        /* —— Scene / 2D level editor (Unity-style placement) —— */
+        #scene-editor-view {
             background: var(--bg-color);
             display: flex; flex-direction: column;
             overflow: hidden;
         }
-        #map-editor-view.active { display: flex; }
-        .map-header {
+        #scene-editor-view.active { display: flex; }
+        .sc-header {
             display: flex; align-items: center; justify-content: space-between;
             padding: 10px 12px; gap: 10px; flex-shrink: 0;
             background: var(--panel-color);
             border-bottom: 1px solid var(--glass-border);
         }
-        .map-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-        .map-back {
+        .sc-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .sc-back {
             border: none; border-radius: 999px; padding: 8px 14px;
             background: color-mix(in srgb, var(--accent-color) 18%, transparent);
             color: var(--accent-color); font-weight: 700; font-size: 0.85rem;
             cursor: pointer;
         }
-        .map-title {
+        .sc-title {
             font-weight: 700; font-size: 0.95rem; color: var(--text-color);
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .map-save {
+        .sc-save {
             border: none; border-radius: 999px; padding: 10px 18px;
             background: var(--accent-color); color: #fff; font-weight: 800;
             font-size: 0.85rem; cursor: pointer;
             box-shadow: 0 0 18px color-mix(in srgb, var(--accent-color) 45%, transparent);
         }
-        .map-body {
-            flex: 1; min-height: 0; display: flex; flex-direction: column;
-            overflow: hidden;
-        }
-        .map-toolbar {
+        .sc-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        .sc-toolbar {
             display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
             padding: 8px 12px; flex-shrink: 0;
             background: var(--panel-color);
             border-bottom: 1px solid var(--glass-border);
         }
-        .map-toolbar label {
+        .sc-toolbar label {
             font-size: 0.72rem; font-weight: 700; color: var(--muted);
             display: flex; align-items: center; gap: 6px;
         }
-        .map-toolbar select, .map-toolbar input[type="number"] {
+        .sc-toolbar input[type="number"] {
             background: var(--panel-2, #1a1c23); color: var(--text-color);
             border: 1px solid var(--glass-border); border-radius: 8px;
             padding: 6px 8px; font-size: 0.8rem; font-weight: 600;
-            outline: none; max-width: 140px;
+            outline: none; width: 64px;
         }
-        .map-toolbar input[type="number"] { width: 56px; }
-        .map-tool {
+        .sc-tool {
             width: 36px; height: 36px; border-radius: 10px;
             border: 1.5px solid var(--glass-border);
             background: transparent; color: var(--muted);
-            font-size: 0.95rem; cursor: pointer;
+            font-size: 0.9rem; cursor: pointer;
             display: inline-flex; align-items: center; justify-content: center;
         }
-        .map-tool.active {
+        .sc-tool.active {
             border-color: var(--accent-color);
             background: color-mix(in srgb, var(--accent-color) 18%, transparent);
             color: var(--accent-color);
         }
-        .map-main {
-            flex: 1; min-height: 0; display: flex; gap: 0;
-        }
-        .map-palette-panel {
-            width: 120px; flex-shrink: 0;
+        .sc-main { flex: 1; min-height: 0; display: flex; }
+        .sc-palette-panel {
+            width: 118px; flex-shrink: 0;
             border-right: 1px solid var(--glass-border);
             background: var(--panel-color);
             display: flex; flex-direction: column; overflow: hidden;
         }
-        .map-palette-label {
+        .sc-palette-label {
             font-size: 0.7rem; font-weight: 700; color: var(--muted);
             padding: 8px 10px 4px;
         }
-        .map-palette-scroll {
+        .sc-palette-scroll {
             flex: 1; overflow-y: auto; padding: 6px 8px 12px;
             -webkit-overflow-scrolling: touch;
         }
-        .map-palette-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px;
+        .sc-sprite-item {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            width: 100%; margin-bottom: 8px; padding: 6px;
+            border: 1.5px solid var(--glass-border); border-radius: 10px;
+            background: transparent; color: var(--text-color); cursor: pointer;
         }
-        .map-tile-swatch {
-            width: 100%; aspect-ratio: 1; border-radius: 6px;
-            border: 2px solid transparent; cursor: pointer;
-            image-rendering: pixelated; background: #111;
-            padding: 0; overflow: hidden;
-        }
-        .map-tile-swatch canvas, .map-tile-swatch img {
-            width: 100%; height: 100%; image-rendering: pixelated;
-            display: block;
-        }
-        .map-tile-swatch.active {
+        .sc-sprite-item.active {
             border-color: var(--accent-color);
-            box-shadow: 0 0 0 1px var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 14%, transparent);
         }
-        .map-tile-swatch.empty {
-            background:
-                linear-gradient(45deg, #2a2a35 25%, transparent 25%),
-                linear-gradient(-45deg, #2a2a35 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #2a2a35 75%),
-                linear-gradient(-45deg, transparent 75%, #2a2a35 75%);
-            background-size: 8px 8px;
-            background-position: 0 0, 0 4px, 4px -4px, -4px 0;
-            background-color: #1a1a22;
+        .sc-sprite-item img {
+            width: 40px; height: 40px; object-fit: contain;
+            image-rendering: pixelated; background: #111; border-radius: 4px;
         }
-        .map-canvas-wrap {
+        .sc-sprite-item span {
+            font-size: 0.62rem; font-weight: 600; color: var(--muted);
+            max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .sc-canvas-wrap {
             flex: 1; min-width: 0; min-height: 0;
             overflow: auto; position: relative;
             background: #0a0a10;
             -webkit-overflow-scrolling: touch;
             touch-action: none;
         }
-        #map-editor-canvas {
+        #scene-editor-canvas {
             display: block;
             image-rendering: pixelated;
-            cursor: crosshair;
+            cursor: default;
             background: #121218;
         }
-        .map-footer-meta {
+        .sc-props-panel {
+            width: 140px; flex-shrink: 0;
+            border-left: 1px solid var(--glass-border);
+            background: var(--panel-color);
+            padding: 10px 10px 16px;
+            overflow-y: auto;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .sc-props-panel h4 {
+            margin: 0 0 4px; font-size: 0.72rem; color: var(--muted); font-weight: 700;
+        }
+        .sc-props-panel label {
+            display: flex; flex-direction: column; gap: 3px;
+            font-size: 0.68rem; font-weight: 700; color: var(--muted);
+        }
+        .sc-props-panel input {
+            background: var(--panel-2, #1a1c23); color: var(--text-color);
+            border: 1px solid var(--glass-border); border-radius: 8px;
+            padding: 7px 8px; font-size: 0.8rem; font-weight: 600; outline: none;
+            width: 100%;
+        }
+        .sc-props-empty {
+            font-size: 0.75rem; color: var(--muted); line-height: 1.35;
+        }
+        .sc-footer-meta {
             flex-shrink: 0; text-align: center;
             font-size: 0.7rem; color: var(--muted);
             padding: 6px 10px;
@@ -1108,8 +1117,8 @@
             background: var(--panel-color);
         }
         @media (min-width: 800px) {
-            .map-palette-panel { width: 160px; }
-            .map-palette-grid { grid-template-columns: repeat(3, 1fr); }
+            .sc-palette-panel { width: 150px; }
+            .sc-props-panel { width: 170px; }
         }
 
         /* Custom HSV spectrum — works with finger drag on mobile */
@@ -1397,7 +1406,7 @@
             <button class="btn btn-sm" onclick="importLuaFile()">Import .lua</button>
             <button class="btn btn-sm" onclick="openSpriteEditor()">+ Sprite</button>
             <button class="btn btn-sm" onclick="importSpriteFile()">Import PNG</button>
-            <button class="btn btn-sm" onclick="openMapEditor()">+ Map</button>
+            <button class="btn btn-sm" onclick="openSceneEditor()">+ Scene</button>
             <button class="btn btn-sm" onclick="exportProject()">Export</button>
             <button class="btn btn-sm" onclick="sharePlayLink()">Share play</button>
             <button class="btn btn-sm" id="btn-gamepad-toggle" onclick="toggleProjectGamepad()" title="On-screen joystick + buttons">Gamepad: ON</button>
@@ -1524,49 +1533,49 @@
     </div>
 
 
-    <!-- Tilemap / level editor -->
-    <div id="map-editor-view" class="view">
-        <div class="map-header">
-            <div class="map-header-left">
-                <button type="button" class="map-back" onclick="closeMapEditor()">‹ Back</button>
-                <span class="map-title" id="map-editor-title">New Map</span>
+    <!-- Scene / 2D level editor -->
+    <div id="scene-editor-view" class="view">
+        <div class="sc-header">
+            <div class="sc-header-left">
+                <button type="button" class="sc-back" onclick="closeSceneEditor()">‹ Back</button>
+                <span class="sc-title" id="scene-editor-title">New Scene</span>
             </div>
-            <button type="button" class="map-save" onclick="saveMapFromEditor()">▶ SAVE</button>
+            <button type="button" class="sc-save" onclick="saveSceneFromEditor()">▶ SAVE</button>
         </div>
-        <div class="map-body">
-            <div class="map-toolbar">
-                <button type="button" class="map-tool active" data-maptool="pencil" onclick="setMapTool('pencil')" title="Paint">✎</button>
-                <button type="button" class="map-tool" data-maptool="eraser" onclick="setMapTool('eraser')" title="Erase">⌫</button>
-                <button type="button" class="map-tool" data-maptool="fill" onclick="setMapTool('fill')" title="Fill">▤</button>
-                <button type="button" class="map-tool" data-maptool="picker" onclick="setMapTool('picker')" title="Pick tile">◎</button>
-                <label>Tileset
-                    <select id="map-sheet-select" onchange="onMapSheetChange()"></select>
-                </label>
-                <label>Tile
-                    <select id="map-tilesize-select" onchange="onMapTileSizeChange()">
-                        <option value="8">8×8</option>
-                        <option value="16" selected>16×16</option>
-                        <option value="32">32×32</option>
-                    </select>
-                </label>
-                <label>W <input type="number" id="map-cols-input" min="1" max="128" value="16" onchange="onMapSizeChange()"></label>
-                <label>H <input type="number" id="map-rows-input" min="1" max="128" value="12" onchange="onMapSizeChange()"></label>
-                <button type="button" class="btn btn-sm" onclick="mapEditorUndo()">↺</button>
-                <button type="button" class="btn btn-sm" onclick="mapEditorRedo()">↻</button>
-                <button type="button" class="btn btn-sm" onclick="clearMapCanvas()">Clear</button>
+        <div class="sc-body">
+            <div class="sc-toolbar">
+                <button type="button" class="sc-tool active" data-sctool="select" onclick="setSceneTool('select')" title="Select / move">↖</button>
+                <button type="button" class="sc-tool" data-sctool="place" onclick="setSceneTool('place')" title="Place sprite">＋</button>
+                <button type="button" class="sc-tool" data-sctool="delete" onclick="setSceneTool('delete')" title="Delete">⌫</button>
+                <label>World W <input type="number" id="sc-world-w" min="64" max="4096" value="400" onchange="onSceneWorldChange()"></label>
+                <label>H <input type="number" id="sc-world-h" min="64" max="4096" value="300" onchange="onSceneWorldChange()"></label>
+                <label>Snap <input type="number" id="sc-snap" min="0" max="64" value="8" title="0 = free"></label>
+                <button type="button" class="btn btn-sm" onclick="sceneEditorUndo()">↺</button>
+                <button type="button" class="btn btn-sm" onclick="sceneEditorRedo()">↻</button>
+                <button type="button" class="btn btn-sm" onclick="deleteSelectedSceneObject()">Delete</button>
             </div>
-            <div class="map-main">
-                <div class="map-palette-panel">
-                    <div class="map-palette-label">Tiles</div>
-                    <div class="map-palette-scroll">
-                        <div class="map-palette-grid" id="map-palette-grid"></div>
+            <div class="sc-main">
+                <div class="sc-palette-panel">
+                    <div class="sc-palette-label">Sprites</div>
+                    <div class="sc-palette-scroll" id="sc-palette-list"></div>
+                </div>
+                <div class="sc-canvas-wrap" id="sc-canvas-wrap">
+                    <canvas id="scene-editor-canvas" width="400" height="300"></canvas>
+                </div>
+                <div class="sc-props-panel" id="sc-props-panel">
+                    <h4>Object</h4>
+                    <div class="sc-props-empty" id="sc-props-empty">Select a sprite from the left, then place it on the canvas. Drag to move.</div>
+                    <div id="sc-props-fields" style="display:none">
+                        <label>Name <input type="text" id="sc-prop-name" onchange="applySceneProps()"></label>
+                        <label>X <input type="number" id="sc-prop-x" onchange="applySceneProps()"></label>
+                        <label>Y <input type="number" id="sc-prop-y" onchange="applySceneProps()"></label>
+                        <label>W <input type="number" id="sc-prop-w" onchange="applySceneProps()"></label>
+                        <label>H <input type="number" id="sc-prop-h" onchange="applySceneProps()"></label>
+                        <label>Sprite <input type="text" id="sc-prop-sprite" readonly></label>
                     </div>
                 </div>
-                <div class="map-canvas-wrap" id="map-canvas-wrap">
-                    <canvas id="map-editor-canvas" width="256" height="192"></canvas>
-                </div>
             </div>
-            <div class="map-footer-meta" id="map-footer-meta">Map · 16×12 · tile 16px · empty</div>
+            <div class="sc-footer-meta" id="sc-footer-meta">Scene · 0 objects · pick a sprite to place</div>
         </div>
     </div>
 
@@ -2233,7 +2242,7 @@ function getProjectAssetMap(name) {
     return projectAssets[name];
 }
 
-/** Per-project tilemaps: { [projectName]: { [mapName]: mapObj } } */
+/** Per-project scenes: { [projectName]: { [sceneName]: sceneObj } } */
 function loadProjectMaps() {
     try {
         const raw = localStorage.getItem(MAPS_KEY);
@@ -2657,22 +2666,22 @@ function renderFiles() {
         const div = document.createElement('div');
         div.className = 'list-item';
         div.innerHTML = `
-            <div class="item-title" onclick="openMapEditor('${esc(fn)}')" title="Edit tilemap">
+            <div class="item-title" onclick="openSceneEditor('${esc(fn)}')" title="Edit scene">
                 <span class="item-icon-svg">${LX_SVG.layers || LX_SVG.file}</span>
                 <span>${fn}</span>
-                <span class="item-badge">MAP</span>
+                <span class="item-badge">SCENE</span>
             </div>
             <div class="item-actions">
-                <button class="btn-icon-sm" title="Edit" onclick="event.stopPropagation();openMapEditor('${esc(fn)}')">✎</button>
-                <button class="btn btn-delete" onclick="deleteMapAsset(event,'${esc(fn)}')">${LX_SVG.trash}</button>
+                <button class="btn-icon-sm" title="Edit" onclick="event.stopPropagation();openSceneEditor('${esc(fn)}')">✎</button>
+                <button class="btn btn-delete" onclick="deleteSceneAsset(event,'${esc(fn)}')">${LX_SVG.trash}</button>
             </div>`;
         list.appendChild(div);
     });
 }
 
-function deleteMapAsset(e, name) {
+function deleteSceneAsset(e, name) {
     e.stopPropagation();
-    if (!confirm('Delete map "' + name + '"?')) return;
+    if (!confirm('Delete scene "' + name + '"?')) return;
     const maps = getProjectMapMap(currentProjectName);
     delete maps[name];
     saveProjectMaps();
@@ -3631,613 +3640,572 @@ function saveSpriteFromEditor() {
 }
 
 
+
 // ============================================================
-// TILEMAP / LEVEL EDITOR
+// SCENE / 2D LEVEL EDITOR (Unity-style object placement)
 // ============================================================
 /**
- * Map object shape:
+ * Scene shape:
  * {
- *   sheet: "tiles.png",
- *   tileW: 16, tileH: 16,
- *   cols: 20, rows: 12,
- *   data: number[]  // length cols*rows; 0 = empty, 1..N = sheet tile index (1-based)
+ *   width, height,
+ *   objects: [{ id, sprite, x, y, w, h, name }]
  * }
- * Sheet tiles are indexed left→right, top→bottom starting at 1.
+ * Place imported PNGs on a canvas; runtime draws with gfx.scene("name").
  */
 
-const mapEd = {
+const sceneEd = {
     name: '',
-    sheet: '',
-    tileW: 16,
-    tileH: 16,
-    cols: 16,
-    rows: 12,
-    data: [],
-    selected: 1,      // selected tile id (0 = eraser/empty)
-    tool: 'pencil',
+    width: 400,
+    height: 300,
+    objects: [],
+    selectedId: null,
+    placeSprite: null,
+    tool: 'select',
     dirty: false,
-    drawing: false,
-    scale: 2,         // screen pixels per map pixel
+    scale: 1,
+    dragging: false,
+    dragOffX: 0,
+    dragOffY: 0,
     history: [],
     historyIdx: -1,
-    sheetImg: null,
-    sheetTilesX: 0,
-    sheetTilesY: 0,
-    maxTileId: 0
+    nextId: 1
 };
 
-function emptyMapData(cols, rows) {
-    return new Array((cols | 0) * (rows | 0)).fill(0);
+function sceneSnap() {
+    const el = document.getElementById('sc-snap');
+    const n = el ? (+el.value || 0) : 0;
+    return n > 0 ? n : 0;
 }
 
-function mapCellIndex(tx, ty) {
-    return (ty | 0) * mapEd.cols + (tx | 0);
+function snapVal(v) {
+    const s = sceneSnap();
+    if (!s) return Math.round(v);
+    return Math.round(v / s) * s;
 }
 
-function pushMapHistory() {
+function pushSceneHistory() {
     const snap = {
-        cols: mapEd.cols,
-        rows: mapEd.rows,
-        data: mapEd.data.slice()
+        width: sceneEd.width,
+        height: sceneEd.height,
+        objects: sceneEd.objects.map(o => ({ ...o })),
+        nextId: sceneEd.nextId
     };
-    mapEd.history = mapEd.history.slice(0, mapEd.historyIdx + 1);
-    mapEd.history.push(snap);
-    if (mapEd.history.length > 40) mapEd.history.shift();
-    mapEd.historyIdx = mapEd.history.length - 1;
+    sceneEd.history = sceneEd.history.slice(0, sceneEd.historyIdx + 1);
+    sceneEd.history.push(snap);
+    if (sceneEd.history.length > 40) sceneEd.history.shift();
+    sceneEd.historyIdx = sceneEd.history.length - 1;
 }
 
-function restoreMapHistory(snap) {
+function restoreSceneHistory(snap) {
     if (!snap) return;
-    mapEd.cols = snap.cols;
-    mapEd.rows = snap.rows;
-    mapEd.data = snap.data.slice();
-    const colsIn = document.getElementById('map-cols-input');
-    const rowsIn = document.getElementById('map-rows-input');
-    if (colsIn) colsIn.value = mapEd.cols;
-    if (rowsIn) rowsIn.value = mapEd.rows;
-    redrawMapEditor();
-    updateMapFooter();
+    sceneEd.width = snap.width;
+    sceneEd.height = snap.height;
+    sceneEd.objects = (snap.objects || []).map(o => ({ ...o }));
+    sceneEd.nextId = snap.nextId || (sceneEd.objects.length + 1);
+    const wIn = document.getElementById('sc-world-w');
+    const hIn = document.getElementById('sc-world-h');
+    if (wIn) wIn.value = sceneEd.width;
+    if (hIn) hIn.value = sceneEd.height;
+    if (sceneEd.selectedId && !sceneEd.objects.find(o => o.id === sceneEd.selectedId)) {
+        sceneEd.selectedId = null;
+    }
+    updateScenePropsUI();
+    redrawSceneEditor();
+    updateSceneFooter();
 }
 
-function mapEditorUndo() {
-    if (mapEd.historyIdx <= 0) return;
-    mapEd.historyIdx--;
-    restoreMapHistory(mapEd.history[mapEd.historyIdx]);
-    mapEd.dirty = true;
+function sceneEditorUndo() {
+    if (sceneEd.historyIdx <= 0) return;
+    sceneEd.historyIdx--;
+    restoreSceneHistory(sceneEd.history[sceneEd.historyIdx]);
+    sceneEd.dirty = true;
 }
 
-function mapEditorRedo() {
-    if (mapEd.historyIdx >= mapEd.history.length - 1) return;
-    mapEd.historyIdx++;
-    restoreMapHistory(mapEd.history[mapEd.historyIdx]);
-    mapEd.dirty = true;
+function sceneEditorRedo() {
+    if (sceneEd.historyIdx >= sceneEd.history.length - 1) return;
+    sceneEd.historyIdx++;
+    restoreSceneHistory(sceneEd.history[sceneEd.historyIdx]);
+    sceneEd.dirty = true;
 }
 
-function setMapTool(tool) {
-    mapEd.tool = tool || 'pencil';
-    document.querySelectorAll('.map-tool').forEach(b => {
-        b.classList.toggle('active', b.dataset.maptool === mapEd.tool);
+function setSceneTool(tool) {
+    sceneEd.tool = tool || 'select';
+    document.querySelectorAll('.sc-tool').forEach(b => {
+        b.classList.toggle('active', b.dataset.sctool === sceneEd.tool);
     });
+    const canvas = document.getElementById('scene-editor-canvas');
+    if (canvas) {
+        canvas.style.cursor = sceneEd.tool === 'place' ? 'crosshair'
+            : sceneEd.tool === 'delete' ? 'not-allowed' : 'default';
+    }
 }
 
-function updateMapFooter() {
-    const el = document.getElementById('map-footer-meta');
+function updateSceneFooter() {
+    const el = document.getElementById('sc-footer-meta');
     if (!el) return;
-    const sheet = mapEd.sheet || 'no tileset';
-    el.textContent = 'Map · ' + mapEd.cols + '×' + mapEd.rows +
-        ' · tile ' + mapEd.tileW + 'px · ' + sheet +
-        ' · tile #' + mapEd.selected;
+    const n = sceneEd.objects.length;
+    const spr = sceneEd.placeSprite || 'none';
+    el.textContent = 'Scene · ' + n + ' object' + (n === 1 ? '' : 's') +
+        ' · ' + sceneEd.width + '×' + sceneEd.height +
+        (sceneEd.tool === 'place' ? ' · placing: ' + spr : '');
 }
 
-function populateMapSheetSelect() {
-    const sel = document.getElementById('map-sheet-select');
-    if (!sel || !currentProjectName) return;
+function getSceneObject(id) {
+    return sceneEd.objects.find(o => o.id === id) || null;
+}
+
+function updateScenePropsUI() {
+    const empty = document.getElementById('sc-props-empty');
+    const fields = document.getElementById('sc-props-fields');
+    const obj = getSceneObject(sceneEd.selectedId);
+    if (!obj) {
+        if (empty) empty.style.display = 'block';
+        if (fields) fields.style.display = 'none';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+    if (fields) fields.style.display = 'block';
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    set('sc-prop-name', obj.name || '');
+    set('sc-prop-x', obj.x | 0);
+    set('sc-prop-y', obj.y | 0);
+    set('sc-prop-w', obj.w | 0);
+    set('sc-prop-h', obj.h | 0);
+    set('sc-prop-sprite', obj.sprite || '');
+}
+
+function applySceneProps() {
+    const obj = getSceneObject(sceneEd.selectedId);
+    if (!obj) return;
+    pushSceneHistory();
+    const num = (id, fallback) => {
+        const el = document.getElementById(id);
+        const v = el ? +el.value : fallback;
+        return isNaN(v) ? fallback : v;
+    };
+    const nameEl = document.getElementById('sc-prop-name');
+    obj.name = nameEl ? String(nameEl.value || '').trim() : (obj.name || '');
+    obj.x = snapVal(num('sc-prop-x', obj.x));
+    obj.y = snapVal(num('sc-prop-y', obj.y));
+    obj.w = Math.max(1, num('sc-prop-w', obj.w));
+    obj.h = Math.max(1, num('sc-prop-h', obj.h));
+    pushSceneHistory();
+    sceneEd.dirty = true;
+    redrawSceneEditor();
+    updateScenePropsUI();
+}
+
+function renderScenePalette() {
+    const list = document.getElementById('sc-palette-list');
+    if (!list || !currentProjectName) return;
+    list.innerHTML = '';
     const assets = getProjectAssetMap(currentProjectName);
     const names = Object.keys(assets).sort();
-    const prev = mapEd.sheet || sel.value;
-    sel.innerHTML = '';
     if (!names.length) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = '(import a PNG first)';
-        sel.appendChild(opt);
+        list.innerHTML = '<p style="font-size:0.72rem;color:var(--muted);margin:8px 4px;line-height:1.35">Import or create sprites first, then place them here.</p>';
         return;
     }
-    names.forEach(n => {
-        const opt = document.createElement('option');
-        opt.value = n;
-        opt.textContent = n;
-        sel.appendChild(opt);
-    });
-    if (prev && names.includes(prev)) sel.value = prev;
-    else sel.value = names[0];
-    mapEd.sheet = sel.value;
-}
-
-function loadMapSheetImage(cb) {
-    mapEd.sheetImg = null;
-    mapEd.sheetTilesX = 0;
-    mapEd.sheetTilesY = 0;
-    mapEd.maxTileId = 0;
-    if (!mapEd.sheet || !currentProjectName) {
-        if (cb) cb();
-        return;
-    }
-    const src = getProjectAssetMap(currentProjectName)[mapEd.sheet];
-    if (!src) {
-        if (cb) cb();
-        return;
-    }
-    const img = new Image();
-    img.onload = () => {
-        mapEd.sheetImg = img;
-        mapEd.sheetTilesX = Math.max(1, Math.floor(img.naturalWidth / mapEd.tileW));
-        mapEd.sheetTilesY = Math.max(1, Math.floor(img.naturalHeight / mapEd.tileH));
-        mapEd.maxTileId = mapEd.sheetTilesX * mapEd.sheetTilesY;
-        if (mapEd.selected > mapEd.maxTileId) mapEd.selected = Math.min(1, mapEd.maxTileId);
-        renderMapPalette();
-        redrawMapEditor();
-        updateMapFooter();
-        if (cb) cb();
-    };
-    img.onerror = () => {
-        mapEd.sheetImg = null;
-        renderMapPalette();
-        redrawMapEditor();
-        if (cb) cb();
-    };
-    img.src = src;
-}
-
-function onMapSheetChange() {
-    const sel = document.getElementById('map-sheet-select');
-    mapEd.sheet = sel ? sel.value : '';
-    mapEd.dirty = true;
-    loadMapSheetImage();
-}
-
-function onMapTileSizeChange() {
-    const sel = document.getElementById('map-tilesize-select');
-    const n = sel ? (+sel.value || 16) : 16;
-    mapEd.tileW = n;
-    mapEd.tileH = n;
-    mapEd.dirty = true;
-    loadMapSheetImage();
-}
-
-function onMapSizeChange() {
-    const colsIn = document.getElementById('map-cols-input');
-    const rowsIn = document.getElementById('map-rows-input');
-    let cols = Math.max(1, Math.min(128, +(colsIn && colsIn.value) || mapEd.cols));
-    let rows = Math.max(1, Math.min(128, +(rowsIn && rowsIn.value) || mapEd.rows));
-    if (colsIn) colsIn.value = cols;
-    if (rowsIn) rowsIn.value = rows;
-    if (cols === mapEd.cols && rows === mapEd.rows) return;
-    pushMapHistory();
-    const next = emptyMapData(cols, rows);
-    const copyW = Math.min(cols, mapEd.cols);
-    const copyH = Math.min(rows, mapEd.rows);
-    for (let y = 0; y < copyH; y++) {
-        for (let x = 0; x < copyW; x++) {
-            next[y * cols + x] = mapEd.data[y * mapEd.cols + x] || 0;
-        }
-    }
-    mapEd.cols = cols;
-    mapEd.rows = rows;
-    mapEd.data = next;
-    pushMapHistory();
-    mapEd.dirty = true;
-    redrawMapEditor();
-    updateMapFooter();
-}
-
-function renderMapPalette() {
-    const grid = document.getElementById('map-palette-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    // Empty / eraser
-    const emptyBtn = document.createElement('button');
-    emptyBtn.type = 'button';
-    emptyBtn.className = 'map-tile-swatch empty' + (mapEd.selected === 0 ? ' active' : '');
-    emptyBtn.title = 'Empty (0)';
-    emptyBtn.onclick = () => { mapEd.selected = 0; renderMapPalette(); updateMapFooter(); };
-    grid.appendChild(emptyBtn);
-
-    if (!mapEd.sheetImg || !mapEd.maxTileId) return;
-
-    const tw = mapEd.tileW;
-    const th = mapEd.tileH;
-    const tilesX = mapEd.sheetTilesX;
-    for (let id = 1; id <= mapEd.maxTileId; id++) {
+    names.forEach(fn => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'map-tile-swatch' + (mapEd.selected === id ? ' active' : '');
-        btn.title = 'Tile ' + id;
-        const c = document.createElement('canvas');
-        c.width = tw;
-        c.height = th;
-        const cctx = c.getContext('2d');
-        cctx.imageSmoothingEnabled = false;
-        const sx = ((id - 1) % tilesX) * tw;
-        const sy = Math.floor((id - 1) / tilesX) * th;
-        cctx.drawImage(mapEd.sheetImg, sx, sy, tw, th, 0, 0, tw, th);
-        btn.appendChild(c);
+        btn.className = 'sc-sprite-item' + (sceneEd.placeSprite === fn ? ' active' : '');
+        btn.innerHTML = '<img alt="" src="' + assets[fn] + '"><span>' + fn.replace(/</g, '') + '</span>';
         btn.onclick = () => {
-            mapEd.selected = id;
-            if (mapEd.tool === 'eraser') setMapTool('pencil');
-            renderMapPalette();
-            updateMapFooter();
+            sceneEd.placeSprite = fn;
+            setSceneTool('place');
+            renderScenePalette();
+            updateSceneFooter();
         };
-        grid.appendChild(btn);
-    }
+        list.appendChild(btn);
+    });
 }
 
-function redrawMapEditor() {
-    const canvas = document.getElementById('map-editor-canvas');
+function loadSceneSpriteImage(name, cb) {
+    if (!name || !currentProjectName) { if (cb) cb(null); return; }
+    const src = getProjectAssetMap(currentProjectName)[name];
+    if (!src) { if (cb) cb(null); return; }
+    const key = currentProjectName + '::' + name;
+    let img = spriteImageCache[key];
+    if (img && img.complete && img.naturalWidth) {
+        if (cb) cb(img);
+        return;
+    }
+    img = new Image();
+    img.onload = () => { spriteImageCache[key] = img; if (cb) cb(img); };
+    img.onerror = () => { if (cb) cb(null); };
+    img.src = src;
+    spriteImageCache[key] = img;
+}
+
+function redrawSceneEditor() {
+    const canvas = document.getElementById('scene-editor-canvas');
     if (!canvas) return;
-    const tw = mapEd.tileW;
-    const th = mapEd.tileH;
-    // Fit scale: aim for readable tiles (~24–32 CSS px)
-    const wrap = document.getElementById('map-canvas-wrap');
-    const availW = wrap ? Math.max(120, wrap.clientWidth - 8) : 400;
-    const targetTilePx = 28;
-    mapEd.scale = Math.max(1, Math.min(8, Math.floor(targetTilePx / Math.max(1, tw)) || 2));
-    // Prefer integer scale so tiles stay crisp
-    const scale = mapEd.scale;
-    const cw = mapEd.cols * tw * scale;
-    const ch = mapEd.rows * th * scale;
+    // Scale so world fits reasonably in view
+    const wrap = document.getElementById('sc-canvas-wrap');
+    const availW = wrap ? Math.max(160, wrap.clientWidth - 12) : 400;
+    const availH = wrap ? Math.max(120, wrap.clientHeight - 12) : 300;
+    const sx = availW / Math.max(1, sceneEd.width);
+    const sy = availH / Math.max(1, sceneEd.height);
+    sceneEd.scale = Math.max(0.25, Math.min(3, Math.min(sx, sy)));
+    const scale = sceneEd.scale;
+    const cw = Math.max(1, Math.round(sceneEd.width * scale));
+    const ch = Math.max(1, Math.round(sceneEd.height * scale));
     canvas.width = cw;
     canvas.height = ch;
     canvas.style.width = cw + 'px';
     canvas.style.height = ch + 'px';
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    // checkerboard background
-    const cell = Math.max(4, scale * 2);
+    const ctx2 = canvas.getContext('2d');
+    ctx2.imageSmoothingEnabled = false;
+    // checker bg
+    const cell = Math.max(8, Math.round(16 * scale));
     for (let y = 0; y < ch; y += cell) {
         for (let x = 0; x < cw; x += cell) {
             const on = ((x / cell) | 0) + ((y / cell) | 0);
-            ctx.fillStyle = (on % 2 === 0) ? '#1a1a22' : '#121218';
-            ctx.fillRect(x, y, cell, cell);
+            ctx2.fillStyle = (on % 2 === 0) ? '#1a1a22' : '#121218';
+            ctx2.fillRect(x, y, cell, cell);
         }
     }
-    // tiles
-    if (mapEd.sheetImg && mapEd.maxTileId) {
-        const tilesX = mapEd.sheetTilesX;
-        for (let ty = 0; ty < mapEd.rows; ty++) {
-            for (let tx = 0; tx < mapEd.cols; tx++) {
-                const id = mapEd.data[mapCellIndex(tx, ty)] | 0;
-                if (id <= 0 || id > mapEd.maxTileId) continue;
-                const sx = ((id - 1) % tilesX) * tw;
-                const sy = Math.floor((id - 1) / tilesX) * th;
-                ctx.drawImage(
-                    mapEd.sheetImg, sx, sy, tw, th,
-                    tx * tw * scale, ty * th * scale, tw * scale, th * scale
-                );
-            }
+    // world border
+    ctx2.strokeStyle = 'rgba(139,92,246,0.45)';
+    ctx2.lineWidth = 2;
+    ctx2.strokeRect(1, 1, cw - 2, ch - 2);
+
+    // draw objects
+    sceneEd.objects.forEach(obj => {
+        const key = currentProjectName + '::' + obj.sprite;
+        const img = spriteImageCache[key];
+        const dx = obj.x * scale;
+        const dy = obj.y * scale;
+        const dw = Math.max(1, obj.w * scale);
+        const dh = Math.max(1, obj.h * scale);
+        if (img && img.complete && img.naturalWidth) {
+            ctx2.drawImage(img, dx, dy, dw, dh);
+        } else {
+            ctx2.fillStyle = 'rgba(255,82,82,0.35)';
+            ctx2.fillRect(dx, dy, dw, dh);
+            loadSceneSpriteImage(obj.sprite, () => redrawSceneEditor());
         }
-    }
-    // grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x <= mapEd.cols; x++) {
-        ctx.beginPath();
-        ctx.moveTo(x * tw * scale + 0.5, 0);
-        ctx.lineTo(x * tw * scale + 0.5, ch);
-        ctx.stroke();
-    }
-    for (let y = 0; y <= mapEd.rows; y++) {
-        ctx.beginPath();
-        ctx.moveTo(0, y * th * scale + 0.5);
-        ctx.lineTo(cw, y * th * scale + 0.5);
-        ctx.stroke();
-    }
+        if (obj.id === sceneEd.selectedId) {
+            ctx2.strokeStyle = '#00e676';
+            ctx2.lineWidth = 2;
+            ctx2.strokeRect(dx - 1, dy - 1, dw + 2, dh + 2);
+            // handles hint
+            ctx2.fillStyle = '#00e676';
+            ctx2.fillRect(dx + dw - 4, dy + dh - 4, 8, 8);
+        }
+    });
 }
 
-function mapCanvasToTile(clientX, clientY) {
-    const canvas = document.getElementById('map-editor-canvas');
+function sceneCanvasToWorld(clientX, clientY) {
+    const canvas = document.getElementById('scene-editor-canvas');
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / Math.max(1, rect.width);
     const scaleY = canvas.height / Math.max(1, rect.height);
     const px = (clientX - rect.left) * scaleX;
     const py = (clientY - rect.top) * scaleY;
-    const tx = Math.floor(px / (mapEd.tileW * mapEd.scale));
-    const ty = Math.floor(py / (mapEd.tileH * mapEd.scale));
-    if (tx < 0 || ty < 0 || tx >= mapEd.cols || ty >= mapEd.rows) return null;
-    return { tx, ty };
+    return {
+        x: px / sceneEd.scale,
+        y: py / sceneEd.scale
+    };
 }
 
-function mapFloodFill(tx, ty, targetId, replaceId) {
-    if (targetId === replaceId) return;
-    const stack = [[tx, ty]];
-    const seen = new Set();
-    while (stack.length) {
-        const [x, y] = stack.pop();
-        const key = x + ',' + y;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        if (x < 0 || y < 0 || x >= mapEd.cols || y >= mapEd.rows) continue;
-        const i = mapCellIndex(x, y);
-        if ((mapEd.data[i] | 0) !== targetId) continue;
-        mapEd.data[i] = replaceId;
-        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+function hitTestSceneObject(wx, wy) {
+    // top-most first
+    for (let i = sceneEd.objects.length - 1; i >= 0; i--) {
+        const o = sceneEd.objects[i];
+        if (wx >= o.x && wy >= o.y && wx < o.x + o.w && wy < o.y + o.h) return o;
     }
+    return null;
 }
 
-function applyMapToolAt(tx, ty) {
-    const i = mapCellIndex(tx, ty);
-    if (mapEd.tool === 'picker') {
-        mapEd.selected = mapEd.data[i] | 0;
-        if (mapEd.selected > 0) setMapTool('pencil');
-        renderMapPalette();
-        updateMapFooter();
+function placeSceneObjectAt(wx, wy) {
+    if (!sceneEd.placeSprite) {
+        alert('Select a sprite on the left first.');
         return;
     }
-    if (mapEd.tool === 'fill') {
-        const target = mapEd.data[i] | 0;
-        const replace = mapEd.tool === 'eraser' ? 0 : (mapEd.selected | 0);
-        // fill uses selected (0 allowed)
-        mapFloodFill(tx, ty, target, mapEd.selected | 0);
-        return;
+    pushSceneHistory();
+    const key = currentProjectName + '::' + sceneEd.placeSprite;
+    const img = spriteImageCache[key];
+    let w = 32, h = 32;
+    if (img && img.naturalWidth) {
+        w = img.naturalWidth;
+        h = img.naturalHeight;
+    } else {
+        loadSceneSpriteImage(sceneEd.placeSprite);
     }
-    if (mapEd.tool === 'eraser') {
-        mapEd.data[i] = 0;
-        return;
-    }
-    // pencil
-    mapEd.data[i] = mapEd.selected | 0;
+    const id = 'obj_' + (sceneEd.nextId++);
+    const obj = {
+        id,
+        sprite: sceneEd.placeSprite,
+        x: snapVal(wx - w / 2),
+        y: snapVal(wy - h / 2),
+        w, h,
+        name: sceneEd.placeSprite.replace(/\.\w+$/, '')
+    };
+    sceneEd.objects.push(obj);
+    sceneEd.selectedId = id;
+    pushSceneHistory();
+    sceneEd.dirty = true;
+    updateScenePropsUI();
+    redrawSceneEditor();
+    updateSceneFooter();
 }
 
-function setupMapCanvasInput() {
-    const canvas = document.getElementById('map-editor-canvas');
-    if (!canvas || canvas._mapBound) return;
-    canvas._mapBound = true;
-    let painting = false;
-    let lastKey = '';
+function deleteSelectedSceneObject() {
+    if (!sceneEd.selectedId) return;
+    pushSceneHistory();
+    sceneEd.objects = sceneEd.objects.filter(o => o.id !== sceneEd.selectedId);
+    sceneEd.selectedId = null;
+    pushSceneHistory();
+    sceneEd.dirty = true;
+    updateScenePropsUI();
+    redrawSceneEditor();
+    updateSceneFooter();
+}
 
-    const start = (e) => {
+function onSceneWorldChange() {
+    const wIn = document.getElementById('sc-world-w');
+    const hIn = document.getElementById('sc-world-h');
+    let w = Math.max(64, Math.min(4096, +(wIn && wIn.value) || sceneEd.width));
+    let h = Math.max(64, Math.min(4096, +(hIn && hIn.value) || sceneEd.height));
+    if (wIn) wIn.value = w;
+    if (hIn) hIn.value = h;
+    if (w === sceneEd.width && h === sceneEd.height) return;
+    pushSceneHistory();
+    sceneEd.width = w;
+    sceneEd.height = h;
+    pushSceneHistory();
+    sceneEd.dirty = true;
+    redrawSceneEditor();
+    updateSceneFooter();
+}
+
+function setupSceneCanvasInput() {
+    const canvas = document.getElementById('scene-editor-canvas');
+    if (!canvas || canvas._scBound) return;
+    canvas._scBound = true;
+
+    const onDown = (e) => {
         e.preventDefault();
         const t = e.changedTouches ? e.changedTouches[0] : e;
-        const cell = mapCanvasToTile(t.clientX, t.clientY);
-        if (!cell) return;
-        painting = true;
-        mapEd.drawing = true;
-        lastKey = cell.tx + ',' + cell.ty;
-        pushMapHistory();
-        applyMapToolAt(cell.tx, cell.ty);
-        mapEd.dirty = true;
-        redrawMapEditor();
-        if (mapEd.tool === 'fill' || mapEd.tool === 'picker') {
-            painting = false;
-            pushMapHistory();
+        const world = sceneCanvasToWorld(t.clientX, t.clientY);
+        if (!world) return;
+
+        if (sceneEd.tool === 'place') {
+            placeSceneObjectAt(world.x, world.y);
+            return;
+        }
+        if (sceneEd.tool === 'delete') {
+            const hit = hitTestSceneObject(world.x, world.y);
+            if (hit) {
+                sceneEd.selectedId = hit.id;
+                deleteSelectedSceneObject();
+            }
+            return;
+        }
+        // select / move
+        const hit = hitTestSceneObject(world.x, world.y);
+        sceneEd.selectedId = hit ? hit.id : null;
+        updateScenePropsUI();
+        redrawSceneEditor();
+        if (hit) {
+            sceneEd.dragging = true;
+            sceneEd.dragOffX = world.x - hit.x;
+            sceneEd.dragOffY = world.y - hit.y;
+            pushSceneHistory();
         }
     };
-    const move = (e) => {
-        if (!painting) return;
+    const onMove = (e) => {
+        if (!sceneEd.dragging || !sceneEd.selectedId) return;
         e.preventDefault();
         const t = e.changedTouches ? e.changedTouches[0] : e;
-        const cell = mapCanvasToTile(t.clientX, t.clientY);
-        if (!cell) return;
-        const key = cell.tx + ',' + cell.ty;
-        if (key === lastKey) return;
-        lastKey = key;
-        applyMapToolAt(cell.tx, cell.ty);
-        mapEd.dirty = true;
-        redrawMapEditor();
+        const world = sceneCanvasToWorld(t.clientX, t.clientY);
+        if (!world) return;
+        const obj = getSceneObject(sceneEd.selectedId);
+        if (!obj) return;
+        obj.x = snapVal(world.x - sceneEd.dragOffX);
+        obj.y = snapVal(world.y - sceneEd.dragOffY);
+        sceneEd.dirty = true;
+        updateScenePropsUI();
+        redrawSceneEditor();
     };
-    const end = () => {
-        if (!painting) return;
-        painting = false;
-        mapEd.drawing = false;
-        pushMapHistory();
+    const onUp = () => {
+        if (sceneEd.dragging) {
+            sceneEd.dragging = false;
+            pushSceneHistory();
+        }
     };
 
-    canvas.addEventListener('mousedown', start);
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', end);
-    canvas.addEventListener('touchstart', start, { passive: false });
-    canvas.addEventListener('touchmove', move, { passive: false });
-    canvas.addEventListener('touchend', end);
-    canvas.addEventListener('touchcancel', end);
+    canvas.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    canvas.addEventListener('touchstart', onDown, { passive: false });
+    canvas.addEventListener('touchmove', onMove, { passive: false });
+    canvas.addEventListener('touchend', onUp);
+    canvas.addEventListener('touchcancel', onUp);
     canvas.addEventListener('contextmenu', e => e.preventDefault());
 }
 
-function clearMapCanvas() {
-    if (!confirm('Clear all tiles on this map?')) return;
-    pushMapHistory();
-    mapEd.data = emptyMapData(mapEd.cols, mapEd.rows);
-    pushMapHistory();
-    mapEd.dirty = true;
-    redrawMapEditor();
-}
-
-function openMapEditor(existingName) {
+function openSceneEditor(existingName) {
     if (!isAuthed()) { applyAuthGate(); return; }
     if (!currentProjectName) return alert('Open a project first');
 
-    mapEd.tool = 'pencil';
-    mapEd.selected = 1;
-    mapEd.dirty = false;
-    mapEd.drawing = false;
-    mapEd.history = [];
-    mapEd.historyIdx = -1;
-    mapEd.sheetImg = null;
+    sceneEd.tool = 'select';
+    sceneEd.placeSprite = null;
+    sceneEd.selectedId = null;
+    sceneEd.dirty = false;
+    sceneEd.dragging = false;
+    sceneEd.history = [];
+    sceneEd.historyIdx = -1;
+    sceneEd.nextId = 1;
 
     const maps = getProjectMapMap(currentProjectName);
     if (existingName && maps[existingName]) {
-        const m = maps[existingName];
-        mapEd.name = existingName;
-        mapEd.sheet = m.sheet || '';
-        mapEd.tileW = m.tileW || 16;
-        mapEd.tileH = m.tileH || m.tileW || 16;
-        mapEd.cols = m.cols || 16;
-        mapEd.rows = m.rows || 12;
-        mapEd.data = Array.isArray(m.data) ? m.data.slice() : emptyMapData(mapEd.cols, mapEd.rows);
-        if (mapEd.data.length !== mapEd.cols * mapEd.rows) {
-            const next = emptyMapData(mapEd.cols, mapEd.rows);
-            for (let i = 0; i < Math.min(next.length, mapEd.data.length); i++) next[i] = m.data[i] | 0;
-            mapEd.data = next;
+        const s = maps[existingName];
+        sceneEd.name = existingName;
+        // Support legacy tilemaps? Skip — only scenes with objects
+        if (Array.isArray(s.objects)) {
+            sceneEd.width = s.width || 400;
+            sceneEd.height = s.height || 300;
+            sceneEd.objects = s.objects.map(o => ({ ...o }));
+            let maxN = 0;
+            sceneEd.objects.forEach(o => {
+                const m = String(o.id || '').match(/(\d+)$/);
+                if (m) maxN = Math.max(maxN, +m[1]);
+            });
+            sceneEd.nextId = maxN + 1;
+        } else {
+            // old tilemap data — start empty scene with same name
+            sceneEd.width = 400;
+            sceneEd.height = 300;
+            sceneEd.objects = [];
         }
-        document.getElementById('map-editor-title').textContent = existingName;
+        document.getElementById('scene-editor-title').textContent = existingName;
     } else {
-        mapEd.name = '';
-        mapEd.sheet = '';
-        mapEd.tileW = 16;
-        mapEd.tileH = 16;
-        mapEd.cols = 16;
-        mapEd.rows = 12;
-        mapEd.data = emptyMapData(16, 12);
-        document.getElementById('map-editor-title').textContent = 'New Map';
+        sceneEd.name = '';
+        sceneEd.width = 400;
+        sceneEd.height = 300;
+        sceneEd.objects = [];
+        document.getElementById('scene-editor-title').textContent = 'New Scene';
     }
 
-    const sizeSel = document.getElementById('map-tilesize-select');
-    if (sizeSel) sizeSel.value = String(mapEd.tileW);
-    const colsIn = document.getElementById('map-cols-input');
-    const rowsIn = document.getElementById('map-rows-input');
-    if (colsIn) colsIn.value = mapEd.cols;
-    if (rowsIn) rowsIn.value = mapEd.rows;
+    const wIn = document.getElementById('sc-world-w');
+    const hIn = document.getElementById('sc-world-h');
+    if (wIn) wIn.value = sceneEd.width;
+    if (hIn) hIn.value = sceneEd.height;
 
-    populateMapSheetSelect();
-    if (!mapEd.sheet) {
-        const sel = document.getElementById('map-sheet-select');
-        if (sel && sel.value) mapEd.sheet = sel.value;
-    }
-    setMapTool('pencil');
-    setupMapCanvasInput();
-    switchView('map-editor-view');
-    loadMapSheetImage(() => {
-        pushMapHistory();
-        redrawMapEditor();
-        updateMapFooter();
-    });
-    if (!window._mapResizeBound) {
-        window._mapResizeBound = true;
+    setSceneTool('select');
+    renderScenePalette();
+    updateScenePropsUI();
+    setupSceneCanvasInput();
+    // preload images
+    sceneEd.objects.forEach(o => loadSceneSpriteImage(o.sprite));
+    switchView('scene-editor-view');
+    pushSceneHistory();
+    setTimeout(() => {
+        redrawSceneEditor();
+        updateSceneFooter();
+    }, 40);
+    if (!window._scResizeBound) {
+        window._scResizeBound = true;
         window.addEventListener('resize', () => {
-            if (document.getElementById('map-editor-view')?.classList.contains('active')) {
-                redrawMapEditor();
+            if (document.getElementById('scene-editor-view')?.classList.contains('active')) {
+                redrawSceneEditor();
             }
         });
     }
 }
 
-function closeMapEditor() {
-    if (mapEd.dirty && !confirm('Discard unsaved map changes?')) return;
-    mapEd.dirty = false;
+function closeSceneEditor() {
+    if (sceneEd.dirty && !confirm('Discard unsaved scene changes?')) return;
+    sceneEd.dirty = false;
     switchView('files-view');
     renderFiles();
 }
 
-function saveMapFromEditor() {
+function saveSceneFromEditor() {
     if (!currentProjectName) return;
-    let name = mapEd.name;
+    let name = sceneEd.name;
     if (!name) {
-        name = prompt('Map name (e.g. level1)', 'level1');
+        name = prompt('Scene name (e.g. level1)', 'level1');
         if (!name) return;
         name = name.trim().replace(/[^\w.\-]+/g, '_');
         if (!name) return;
     }
-    if (!mapEd.sheet) {
-        return alert('Pick a tileset image first (import a PNG sprite sheet).');
-    }
     const maps = getProjectMapMap(currentProjectName);
-    if (maps[name] && name !== mapEd.name && !confirm('Replace existing map "' + name + '"?')) return;
+    if (maps[name] && name !== sceneEd.name && !confirm('Replace existing "' + name + '"?')) return;
 
     maps[name] = {
-        sheet: mapEd.sheet,
-        tileW: mapEd.tileW,
-        tileH: mapEd.tileH,
-        cols: mapEd.cols,
-        rows: mapEd.rows,
-        data: mapEd.data.slice()
+        width: sceneEd.width,
+        height: sceneEd.height,
+        objects: sceneEd.objects.map(o => ({
+            id: o.id,
+            sprite: o.sprite,
+            x: o.x | 0,
+            y: o.y | 0,
+            w: o.w | 0,
+            h: o.h | 0,
+            name: o.name || ''
+        }))
     };
     saveProjectMaps();
-    mapEd.name = name;
-    mapEd.dirty = false;
-    document.getElementById('map-editor-title').textContent = name;
+    sceneEd.name = name;
+    sceneEd.dirty = false;
+    document.getElementById('scene-editor-title').textContent = name;
     alert(
-        'Saved map "' + name + '".\n\n' +
+        'Saved scene "' + name + '".\n\n' +
         'In Lua:\n' +
-        '  gfx.map("' + name + '")\n' +
-        '  gfx.map("' + name + '", x, y)\n' +
-        '  mget("' + name + '", tx, ty)\n' +
-        '  mset("' + name + '", tx, ty, id)'
+        '  gfx.scene("' + name + '")\n' +
+        '  -- draws every placed sprite at its position'
     );
     switchView('files-view');
     renderFiles();
 }
 
 /**
- * Draw a saved tilemap onto the play canvas.
- * gfx.map(name)
- * gfx.map(name, screenX, screenY)
- * gfx.map(name, screenX, screenY, celX, celY, celW, celH)
+ * Draw a scene (all placed sprites) onto the play canvas.
+ * gfx.scene("level1")
+ * gfx.scene("level1", offsetX, offsetY)
  */
-function drawProjectTilemap(name, screenX, screenY, celX, celY, celW, celH) {
+function drawProjectScene(name, offsetX, offsetY) {
     if (!name || !currentProjectName) return;
-    const m = getProjectTilemap(currentProjectName, name);
-    if (!m || !m.sheet) return;
+    const s = getProjectTilemap(currentProjectName, name);
+    if (!s || !Array.isArray(s.objects)) return;
+    const ox = offsetX || 0;
+    const oy = offsetY || 0;
     const assets = getProjectAssetMap(currentProjectName);
-    const src = assets[m.sheet];
-    if (!src) return;
-    const key = currentProjectName + '::' + m.sheet;
-    let img = spriteImageCache[key];
-    if (!img) {
-        img = new Image();
-        img.src = src;
-        spriteImageCache[key] = img;
-    }
-    if (!img.complete || !img.naturalWidth) return;
-
-    const tw = m.tileW || 16;
-    const th = m.tileH || tw;
-    const cols = m.cols | 0;
-    const rows = m.rows | 0;
-    const data = m.data || [];
-    const tilesX = Math.max(1, Math.floor(img.naturalWidth / tw));
-    const maxId = tilesX * Math.max(1, Math.floor(img.naturalHeight / th));
-
-    const ox = screenX || 0;
-    const oy = screenY || 0;
-    let cx = celX != null ? (celX | 0) : 0;
-    let cy = celY != null ? (celY | 0) : 0;
-    let cw = celW != null ? (celW | 0) : cols;
-    let ch = celH != null ? (celH | 0) : rows;
-    if (cx < 0) { cw += cx; cx = 0; }
-    if (cy < 0) { ch += cy; cy = 0; }
-    if (cx + cw > cols) cw = cols - cx;
-    if (cy + ch > rows) ch = rows - cy;
-    if (cw <= 0 || ch <= 0) return;
-
-    for (let ty = 0; ty < ch; ty++) {
-        for (let tx = 0; tx < cw; tx++) {
-            const mx = cx + tx;
-            const my = cy + ty;
-            const id = data[my * cols + mx] | 0;
-            if (id <= 0 || id > maxId) continue;
-            const sx = ((id - 1) % tilesX) * tw;
-            const sy = Math.floor((id - 1) / tilesX) * th;
-            ctx.drawImage(img, sx, sy, tw, th, ox + tx * tw, oy + ty * th, tw, th);
+    for (let i = 0; i < s.objects.length; i++) {
+        const o = s.objects[i];
+        if (!o || !o.sprite) continue;
+        const src = assets[o.sprite];
+        if (!src) continue;
+        const key = currentProjectName + '::' + o.sprite;
+        let img = spriteImageCache[key];
+        if (!img) {
+            img = new Image();
+            img.src = src;
+            spriteImageCache[key] = img;
         }
+        if (!img.complete || !img.naturalWidth) continue;
+        const w = o.w != null ? o.w : img.naturalWidth;
+        const h = o.h != null ? o.h : img.naturalHeight;
+        ctx.drawImage(img, (o.x || 0) + ox, (o.y || 0) + oy, w, h);
     }
 }
 
-function mapGetTile(name, tx, ty) {
-    const m = getProjectTilemap(currentProjectName, name);
-    if (!m) return 0;
-    tx = tx | 0; ty = ty | 0;
-    if (tx < 0 || ty < 0 || tx >= m.cols || ty >= m.rows) return 0;
-    return (m.data[ty * m.cols + tx] | 0);
-}
-
-function mapSetTile(name, tx, ty, id) {
-    const m = getProjectTilemap(currentProjectName, name);
-    if (!m) return;
-    tx = tx | 0; ty = ty | 0;
-    if (tx < 0 || ty < 0 || tx >= m.cols || ty >= m.rows) return;
-    m.data[ty * m.cols + tx] = id | 0;
-    // persist lightly (play-time edits)
-    saveProjectMaps();
+function getSceneObjectsData(name) {
+    const s = getProjectTilemap(currentProjectName, name);
+    if (!s || !Array.isArray(s.objects)) return [];
+    return s.objects.map(o => ({
+        id: o.id,
+        sprite: o.sprite,
+        x: o.x | 0,
+        y: o.y | 0,
+        w: o.w | 0,
+        h: o.h | 0,
+        name: o.name || ''
+    }));
 }
 
 
@@ -5350,36 +5318,29 @@ window.LuaDeckAPI = {
         },
 
         /**
-         * Draw a tilemap created in the Map editor.
-         * gfx.map("level1")
-         * gfx.map("level1", x, y)
-         * gfx.map("level1", x, y, celX, celY, celW, celH)
+         * Draw a scene from the Scene editor (all placed sprites).
+         * gfx.scene("level1")
+         * gfx.scene("level1", offsetX, offsetY)
          */
-        map(name, x, y, celX, celY, celW, celH) {
-            drawProjectTilemap(name, x, y, celX, celY, celW, celH);
+        scene(name, ox, oy) {
+            drawProjectScene(name, ox, oy);
         },
-        /** Tile id at map cell (0 = empty). Coords are 0-based. */
-        mget(name, tx, ty) {
-            return mapGetTile(name, tx, ty);
+        /** Array of { id, sprite, x, y, w, h, name } for a scene */
+        sceneObjects(name) {
+            return getSceneObjectsData(name);
         },
-        /** Set tile id at map cell (play-time). */
-        mset(name, tx, ty, id) {
-            mapSetTile(name, tx, ty, id);
-        },
-        /** { cols, rows, tileW, tileH, sheet } or null */
-        mapinfo(name) {
-            const m = getProjectTilemap(currentProjectName, name);
-            if (!m) return null;
+        /** { width, height, count } or null */
+        sceneinfo(name) {
+            const s = getProjectTilemap(currentProjectName, name);
+            if (!s || !Array.isArray(s.objects)) return null;
             return {
-                cols: m.cols | 0,
-                rows: m.rows | 0,
-                tileW: m.tileW || 16,
-                tileH: m.tileH || m.tileW || 16,
-                sheet: m.sheet || ''
+                width: s.width | 0,
+                height: s.height | 0,
+                count: s.objects.length
             };
         },
-        /** List map names for current project */
-        maps() {
+        /** List scene names */
+        scenes() {
             if (!currentProjectName) return [];
             return Object.keys(getProjectMapMap(currentProjectName));
         },
@@ -5632,24 +5593,40 @@ gfx = {
         end
         return t
     end,
-    map = function(name, x, y, celX, celY, celW, celH)
-        api.gfx:map(name, x, y, celX, celY, celW, celH)
-    end,
-    mget = function(name, tx, ty) return api.gfx:mget(name, tx, ty) end,
-    mset = function(name, tx, ty, id) api.gfx:mset(name, tx, ty, id) end,
-    mapinfo = function(name)
-        local info = api.gfx:mapinfo(name)
+    scene = function(name, ox, oy) api.gfx:scene(name, ox, oy) end,
+    sceneinfo = function(name)
+        local info = api.gfx:sceneinfo(name)
         if not info then return nil end
         return {
-            cols = tonumber(info.cols) or 0,
-            rows = tonumber(info.rows) or 0,
-            tileW = tonumber(info.tileW) or 16,
-            tileH = tonumber(info.tileH) or 16,
-            sheet = tostring(info.sheet or "")
+            width = tonumber(info.width) or 0,
+            height = tonumber(info.height) or 0,
+            count = tonumber(info.count) or 0
         }
     end,
-    maps = function()
-        local arr = api.gfx:maps()
+    scene_objects = function(name)
+        local arr = api.gfx:sceneObjects(name)
+        local t = {}
+        if arr then
+            local n = tonumber(arr.length) or 0
+            for i = 0, n - 1 do
+                local o = arr[i]
+                if o then
+                    t[#t+1] = {
+                        id = tostring(o.id or ""),
+                        sprite = tostring(o.sprite or ""),
+                        x = tonumber(o.x) or 0,
+                        y = tonumber(o.y) or 0,
+                        w = tonumber(o.w) or 0,
+                        h = tonumber(o.h) or 0,
+                        name = tostring(o.name or "")
+                    }
+                end
+            end
+        end
+        return t
+    end,
+    scenes = function()
+        local arr = api.gfx:scenes()
         local t = {}
         if arr then
             local n = tonumber(arr.length) or 0
@@ -5665,9 +5642,6 @@ gfx = {
     width = function() return api.gfx:width() end,
     height = function() return api.gfx:height() end
 }
-
-function mget(name, tx, ty) return api.gfx:mget(name, tx, ty) end
-function mset(name, tx, ty, id) api.gfx:mset(name, tx, ty, id) end
 
 function btn(i) return api.input:btn(i) end
 function btnp(i) return api.input:btnp(i) end
