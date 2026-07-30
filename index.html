@@ -4770,16 +4770,40 @@ function closeAccountMenu() {
 document.addEventListener('click', () => closeAccountMenu());
 
 let authRefreshing = false; // silent token refresh in progress
+let authRefreshStartedAt = 0;
+const AUTH_REFRESH_MAX_MS = 10000; // soft-auth only this long, then show login
+let authRefreshWatchdog = null;
 
 function hasRememberedProfile() {
     return !!(googleProfile && (googleProfile.email || googleProfile.name || googleProfile.picture));
 }
 
 function isAuthed() {
+    // Only a live, unexpired Google token counts as signed in
     if (googleToken && isGoogleTokenValid()) return true;
-    // Same browser: keep session while silent refresh runs
-    if (authRefreshing && hasRememberedProfile()) return true;
+    // Brief grace while silent refresh runs (not a permanent bypass)
+    if (authRefreshing && hasRememberedProfile()) {
+        if (Date.now() - authRefreshStartedAt < AUTH_REFRESH_MAX_MS) return true;
+    }
     return false;
+}
+
+function failAuthRefresh(reason) {
+    authRefreshing = false;
+    authRefreshStartedAt = 0;
+    if (authRefreshWatchdog) {
+        clearTimeout(authRefreshWatchdog);
+        authRefreshWatchdog = null;
+    }
+    // Drop expired token; keep profile only for display on the login card if you want —
+    // but gate must lock. Clear token for sure.
+    if (!(googleToken && isGoogleTokenValid())) {
+        clearPersistedGoogleToken({ keepProfile: true });
+        googleToken = null;
+        googleTokenExpiresAt = 0;
+    }
+    setCloudStatus(reason || 'Cloud: sign in required', 'warn');
+    applyAuthGate();
 }
 
 function applyAuthGate() {
@@ -4938,16 +4962,18 @@ function ensureGoogleTokenClient(silent) {
             include_granted_scopes: true,
             callback: async (resp) => {
                 if (resp.error) {
-                    setCloudStatus('Cloud: ' + (resp.error_description || resp.error), 'warn');
-                    authRefreshing = false;
-                    // Only wipe profile on hard failure (user denied / no session)
+                    // Silent refresh failed or user denied → always show login
                     clearPersistedGoogleToken({ keepProfile: false });
-                    updateCloudUI();
+                    failAuthRefresh('Cloud: ' + (resp.error_description || resp.error));
                     showLoginError(resp.error_description || resp.error || 'Sign-in failed');
-                    applyAuthGate();
                     return;
                 }
                 authRefreshing = false;
+                authRefreshStartedAt = 0;
+                if (authRefreshWatchdog) {
+                    clearTimeout(authRefreshWatchdog);
+                    authRefreshWatchdog = null;
+                }
                 persistGoogleToken(resp.access_token, resp.expires_in);
                 markScopesGranted();
                 updateCloudUI();
@@ -4998,22 +5024,20 @@ function googleSignInOrOut() {
     loginWithGoogle();
 }
 
-/** Restore session on page load — stay signed in on the same browser */
+/** Restore session on page load — stay signed in only with a valid token */
 function tryRestoreGoogleSession() {
-    const hadToken = loadPersistedGoogleToken();
-    // Profile alone (from previous visit) is enough to attempt silent refresh
-    if (!hadToken && !hasRememberedProfile()) {
-        try {
+    // Always try to load remembered profile for UI (avatar / email on login)
+    try {
+        if (!googleProfile) {
             const pr = localStorage.getItem(PROFILE_STORAGE_KEY);
             if (pr) googleProfile = JSON.parse(pr);
-        } catch (_) {}
-    }
-    if (!hadToken && !hasRememberedProfile()) {
-        updateCloudUI();
-        return;
-    }
+        }
+    } catch (_) {}
 
-    if (isGoogleTokenValid()) {
+    const hadToken = loadPersistedGoogleToken();
+
+    // Valid token → fully signed in
+    if (hadToken && isGoogleTokenValid()) {
         authRefreshing = false;
         updateCloudUI();
         setCloudStatus('Cloud: welcome back — syncing…', 'ok');
@@ -5028,30 +5052,39 @@ function tryRestoreGoogleSession() {
         return;
     }
 
-    // Token expired or missing — keep profile, silent refresh (no login screen if Google session exists)
+    // No token / expired: attempt silent refresh briefly, then MUST show login if it fails
+    if (!hadToken && !hasRememberedProfile()) {
+        authRefreshing = false;
+        updateCloudUI(); // applyAuthGate → login view
+        return;
+    }
+
     authRefreshing = true;
+    authRefreshStartedAt = Date.now();
+    // Drop expired access token from memory/storage; keep profile for silent re-auth hint
     clearPersistedGoogleToken({ keepProfile: true });
-    updateCloudUI(); // soft-auth via authRefreshing + profile
-    applyAuthGate();
+    updateCloudUI(); // soft-auth only for AUTH_REFRESH_MAX_MS
     setCloudStatus('Cloud: restoring session…');
+
+    if (authRefreshWatchdog) clearTimeout(authRefreshWatchdog);
+    authRefreshWatchdog = setTimeout(() => {
+        if (googleToken && isGoogleTokenValid()) return;
+        // Silent refresh never completed → force login page
+        failAuthRefresh('Cloud: session expired — sign in again');
+    }, AUTH_REFRESH_MAX_MS);
 
     const waitForGis = (attempts) => {
         if (typeof google !== 'undefined' && google.accounts?.oauth2) {
             const client = ensureGoogleTokenClient(true);
             if (client) {
-                // Scope upgrade needs consent once; otherwise silent refresh
                 client.requestAccessToken({ prompt: needsScopeReconsent() ? 'consent' : '' });
             } else {
-                authRefreshing = false;
-                updateCloudUI();
-                applyAuthGate();
+                failAuthRefresh('Cloud: sign in required');
             }
             return;
         }
         if (attempts <= 0) {
-            authRefreshing = false;
-            setCloudStatus('Cloud: sign in required');
-            applyAuthGate();
+            failAuthRefresh('Cloud: sign in required');
             return;
         }
         setTimeout(() => waitForGis(attempts - 1), 400);
