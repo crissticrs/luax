@@ -812,7 +812,9 @@
             border: 2px solid var(--accent-color);
             box-shadow: 0 0 14px color-mix(in srgb, var(--accent-color) 35%, transparent);
             background: #000;
+            padding: 0; cursor: pointer; display: block;
         }
+        .spr-paint-active:active { transform: scale(0.96); opacity: 0.9; }
         .spr-paint-active.checker {
             background-image:
                 linear-gradient(45deg, #3a3a48 25%, transparent 25%),
@@ -2766,13 +2768,17 @@ function renderSpritePalette() {
     const cur = normalizeSpriteHex(spriteEd.color) || '#000000';
     const isTransparent = spriteEd.tool === 'eraser';
 
-    // Active color box (like Paint's foreground color)
+    // Current color — tap to open full picker (Presets / Spectrum / Sliders)
     const fgWrap = document.createElement('div');
     fgWrap.className = 'spr-paint-fgbg';
-    const fg = document.createElement('div');
+    const fg = document.createElement('button');
+    fg.type = 'button';
     fg.className = 'spr-paint-active' + (isTransparent ? ' checker' : '');
     if (!isTransparent) fg.style.background = cur;
-    fg.title = isTransparent ? 'Transparent' : cur;
+    fg.title = 'Pick color';
+    fg.setAttribute('aria-label', 'Pick color');
+    fg.style.cursor = 'pointer';
+    fg.onclick = (e) => { e.preventDefault(); openSpriteSpectrum(); };
     const fgLab = document.createElement('span');
     fgLab.className = 'spr-paint-label';
     fgLab.textContent = 'Color';
@@ -2780,7 +2786,7 @@ function renderSpritePalette() {
     fgWrap.appendChild(fgLab);
     el.appendChild(fgWrap);
 
-    // Classic 2×14 Paint grid
+    // Quick preset grid (same Paint colors — no separate Edit control)
     const grid = document.createElement('div');
     grid.className = 'spr-paint-grid';
     SPRITE_PALETTE.forEach((c) => {
@@ -2799,22 +2805,6 @@ function renderSpritePalette() {
         grid.appendChild(btn);
     });
     el.appendChild(grid);
-
-    // Edit colors → custom spectrum (finger-drag works on mobile)
-    const edit = document.createElement('div');
-    edit.className = 'spr-paint-edit';
-    const editBtn = document.createElement('button');
-    editBtn.type = 'button';
-    editBtn.className = 'spr-paint-edit-btn';
-    editBtn.title = 'Edit colors';
-    editBtn.setAttribute('aria-label', 'Edit colors');
-    editBtn.innerHTML = '◐';
-    editBtn.onclick = (e) => { e.preventDefault(); openSpriteSpectrum(); };
-    const editLab = document.createElement('span');
-    editLab.textContent = 'Edit';
-    edit.appendChild(editBtn);
-    edit.appendChild(editLab);
-    el.appendChild(edit);
 }
 
 function setSpriteTool(tool) {
