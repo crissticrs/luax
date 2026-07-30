@@ -805,7 +805,7 @@
         /* —— Pixel sprite editor (mockup style) —— */
         #sprite-editor-view {
             background: var(--bg-color);
-            display: flex; flex-direction: column;
+            flex-direction: column;
             overflow: hidden;
         }
         #sprite-editor-view.active { display: flex; }
@@ -2495,111 +2495,37 @@ function openProject(name) {
 function renderFiles() {
     const list = document.getElementById('files-list');
     list.innerHTML = '';
-
     const files = projects[currentProjectName] || {};
     Object.keys(files).sort().forEach(fn => {
-        const item = document.createElement('div');
-        item.className = 'list-item';
-        item.dataset.kind = 'lua';
-        item.dataset.name = fn;
-
-        const title = document.createElement('div');
-        title.className = 'item-title';
-        title.title = 'Open Lua file';
-
-        const icon = document.createElement('span');
-        icon.className = 'item-icon-svg';
-        icon.innerHTML = LX_SVG.file;
-
-        const name = document.createElement('span');
-        name.textContent = fn;
-
-        title.appendChild(icon);
-        title.appendChild(name);
-        title.addEventListener('click', () => openFile(fn));
-
-        const actions = document.createElement('div');
-        actions.className = 'item-actions';
-
-        const rename = document.createElement('button');
-        rename.className = 'btn-icon-sm';
-        rename.type = 'button';
-        rename.title = 'Rename';
-        rename.textContent = '✎';
-        rename.addEventListener('click', (e) => {
-            e.stopPropagation();
-            promptRenameFile(fn);
-        });
-
-        actions.appendChild(rename);
-
-        if (fn !== 'main.lua') {
-            const del = document.createElement('button');
-            del.className = 'btn btn-delete';
-            del.type = 'button';
-            del.addEventListener('click', (e) => deleteFile(e, fn));
-            del.innerHTML = LX_SVG.trash;
-            actions.appendChild(del);
-        }
-
-        item.appendChild(title);
-        item.appendChild(actions);
-        list.appendChild(item);
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `
+            <div class="item-title" onclick="openFile('${esc(fn)}')">
+                <span class="item-icon-svg">${LX_SVG.file}</span>
+                <span>${fn}</span>
+            </div>
+            <div class="item-actions">
+                <button class="btn-icon-sm" title="Rename" onclick="event.stopPropagation();promptRenameFile('${esc(fn)}')">✎</button>
+                ${fn !== 'main.lua' ? `<button class="btn btn-delete" onclick="deleteFile(event,'${esc(fn)}')">${LX_SVG.trash}</button>` : ''}
+            </div>`;
+        list.appendChild(div);
     });
-
     // Sprites / images — tap to open in pixel editor
     const assets = getProjectAssetMap(currentProjectName);
     Object.keys(assets).sort().forEach(fn => {
-        const item = document.createElement('div');
-        item.className = 'list-item';
-        item.dataset.kind = 'sprite';
-        item.dataset.name = fn;
-
-        const title = document.createElement('div');
-        title.className = 'item-title';
-        title.title = 'Edit sprite';
-        title.addEventListener('click', () => openSpriteEditor(fn));
-
-        const img = document.createElement('img');
-        img.src = assets[fn];
-        img.alt = '';
-        img.style.cssText = 'width:28px;height:28px;object-fit:contain;image-rendering:pixelated;border-radius:4px;background:#111';
-
-        const name = document.createElement('span');
-        name.textContent = fn;
-
-        const badge = document.createElement('span');
-        badge.className = 'item-badge';
-        badge.textContent = 'IMG';
-
-        title.appendChild(img);
-        title.appendChild(name);
-        title.appendChild(badge);
-
-        const actions = document.createElement('div');
-        actions.className = 'item-actions';
-
-        const edit = document.createElement('button');
-        edit.className = 'btn-icon-sm';
-        edit.type = 'button';
-        edit.title = 'Edit';
-        edit.textContent = '✎';
-        edit.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openSpriteEditor(fn);
-        });
-
-        const del = document.createElement('button');
-        del.className = 'btn btn-delete';
-        del.type = 'button';
-        del.addEventListener('click', (e) => deleteAsset(e, fn));
-        del.innerHTML = LX_SVG.trash;
-
-        actions.appendChild(edit);
-        actions.appendChild(del);
-        item.appendChild(title);
-        item.appendChild(actions);
-        list.appendChild(item);
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `
+            <div class="item-title" onclick="openSpriteEditor('${esc(fn)}')" title="Edit sprite">
+                <img src="${assets[fn]}" alt="" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;border-radius:4px;background:#111">
+                <span>${fn}</span>
+                <span class="item-badge">IMG</span>
+            </div>
+            <div class="item-actions">
+                <button class="btn-icon-sm" title="Edit" onclick="event.stopPropagation();openSpriteEditor('${esc(fn)}')">✎</button>
+                <button class="btn btn-delete" onclick="deleteAsset(event,'${esc(fn)}')">${LX_SVG.trash}</button>
+            </div>`;
+        list.appendChild(div);
     });
 }
 
@@ -3526,12 +3452,6 @@ function setupSpriteCanvasInput() {
 function openSpriteEditor(existingName) {
     if (!isAuthed()) { applyAuthGate(); return; }
     if (!currentProjectName) return alert('Open a project first');
-
-    // Safety net: if a Lua file ever gets routed here, open it in the code editor instead.
-    if (existingName && /\.lua$/i.test(existingName)) {
-        openFile(existingName);
-        return;
-    }
 
     spriteEd.tool = 'pencil';
     spriteEd.color = '#ffffff';
