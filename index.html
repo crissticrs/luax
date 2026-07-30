@@ -866,23 +866,90 @@
             flex-shrink: 0;
             display: flex; flex-direction: column; gap: 6px; align-items: center;
         }
-        .spr-paint-edit input[type="color"] {
+        .spr-paint-edit-btn {
             width: 44px; height: 44px; padding: 0;
             border: 1.5px solid var(--glass-border);
             border-radius: 12px; cursor: pointer;
             background: var(--panel-2, var(--panel-color));
-            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; color: var(--text-color);
         }
-        .spr-paint-edit input[type="color"]::-webkit-color-swatch-wrapper { padding: 3px; }
-        .spr-paint-edit input[type="color"]::-webkit-color-swatch {
-            border: none; border-radius: 8px;
-        }
-        .spr-paint-edit input[type="color"]::-moz-color-swatch {
-            border: none; border-radius: 8px;
-        }
+        .spr-paint-edit-btn:active { opacity: 0.85; transform: scale(0.96); }
         .spr-paint-edit span {
             font-size: 0.7rem; color: var(--muted); font-weight: 600;
         }
+        /* Custom HSV spectrum — works with finger drag on mobile */
+        #spr-spectrum-overlay {
+            display: none; position: fixed; inset: 0; z-index: 4500;
+            background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            align-items: center; justify-content: center; padding: 20px;
+            touch-action: none;
+        }
+        #spr-spectrum-overlay.open { display: flex; }
+        .spr-spectrum-card {
+            width: 100%; max-width: 320px;
+            background: var(--panel-color);
+            border: 1px solid var(--glass-border);
+            border-radius: 18px; padding: 16px;
+            box-shadow: 0 20px 48px rgba(0,0,0,0.45);
+            touch-action: none;
+        }
+        .spr-spectrum-card h3 {
+            margin: 0 0 12px; font-size: 1rem; color: var(--text-color);
+        }
+        .spr-sv {
+            position: relative; width: 100%; aspect-ratio: 1;
+            border-radius: 12px; overflow: hidden;
+            border: 1px solid var(--glass-border);
+            touch-action: none; cursor: crosshair;
+        }
+        .spr-sv-white, .spr-sv-black {
+            position: absolute; inset: 0; pointer-events: none;
+        }
+        .spr-sv-white {
+            background: linear-gradient(to right, #fff, transparent);
+        }
+        .spr-sv-black {
+            background: linear-gradient(to top, #000, transparent);
+        }
+        .spr-sv-cursor {
+            position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+            border: 2px solid #fff; border-radius: 50%;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4);
+            pointer-events: none;
+        }
+        .spr-hue {
+            position: relative; width: 100%; height: 28px; margin-top: 12px;
+            border-radius: 10px; overflow: hidden;
+            border: 1px solid var(--glass-border);
+            background: linear-gradient(to right,
+                #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+            touch-action: none; cursor: pointer;
+        }
+        .spr-hue-cursor {
+            position: absolute; top: 2px; bottom: 2px; width: 6px; margin-left: -3px;
+            background: #fff; border-radius: 3px;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+        .spr-spectrum-row {
+            display: flex; align-items: center; gap: 10px; margin-top: 14px;
+        }
+        .spr-spectrum-preview {
+            width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+            border: 2px solid var(--accent-color);
+        }
+        .spr-spectrum-hex {
+            flex: 1; padding: 10px 12px; border-radius: 10px;
+            border: 1px solid var(--glass-border); background: var(--panel-2, #111);
+            color: var(--text-color); font-family: Menlo, Monaco, monospace;
+            font-size: 0.9rem; outline: none;
+        }
+        .spr-spectrum-actions {
+            display: flex; gap: 8px; margin-top: 14px;
+        }
+        .spr-spectrum-actions .btn { flex: 1; }
         @media (max-width: 480px) {
             .spr-paint-grid {
                 grid-template-columns: repeat(14, 20px);
@@ -1102,6 +1169,29 @@
             <canvas id="sprite-pixel-canvas" width="256" height="256"></canvas>
         </div>
         <p class="spr-hint">Tap/drag to paint · Save adds it as a sprite for <code>gfx.sprite("name.png", x, y)</code></p>
+    </div>
+
+    <!-- Mobile-friendly HSV spectrum (finger drag works) -->
+    <div id="spr-spectrum-overlay" aria-hidden="true">
+        <div class="spr-spectrum-card" onclick="event.stopPropagation()">
+            <h3>Pick color</h3>
+            <div class="spr-sv" id="spr-sv">
+                <div class="spr-sv-white"></div>
+                <div class="spr-sv-black"></div>
+                <div class="spr-sv-cursor" id="spr-sv-cursor"></div>
+            </div>
+            <div class="spr-hue" id="spr-hue">
+                <div class="spr-hue-cursor" id="spr-hue-cursor"></div>
+            </div>
+            <div class="spr-spectrum-row">
+                <div class="spr-spectrum-preview" id="spr-spectrum-preview"></div>
+                <input type="text" class="spr-spectrum-hex" id="spr-spectrum-hex" maxlength="7" spellcheck="false">
+            </div>
+            <div class="spr-spectrum-actions">
+                <button type="button" class="btn" onclick="closeSpriteSpectrum(false)">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="closeSpriteSpectrum(true)">OK</button>
+            </div>
+        </div>
     </div>
 
     <!-- Editor -->
@@ -2268,6 +2358,171 @@ function setSpriteColor(hex) {
     }
 }
 
+// —— HSV spectrum (drag-friendly on mobile) ——
+const spriteSpectrum = { h: 0, s: 1, v: 1, open: false, drag: null };
+
+function rgbToHsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const d = max - min;
+    let h = 0;
+    if (d !== 0) {
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        else if (max === g) h = ((b - r) / d + 2) / 6;
+        else h = ((r - g) / d + 4) / 6;
+    }
+    const s = max === 0 ? 0 : d / max;
+    return { h: h * 360, s: s, v: max };
+}
+
+function hsvToRgb(h, s, v) {
+    h = ((h % 360) + 360) % 360;
+    const c = v * s;
+    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    const m = v - c;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    return [
+        Math.round((r + m) * 255),
+        Math.round((g + m) * 255),
+        Math.round((b + m) * 255),
+    ];
+}
+
+function hsvToHex(h, s, v) {
+    const [r, g, b] = hsvToRgb(h, s, v);
+    const p = (n) => n.toString(16).padStart(2, '0');
+    return '#' + p(r) + p(g) + p(b);
+}
+
+function updateSpectrumUI() {
+    const hex = hsvToHex(spriteSpectrum.h, spriteSpectrum.s, spriteSpectrum.v);
+    const sv = document.getElementById('spr-sv');
+    const hueEl = document.getElementById('spr-hue');
+    const svCur = document.getElementById('spr-sv-cursor');
+    const hueCur = document.getElementById('spr-hue-cursor');
+    const preview = document.getElementById('spr-spectrum-preview');
+    const hexInput = document.getElementById('spr-spectrum-hex');
+    if (!sv) return;
+
+    // SV panel base = pure hue
+    const [hr, hg, hb] = hsvToRgb(spriteSpectrum.h, 1, 1);
+    sv.style.background = 'rgb(' + hr + ',' + hg + ',' + hb + ')';
+
+    const rect = sv.getBoundingClientRect();
+    const w = rect.width || 1;
+    const h = rect.height || 1;
+    svCur.style.left = (spriteSpectrum.s * w) + 'px';
+    svCur.style.top = ((1 - spriteSpectrum.v) * h) + 'px';
+
+    const hueRect = hueEl.getBoundingClientRect();
+    const hw = hueRect.width || 1;
+    hueCur.style.left = ((spriteSpectrum.h / 360) * hw) + 'px';
+
+    preview.style.background = hex;
+    if (document.activeElement !== hexInput) hexInput.value = hex;
+}
+
+function openSpriteSpectrum() {
+    const cur = normalizeSpriteHex(spriteEd.color) || '#000000';
+    let h = cur.slice(1);
+    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    const n = parseInt(h, 16);
+    const hsv = rgbToHsv((n >> 16) & 255, (n >> 8) & 255, n & 255);
+    spriteSpectrum.h = hsv.h;
+    spriteSpectrum.s = hsv.s;
+    spriteSpectrum.v = hsv.v;
+    spriteSpectrum.open = true;
+    spriteSpectrum.drag = null;
+
+    const overlay = document.getElementById('spr-spectrum-overlay');
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+    // layout then place cursors
+    requestAnimationFrame(() => updateSpectrumUI());
+
+    // Bind once
+    if (!overlay._luaxBound) {
+        overlay._luaxBound = true;
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeSpriteSpectrum(false);
+        });
+
+        const sv = document.getElementById('spr-sv');
+        const hue = document.getElementById('spr-hue');
+        const hexInput = document.getElementById('spr-spectrum-hex');
+
+        function bindDrag(el, kind) {
+            const start = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                spriteSpectrum.drag = kind;
+                move(e);
+            };
+            const move = (e) => {
+                if (spriteSpectrum.drag !== kind) return;
+                e.preventDefault();
+                const t = e.touches ? e.touches[0] : e;
+                if (!t) return;
+                const rect = el.getBoundingClientRect();
+                if (kind === 'sv') {
+                    let x = (t.clientX - rect.left) / rect.width;
+                    let y = (t.clientY - rect.top) / rect.height;
+                    x = Math.max(0, Math.min(1, x));
+                    y = Math.max(0, Math.min(1, y));
+                    spriteSpectrum.s = x;
+                    spriteSpectrum.v = 1 - y;
+                } else {
+                    let x = (t.clientX - rect.left) / rect.width;
+                    x = Math.max(0, Math.min(1, x));
+                    spriteSpectrum.h = x * 360;
+                }
+                updateSpectrumUI();
+            };
+            const end = () => { if (spriteSpectrum.drag === kind) spriteSpectrum.drag = null; };
+
+            el.addEventListener('mousedown', start);
+            el.addEventListener('touchstart', start, { passive: false });
+            window.addEventListener('mousemove', move, { passive: false });
+            window.addEventListener('touchmove', move, { passive: false });
+            window.addEventListener('mouseup', end);
+            window.addEventListener('touchend', end);
+            window.addEventListener('touchcancel', end);
+        }
+
+        bindDrag(sv, 'sv');
+        bindDrag(hue, 'hue');
+
+        hexInput.addEventListener('change', () => {
+            const n = normalizeSpriteHex(hexInput.value);
+            if (!n) { updateSpectrumUI(); return; }
+            let h = n.slice(1);
+            const num = parseInt(h, 16);
+            const hsv = rgbToHsv((num >> 16) & 255, (num >> 8) & 255, num & 255);
+            spriteSpectrum.h = hsv.h;
+            spriteSpectrum.s = hsv.s;
+            spriteSpectrum.v = hsv.v;
+            updateSpectrumUI();
+        });
+    }
+}
+
+function closeSpriteSpectrum(apply) {
+    const overlay = document.getElementById('spr-spectrum-overlay');
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+    spriteSpectrum.open = false;
+    spriteSpectrum.drag = null;
+    if (apply) {
+        setSpriteColor(hsvToHex(spriteSpectrum.h, spriteSpectrum.s, spriteSpectrum.v));
+    }
+}
+
 function spritePixelIndex(x, y) {
     return (y * spriteEd.w + x) * 4;
 }
@@ -2369,18 +2624,19 @@ function renderSpritePalette() {
     });
     el.appendChild(grid);
 
-    // Edit colors (Paint's custom color dialog → system color picker)
+    // Edit colors → custom spectrum (finger-drag works on mobile)
     const edit = document.createElement('div');
     edit.className = 'spr-paint-edit';
-    const picker = document.createElement('input');
-    picker.type = 'color';
-    picker.value = cur;
-    picker.title = 'Edit colors';
-    picker.oninput = () => setSpriteColor(picker.value);
-    picker.onchange = () => setSpriteColor(picker.value);
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'spr-paint-edit-btn';
+    editBtn.title = 'Edit colors';
+    editBtn.setAttribute('aria-label', 'Edit colors');
+    editBtn.innerHTML = '◐';
+    editBtn.onclick = (e) => { e.preventDefault(); openSpriteSpectrum(); };
     const editLab = document.createElement('span');
     editLab.textContent = 'Edit';
-    edit.appendChild(picker);
+    edit.appendChild(editBtn);
     edit.appendChild(editLab);
     el.appendChild(edit);
 }
