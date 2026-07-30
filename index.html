@@ -893,88 +893,74 @@
             background-color: #1a1a22;
         }
         .spr-main {
-            display: flex; gap: 8px; align-items: stretch;
+            display: flex; gap: 10px; align-items: stretch;
             min-height: 0; flex: 1;
         }
-        .spr-side {
-            display: flex; flex-direction: column; gap: 6px;
-            flex-shrink: 0;
-        }
-        .spr-side-btn {
-            width: 40px; height: 40px; border-radius: 12px;
-            border: 1.5px solid var(--glass-border);
-            background: color-mix(in srgb, var(--panel-color) 90%, transparent);
-            color: var(--muted); cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.95rem;
-        }
-        .spr-side-btn:active { color: var(--accent-color); border-color: var(--accent-color); }
         .spr-canvas-wrap {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            min-width: 0; min-height: 220px; padding: 8px;
+            flex: 1; display: block;
+            min-width: 0; min-height: 260px; padding: 0; overflow: hidden;
             border-radius: 16px;
             border: 2px solid color-mix(in srgb, var(--accent-color) 35%, transparent);
             box-shadow: 0 0 24px color-mix(in srgb, var(--accent-color) 18%, transparent),
                         inset 0 0 0 1px color-mix(in srgb, var(--accent-color) 12%, transparent);
-            background:
-                linear-gradient(45deg, #1a1a22 25%, transparent 25%),
-                linear-gradient(-45deg, #1a1a22 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #1a1a22 75%),
-                linear-gradient(-45deg, transparent 75%, #1a1a22 75%);
-            background-size: 16px 16px;
-            background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-            background-color: #121218;
+            background: #121218;
             position: relative; touch-action: none;
-        }
-        .spr-canvas-wrap.grid-on #sprite-pixel-canvas {
-            /* grid drawn in JS */
         }
         #sprite-pixel-canvas {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
-            max-width: 100%;
-            max-height: min(48vh, 360px);
-            width: auto; height: auto;
-            aspect-ratio: 1;
-            border: none; border-radius: 4px;
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            display: block;
+            border: none; border-radius: 14px;
             background: transparent;
             touch-action: none;
             cursor: crosshair;
         }
-        .spr-preview-card {
-            width: 88px; flex-shrink: 0;
+        .spr-layers-card {
+            width: 112px; flex-shrink: 0;
             display: flex; flex-direction: column; gap: 8px;
+            background: color-mix(in srgb, var(--panel-color) 92%, transparent);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px; padding: 10px;
         }
-        .spr-preview-box {
-            width: 88px; height: 88px; border-radius: 14px;
-            border: 1.5px solid var(--glass-border);
-            background:
-                linear-gradient(45deg, #1a1a22 25%, transparent 25%),
-                linear-gradient(-45deg, #1a1a22 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #1a1a22 75%),
-                linear-gradient(-45deg, transparent 75%, #1a1a22 75%);
-            background-size: 10px 10px;
-            background-position: 0 0, 0 5px, 5px -5px, -5px 0;
-            background-color: #121218;
-            display: flex; align-items: center; justify-content: center;
-            overflow: hidden;
+        .spr-layers-title {
+            font-size: 0.72rem; font-weight: 700; color: var(--muted);
         }
-        #spr-preview-canvas {
-            image-rendering: pixelated;
-            max-width: 72px; max-height: 72px;
-        }
-        .spr-preview-size {
-            text-align: center; font-size: 0.68rem; color: var(--muted); font-weight: 600;
-        }
-        .spr-view-opts {
-            font-size: 0.72rem; color: var(--muted);
+        .spr-layers-list {
             display: flex; flex-direction: column; gap: 6px;
+            flex: 1; overflow-y: auto; max-height: 240px;
         }
-        .spr-view-opts label {
-            display: flex; align-items: center; gap: 6px; cursor: pointer;
-            color: var(--text-color); font-weight: 600;
+        .spr-layer-item {
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px; border-radius: 12px;
+            border: 1.5px solid var(--glass-border);
+            background: transparent; color: var(--text-color);
+            font-size: 0.72rem; font-weight: 700; cursor: pointer;
+            text-align: left; width: 100%;
         }
-        .spr-view-opts input { accent-color: var(--accent-color); }
+        .spr-layer-item.active {
+            border-color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+            color: var(--accent-color);
+            box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color) 28%, transparent);
+        }
+        .spr-layer-eye {
+            border: none; background: none; color: inherit;
+            cursor: pointer; padding: 0; font-size: 0.85rem; line-height: 1;
+        }
+        .spr-layer-name {
+            flex: 1; min-width: 0; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
+        }
+        .spr-add-layer {
+            border: 1.5px dashed color-mix(in srgb, var(--accent-color) 45%, transparent);
+            background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+            color: var(--accent-color); border-radius: 12px;
+            padding: 10px 8px; font-size: 0.72rem; font-weight: 800;
+            cursor: pointer; width: 100%;
+        }
+        .spr-add-layer:active { opacity: 0.85; }
         .spr-actions {
             display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
         }
@@ -1329,21 +1315,13 @@
             </div>
 
             <div class="spr-main">
-                <div class="spr-side">
-                    <button type="button" class="spr-side-btn" title="Undo" onclick="spriteUndo()">↺</button>
-                    <button type="button" class="spr-side-btn" title="Redo" onclick="spriteRedo()">↻</button>
-                </div>
                 <div class="spr-canvas-wrap" id="spr-canvas-wrap">
                     <canvas id="sprite-pixel-canvas" width="256" height="256"></canvas>
                 </div>
-                <div class="spr-preview-card">
-                    <div class="spr-preview-box">
-                        <canvas id="spr-preview-canvas" width="64" height="64"></canvas>
-                    </div>
-                    <div class="spr-preview-size" id="spr-preview-size">16×16</div>
-                    <div class="spr-view-opts">
-                        <label><input type="checkbox" id="spr-grid-toggle" checked onchange="toggleSpriteGrid(this.checked)"> Pixel Grid</label>
-                    </div>
+                <div class="spr-layers-card">
+                    <div class="spr-layers-title" id="spr-layers-title">Layers (1)</div>
+                    <div class="spr-layers-list" id="spr-layers-list"></div>
+                    <button type="button" class="spr-add-layer" onclick="addSpriteLayer()">+ Add Layer</button>
                 </div>
             </div>
 
@@ -2546,7 +2524,8 @@ const SPRITE_PALETTE = [
 const spriteEd = {
     w: 16,
     h: 16,
-    pixels: null,
+    layers: [],       // { name, visible, pixels }
+    activeLayer: 0,
     tool: 'pencil',
     color: '#000000',
     name: '',
@@ -2557,40 +2536,152 @@ const spriteEd = {
     historyIdx: -1,
 };
 
+function emptySpritePixels(w, h) {
+    return new Uint8ClampedArray((w || spriteEd.w) * (h || spriteEd.h) * 4);
+}
+
+function createSpriteLayer(name) {
+    return {
+        name: name || ('Layer ' + (spriteEd.layers.length + 1)),
+        visible: true,
+        pixels: emptySpritePixels(),
+    };
+}
+
+function activeLayerPixels() {
+    const L = spriteEd.layers[spriteEd.activeLayer];
+    return L ? L.pixels : null;
+}
+
+/** getter/setter bridge so older code using spriteEd.pixels still works */
+Object.defineProperty(spriteEd, 'pixels', {
+    get() { return activeLayerPixels(); },
+    set(v) {
+        if (spriteEd.layers[spriteEd.activeLayer]) {
+            spriteEd.layers[spriteEd.activeLayer].pixels = v;
+        }
+    },
+});
+
+function snapshotLayers() {
+    return spriteEd.layers.map(L => ({
+        name: L.name,
+        visible: L.visible,
+        pixels: new Uint8ClampedArray(L.pixels),
+    }));
+}
+
+function restoreLayers(snap) {
+    spriteEd.layers = snap.map(L => ({
+        name: L.name,
+        visible: L.visible,
+        pixels: new Uint8ClampedArray(L.pixels),
+    }));
+    if (spriteEd.activeLayer >= spriteEd.layers.length) {
+        spriteEd.activeLayer = Math.max(0, spriteEd.layers.length - 1);
+    }
+}
+
 function pushSpriteHistory() {
     ensureSpritePixels();
-    const snap = new Uint8ClampedArray(spriteEd.pixels);
-    // drop redo branch
+    const snap = snapshotLayers();
     spriteEd.history = spriteEd.history.slice(0, spriteEd.historyIdx + 1);
     spriteEd.history.push(snap);
-    if (spriteEd.history.length > 40) {
-        spriteEd.history.shift();
-    } else {
-        spriteEd.historyIdx++;
-    }
-    // keep idx in sync after shift
+    if (spriteEd.history.length > 40) spriteEd.history.shift();
     spriteEd.historyIdx = spriteEd.history.length - 1;
 }
 
 function spriteUndo() {
     if (spriteEd.historyIdx <= 0) return;
     spriteEd.historyIdx--;
-    spriteEd.pixels = new Uint8ClampedArray(spriteEd.history[spriteEd.historyIdx]);
+    restoreLayers(spriteEd.history[spriteEd.historyIdx]);
     spriteEd.dirty = true;
+    renderSpriteLayersUI();
     redrawSpriteCanvas();
 }
 
 function spriteRedo() {
     if (spriteEd.historyIdx >= spriteEd.history.length - 1) return;
     spriteEd.historyIdx++;
-    spriteEd.pixels = new Uint8ClampedArray(spriteEd.history[spriteEd.historyIdx]);
+    restoreLayers(spriteEd.history[spriteEd.historyIdx]);
     spriteEd.dirty = true;
+    renderSpriteLayersUI();
     redrawSpriteCanvas();
 }
 
-function toggleSpriteGrid(on) {
-    spriteEd.showGrid = !!on;
+function addSpriteLayer() {
+    pushSpriteHistory();
+    spriteEd.layers.push(createSpriteLayer());
+    spriteEd.activeLayer = spriteEd.layers.length - 1;
+    pushSpriteHistory();
+    spriteEd.dirty = true;
+    renderSpriteLayersUI();
     redrawSpriteCanvas();
+}
+
+function selectSpriteLayer(idx) {
+    if (idx < 0 || idx >= spriteEd.layers.length) return;
+    spriteEd.activeLayer = idx;
+    renderSpriteLayersUI();
+}
+
+function toggleSpriteLayerVisible(idx, e) {
+    if (e) e.stopPropagation();
+    if (!spriteEd.layers[idx]) return;
+    pushSpriteHistory();
+    spriteEd.layers[idx].visible = !spriteEd.layers[idx].visible;
+    pushSpriteHistory();
+    spriteEd.dirty = true;
+    renderSpriteLayersUI();
+    redrawSpriteCanvas();
+}
+
+function renderSpriteLayersUI() {
+    const list = document.getElementById('spr-layers-list');
+    const title = document.getElementById('spr-layers-title');
+    if (title) title.textContent = 'Layers (' + spriteEd.layers.length + ')';
+    if (!list) return;
+    list.innerHTML = '';
+    // top of list = top layer (draw order reverse)
+    for (let i = spriteEd.layers.length - 1; i >= 0; i--) {
+        const L = spriteEd.layers[i];
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'spr-layer-item' + (i === spriteEd.activeLayer ? ' active' : '');
+        btn.onclick = () => selectSpriteLayer(i);
+        const eye = document.createElement('span');
+        eye.className = 'spr-layer-eye';
+        eye.textContent = L.visible ? '👁' : '👁‍🗨';
+        eye.title = L.visible ? 'Hide' : 'Show';
+        eye.onclick = (e) => toggleSpriteLayerVisible(i, e);
+        const name = document.createElement('span');
+        name.className = 'spr-layer-name';
+        name.textContent = L.name;
+        btn.appendChild(eye);
+        btn.appendChild(name);
+        list.appendChild(btn);
+    }
+}
+
+function compositeSpritePixels() {
+    const out = emptySpritePixels();
+    for (let li = 0; li < spriteEd.layers.length; li++) {
+        const L = spriteEd.layers[li];
+        if (!L.visible) continue;
+        const src = L.pixels;
+        for (let i = 0; i < out.length; i += 4) {
+            const sa = src[i + 3] / 255;
+            if (sa <= 0) continue;
+            const da = out[i + 3] / 255;
+            const outA = sa + da * (1 - sa);
+            if (outA <= 0) continue;
+            out[i] = Math.round((src[i] * sa + out[i] * da * (1 - sa)) / outA);
+            out[i + 1] = Math.round((src[i + 1] * sa + out[i + 1] * da * (1 - sa)) / outA);
+            out[i + 2] = Math.round((src[i + 2] * sa + out[i + 2] * da * (1 - sa)) / outA);
+            out[i + 3] = Math.round(outA * 255);
+        }
+    }
+    return out;
 }
 
 function normalizeSpriteHex(v) {
@@ -2864,9 +2955,19 @@ function spritePixelIndex(x, y) {
 
 function ensureSpritePixels() {
     const n = spriteEd.w * spriteEd.h * 4;
-    if (!spriteEd.pixels || spriteEd.pixels.length !== n) {
-        spriteEd.pixels = new Uint8ClampedArray(n); // transparent black
+    if (!spriteEd.layers.length) {
+        spriteEd.layers = [createSpriteLayer('Layer 1')];
+        spriteEd.activeLayer = 0;
     }
+    spriteEd.layers.forEach(L => {
+        if (!L.pixels || L.pixels.length !== n) {
+            const next = emptySpritePixels();
+            if (L.pixels && L.pixels.length) {
+                next.set(L.pixels.subarray(0, Math.min(L.pixels.length, n)));
+            }
+            L.pixels = next;
+        }
+    });
 }
 
 function hexToRgba(hex) {
@@ -2908,61 +3009,67 @@ function redrawSpriteCanvas() {
     const canvas = document.getElementById('sprite-pixel-canvas');
     if (!canvas) return;
     ensureSpritePixels();
-    // Draw at larger internal res so pixel grid lines are visible
-    const scale = spriteEd.showGrid ? 12 : 8;
-    canvas.width = spriteEd.w * scale;
-    canvas.height = spriteEd.h * scale;
+
+    // Fill the outline completely — canvas buffer matches display box size
+    const wrap = document.getElementById('spr-canvas-wrap');
+    const dispW = Math.max(1, Math.floor((wrap && wrap.clientWidth) || canvas.clientWidth || 256));
+    const dispH = Math.max(1, Math.floor((wrap && wrap.clientHeight) || canvas.clientHeight || 256));
+    // Use square cell size so pixels stay square, covering the full area
+    const scale = Math.max(1, Math.floor(Math.min(dispW / spriteEd.w, dispH / spriteEd.h)));
+    const drawW = spriteEd.w * scale;
+    const drawH = spriteEd.h * scale;
+    canvas.width = dispW;
+    canvas.height = dispH;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
-    // Checker bg for transparent
-    const cs = Math.max(1, scale);
+    // Center the pixel grid inside the outline
+    const ox = Math.floor((dispW - drawW) / 2);
+    const oy = Math.floor((dispH - drawH) / 2);
+
+    // Full-area checker behind
+    const chk = 8;
+    for (let y = 0; y < dispH; y += chk) {
+        for (let x = 0; x < dispW; x += chk) {
+            ctx.fillStyle = ((x / chk + y / chk) & 1) ? '#2a2a35' : '#1a1a22';
+            ctx.fillRect(x, y, chk, chk);
+        }
+    }
+
+    const pixels = compositeSpritePixels();
     for (let y = 0; y < spriteEd.h; y++) {
         for (let x = 0; x < spriteEd.w; x++) {
             const i = (y * spriteEd.w + x) * 4;
-            const a = spriteEd.pixels[i + 3];
-            if (a < 8) {
-                const chk = ((x + y) & 1) ? '#2a2a35' : '#1a1a22';
-                ctx.fillStyle = chk;
-                ctx.fillRect(x * scale, y * scale, scale, scale);
-            } else {
-                ctx.fillStyle = 'rgba(' + spriteEd.pixels[i] + ',' + spriteEd.pixels[i+1] + ',' + spriteEd.pixels[i+2] + ',' + (a/255) + ')';
-                ctx.fillRect(x * scale, y * scale, scale, scale);
-            }
+            const a = pixels[i + 3];
+            if (a < 8) continue;
+            ctx.fillStyle = 'rgba(' + pixels[i] + ',' + pixels[i + 1] + ',' + pixels[i + 2] + ',' + (a / 255) + ')';
+            ctx.fillRect(ox + x * scale, oy + y * scale, scale, scale);
         }
     }
-    if (spriteEd.showGrid && scale >= 4) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+
+    // Pixel grid lines over the art area
+    if (spriteEd.showGrid && scale >= 3) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
         ctx.lineWidth = 1;
         for (let x = 0; x <= spriteEd.w; x++) {
             ctx.beginPath();
-            ctx.moveTo(x * scale + 0.5, 0);
-            ctx.lineTo(x * scale + 0.5, spriteEd.h * scale);
+            ctx.moveTo(ox + x * scale + 0.5, oy);
+            ctx.lineTo(ox + x * scale + 0.5, oy + drawH);
             ctx.stroke();
         }
         for (let y = 0; y <= spriteEd.h; y++) {
             ctx.beginPath();
-            ctx.moveTo(0, y * scale + 0.5);
-            ctx.lineTo(spriteEd.w * scale, y * scale + 0.5);
+            ctx.moveTo(ox, oy + y * scale + 0.5);
+            ctx.lineTo(ox + drawW, oy + y * scale + 0.5);
             ctx.stroke();
         }
     }
 
-    // Preview thumbnail
-    const prev = document.getElementById('spr-preview-canvas');
-    if (prev) {
-        prev.width = spriteEd.w;
-        prev.height = spriteEd.h;
-        const pctx = prev.getContext('2d');
-        pctx.imageSmoothingEnabled = false;
-        const img = pctx.createImageData(spriteEd.w, spriteEd.h);
-        img.data.set(spriteEd.pixels);
-        pctx.putImageData(img, 0, 0);
-    }
-    const sizeEl = document.getElementById('spr-preview-size');
-    if (sizeEl) sizeEl.textContent = spriteEd.w + '×' + spriteEd.h;
+    // Store draw offset for input mapping
+    spriteEd._draw = { ox, oy, scale, dispW, dispH };
+
     const meta = document.getElementById('spr-footer-meta');
-    if (meta) meta.textContent = 'PNG · ' + spriteEd.w + '×' + spriteEd.h + ' · Transparent background';
+    if (meta) meta.textContent = 'PNG · ' + spriteEd.w + '×' + spriteEd.h + ' · ' + spriteEd.layers.length + ' layer' + (spriteEd.layers.length === 1 ? '' : 's');
 }
 
 function renderSpritePalette() {
@@ -3011,22 +3118,28 @@ function setSpriteSize(size) {
         });
         return;
     }
-    if (spriteEd.dirty && !confirm('Resize clears the canvas. Continue?')) return;
+    if (spriteEd.dirty && !confirm('Resize clears all layers. Continue?')) return;
     spriteEd.w = size;
     spriteEd.h = size;
-    spriteEd.pixels = new Uint8ClampedArray(size * size * 4);
+    spriteEd.layers = [createSpriteLayer('Layer 1')];
+    spriteEd.activeLayer = 0;
+    spriteEd.history = [];
+    spriteEd.historyIdx = -1;
     spriteEd.dirty = false;
     document.querySelectorAll('.spr-size').forEach(b => {
         b.classList.toggle('active', +b.dataset.size === size);
     });
+    pushSpriteHistory();
+    renderSpriteLayersUI();
     redrawSpriteCanvas();
 }
 
 function clearSpriteCanvas() {
-    if (!confirm('Clear all pixels?')) return;
+    if (!confirm('Clear active layer?')) return;
     ensureSpritePixels();
     pushSpriteHistory();
-    spriteEd.pixels.fill(0);
+    const p = activeLayerPixels();
+    if (p) p.fill(0);
     spriteEd.dirty = true;
     pushSpriteHistory();
     redrawSpriteCanvas();
@@ -3035,8 +3148,12 @@ function clearSpriteCanvas() {
 function canvasToGridPos(clientX, clientY) {
     const canvas = document.getElementById('sprite-pixel-canvas');
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor(((clientX - rect.left) / rect.width) * spriteEd.w);
-    const y = Math.floor(((clientY - rect.top) / rect.height) * spriteEd.h);
+    const d = spriteEd._draw || { ox: 0, oy: 0, scale: 1, dispW: rect.width, dispH: rect.height };
+    // Map client → canvas buffer coords
+    const cx = ((clientX - rect.left) / rect.width) * d.dispW;
+    const cy = ((clientY - rect.top) / rect.height) * d.dispH;
+    const x = Math.floor((cx - d.ox) / d.scale);
+    const y = Math.floor((cy - d.oy) / d.scale);
     return {
         x: Math.max(0, Math.min(spriteEd.w - 1, x)),
         y: Math.max(0, Math.min(spriteEd.h - 1, y)),
@@ -3138,8 +3255,8 @@ function openSpriteEditor(existingName) {
     spriteEd.history = [];
     spriteEd.historyIdx = -1;
     spriteEd.showGrid = true;
-    const gridToggle = document.getElementById('spr-grid-toggle');
-    if (gridToggle) gridToggle.checked = true;
+    spriteEd.layers = [];
+    spriteEd.activeLayer = 0;
 
     if (existingName) {
         spriteEd.name = existingName;
@@ -3150,12 +3267,14 @@ function openSpriteEditor(existingName) {
         spriteEd.name = '';
         spriteEd.w = 16;
         spriteEd.h = 16;
-        spriteEd.pixels = new Uint8ClampedArray(16 * 16 * 4);
+        spriteEd.layers = [createSpriteLayer('Layer 1')];
+        spriteEd.activeLayer = 0;
         document.getElementById('sprite-editor-title').textContent = 'New Sprite';
         document.querySelectorAll('.spr-size').forEach(b => {
             b.classList.toggle('active', +b.dataset.size === 16);
         });
         pushSpriteHistory();
+        renderSpriteLayersUI();
         redrawSpriteCanvas();
     }
 
@@ -3163,14 +3282,27 @@ function openSpriteEditor(existingName) {
     renderSpritePalette();
     setupSpriteCanvasInput();
     switchView('sprite-editor-view');
-    setTimeout(redrawSpriteCanvas, 30);
+    setTimeout(() => {
+        renderSpriteLayersUI();
+        redrawSpriteCanvas();
+    }, 40);
+    if (!window._sprResizeBound) {
+        window._sprResizeBound = true;
+        window.addEventListener('resize', () => {
+            if (document.getElementById('sprite-editor-view')?.classList.contains('active')) {
+                redrawSpriteCanvas();
+            }
+        });
+    }
 }
 
 function loadSpriteFromDataUrl(dataUrl, name) {
     if (!dataUrl) {
         spriteEd.w = 16;
         spriteEd.h = 16;
-        spriteEd.pixels = new Uint8ClampedArray(16 * 16 * 4);
+        spriteEd.layers = [createSpriteLayer('Layer 1')];
+        spriteEd.activeLayer = 0;
+        renderSpriteLayersUI();
         redrawSpriteCanvas();
         return;
     }
@@ -3178,21 +3310,17 @@ function loadSpriteFromDataUrl(dataUrl, name) {
     img.onload = () => {
         let w = img.naturalWidth || 16;
         let h = img.naturalHeight || 16;
-        // Snap to supported sizes when close; else clamp max 32
         const snap = [8, 16, 24, 32];
         if (w === h && snap.includes(w)) {
             spriteEd.w = spriteEd.h = w;
         } else {
             const side = Math.min(32, Math.max(8, Math.round(Math.max(w, h))));
-            // nearest snap
             spriteEd.w = spriteEd.h = snap.reduce((a, b) =>
                 Math.abs(b - side) < Math.abs(a - side) ? b : a, 16);
         }
         document.querySelectorAll('.spr-size').forEach(b => {
             b.classList.toggle('active', +b.dataset.size === spriteEd.w);
         });
-        ensureSpritePixels();
-        spriteEd.pixels.fill(0);
         const tmp = document.createElement('canvas');
         tmp.width = spriteEd.w;
         tmp.height = spriteEd.h;
@@ -3200,18 +3328,23 @@ function loadSpriteFromDataUrl(dataUrl, name) {
         tctx.imageSmoothingEnabled = false;
         tctx.drawImage(img, 0, 0, spriteEd.w, spriteEd.h);
         const data = tctx.getImageData(0, 0, spriteEd.w, spriteEd.h);
-        spriteEd.pixels = new Uint8ClampedArray(data.data);
+        spriteEd.layers = [createSpriteLayer('Layer 1')];
+        spriteEd.layers[0].pixels = new Uint8ClampedArray(data.data);
+        spriteEd.activeLayer = 0;
         spriteEd.dirty = false;
         spriteEd.history = [];
         spriteEd.historyIdx = -1;
         pushSpriteHistory();
+        renderSpriteLayersUI();
         redrawSpriteCanvas();
     };
     img.onerror = () => {
         spriteEd.w = 16;
         spriteEd.h = 16;
-        spriteEd.pixels = new Uint8ClampedArray(16 * 16 * 4);
+        spriteEd.layers = [createSpriteLayer('Layer 1')];
+        spriteEd.activeLayer = 0;
         pushSpriteHistory();
+        renderSpriteLayersUI();
         redrawSpriteCanvas();
     };
     img.src = dataUrl;
@@ -3227,13 +3360,13 @@ function closeSpriteEditor() {
 function saveSpriteFromEditor() {
     if (!currentProjectName) return;
     ensureSpritePixels();
-    // Export true pixel size PNG
+    // Export flattened layers at true pixel size
     const out = document.createElement('canvas');
     out.width = spriteEd.w;
     out.height = spriteEd.h;
     const octx = out.getContext('2d');
     const img = octx.createImageData(spriteEd.w, spriteEd.h);
-    img.data.set(spriteEd.pixels);
+    img.data.set(compositeSpritePixels());
     octx.putImageData(img, 0, 0);
     const dataUrl = out.toDataURL('image/png');
 
