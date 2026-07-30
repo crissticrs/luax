@@ -8,9 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/material-ocean.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/hint/show-hint.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/lua/lua.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.min.js"></script>
@@ -37,19 +34,6 @@
             --safe-bottom: env(safe-area-inset-bottom, 0px);
             --safe-left: env(safe-area-inset-left, 0px);
             --safe-right: env(safe-area-inset-right, 0px);
-
-            /* —— Shared design tokens (identical across themes) —— */
-            --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
-            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            --r-sm: 10px;
-            --r-md: 14px;
-            --r-lg: 20px;
-            --r-pill: 999px;
-            --ease: cubic-bezier(.2,.8,.2,1);
-            --shadow-sm: 0 2px 8px rgba(0,0,0,0.22);
-            --shadow-md: 0 10px 28px rgba(0,0,0,0.32);
-            --shadow-lg: 0 20px 48px rgba(0,0,0,0.4);
-            --hairline: rgba(255,255,255,0.06);
         }
         [data-theme="blue"] {
             --bg-color: #070d14; --panel-color: #0d1520; --panel-2: #121c2a;
@@ -93,29 +77,10 @@
             width: 100vw; width: 100dvw;
             height: 100vh; height: 100dvh;
             background: var(--bg-color); color: var(--text-color);
-            font-family: var(--font-body);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden; overscroll-behavior: none; touch-action: none;
-            background-image:
-                radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent-color) 16%, transparent) 1px, transparent 0),
-                radial-gradient(80% 60% at 50% -10%, color-mix(in srgb, var(--accent-color) 7%, transparent), transparent 60%);
-            background-size: 22px 22px, 100% 100%;
-            background-attachment: fixed;
-            transition: background-color 0.25s var(--ease), color 0.25s var(--ease);
         }
         body:not(.CodeMirror) { -webkit-user-select: none; user-select: none; }
-        h1, h2, h3, .site-title, .lx-side-brand, .login-logo, .lx-section-title,
-        .spr-title, .tpl-card h3, #pause-overlay h2 { font-family: var(--font-display); }
-        button, input, select, textarea { font-family: inherit; }
-        /* Custom scrollbars */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb {
-            background: color-mix(in srgb, var(--accent-color) 30%, transparent);
-            border-radius: 999px;
-        }
-        :focus-visible {
-            outline: 2px solid var(--accent-color); outline-offset: 2px;
-        }
 
         .view { display: none; flex-direction: column; width: 100%; height: 100%;
                 padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
@@ -125,11 +90,11 @@
         .header {
             display: flex; justify-content: space-between; align-items: center;
             padding: 10px 12px; background: var(--panel-color);
-            border-bottom: 1px solid var(--hairline); gap: 8px; flex-shrink: 0;
-            flex-wrap: wrap; position: relative; z-index: 5;
+            border-bottom: 1px solid #2a2c35; gap: 8px; flex-shrink: 0;
+            flex-wrap: wrap;
         }
         .header h1 {
-            margin: 0; font-size: 1.05rem; font-weight: 600; font-family: var(--font-display);
+            margin: 0; font-size: 1.05rem; font-weight: 700;
             display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden;
         }
         .header h1 span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -147,28 +112,16 @@
             display: flex; align-items: center; gap: 10px; min-width: 0;
         }
         .site-title {
-            margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em;
-            font-family: var(--font-display);
-            background: linear-gradient(135deg, var(--text-color), var(--accent-color) 130%);
-            -webkit-background-clip: text; background-clip: text; color: transparent;
+            margin: 0; font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em;
+            color: #f0f0f0;
         }
-        .brand-mark {
-            width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            background: linear-gradient(145deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 55%, #000));
-            box-shadow: 0 3px 10px color-mix(in srgb, var(--accent-color) 45%, transparent),
-                        inset 0 1px 0 rgba(255,255,255,0.25);
-            position: relative;
-        }
-        .brand-mark svg { width: 16px; height: 16px; color: #fff; display: block; }
         .profile-circle {
             width: 36px; height: 36px; border-radius: 50%; padding: 0;
-            border: 2px solid var(--glass-border); background: var(--panel-2, #1a1c23);
+            border: 2px solid var(--glass-border); background: #1a1c23;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; flex-shrink: 0; overflow: hidden;
-            transition: transform 0.15s var(--ease), border-color 0.15s var(--ease);
         }
-        .profile-circle:active { opacity: 0.85; transform: scale(0.92); }
+        .profile-circle:active { opacity: 0.85; transform: scale(0.96); }
         .profile-avatar, .profile-avatar.placeholder {
             width: 100%; height: 100%; border-radius: 50%;
             object-fit: cover; background: #2a2c35;
@@ -180,16 +133,11 @@
         .account-menu {
             position: absolute; z-index: 2000;
             top: calc(var(--safe-top) + 56px); left: 12px;
-            min-width: 230px; max-width: calc(100vw - 24px);
+            min-width: 220px; max-width: calc(100vw - 24px);
             background: var(--panel-color); border: 1px solid var(--glass-border);
-            border-radius: var(--r-md); padding: 12px;
-            box-shadow: var(--shadow-lg);
+            border-radius: 14px; padding: 12px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.45);
             display: flex; flex-direction: column; gap: 8px;
-            animation: lx-pop-in 0.16s var(--ease);
-        }
-        @keyframes lx-pop-in {
-            from { opacity: 0; transform: translateY(-6px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .account-menu-user {
             font-size: 0.85rem; color: var(--muted, #aaa); padding: 4px 4px 6px;
@@ -214,7 +162,7 @@
         #projects-view { padding-bottom: 0; }
         .lx-shell {
             flex: 1; display: flex; min-height: 0; width: 100%;
-            padding-bottom: calc(66px + var(--safe-bottom));
+            padding-bottom: calc(56px + var(--safe-bottom));
         }
         .lx-sidebar { display: none; }
         .lx-main {
@@ -258,16 +206,13 @@
         .btn-danger-outline:active { background: rgba(255,82,82,0.12); }
 
         .list-item {
-            background: linear-gradient(180deg, color-mix(in srgb, var(--panel-2, var(--panel-color)) 100%, transparent), var(--panel-2, var(--panel-color)));
+            background: var(--panel-2, var(--panel-color));
             border: 1px solid var(--card-border, var(--glass-border));
-            border-top-color: color-mix(in srgb, #fff 6%, var(--card-border, var(--glass-border)));
-            border-radius: var(--r-md);
-            padding: 13px 14px;
-            box-shadow: var(--shadow-sm);
-            transition: transform 0.14s var(--ease), box-shadow 0.14s var(--ease), border-color 0.14s var(--ease);
+            border-radius: 14px;
+            padding: 12px 14px;
         }
         .list-item .item-badge {
-            font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
             color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 15%, transparent);
             padding: 2px 7px; border-radius: 6px; margin-left: 6px;
         }
@@ -277,35 +222,20 @@
         }
         .lx-empty img { width: 72px; height: 72px; margin-bottom: 16px; opacity: 0.95;
             filter: drop-shadow(0 0 24px var(--empty-glow)); }
-        .lx-empty .item-icon-svg {
-            filter: drop-shadow(0 0 28px var(--empty-glow));
-            animation: lx-float 3.5s ease-in-out infinite;
-        }
-        @keyframes lx-float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-6px); }
-        }
-        .lx-empty h3 { margin: 0 0 8px; color: var(--text-color); font-size: 1.15rem; font-family: var(--font-display); font-weight: 600; }
-        .lx-empty p { margin: 0 0 18px; font-size: 0.9rem; max-width: 260px; line-height: 1.45; }
+        .lx-empty h3 { margin: 0 0 8px; color: var(--text-color); font-size: 1.1rem; }
+        .lx-empty p { margin: 0 0 18px; font-size: 0.9rem; max-width: 260px; line-height: 1.4; }
 
         .lx-bottom-nav {
-            position: absolute; left: 10px; right: 10px; bottom: calc(10px + var(--safe-bottom));
-            display: flex; background: color-mix(in srgb, var(--nav-bg) 88%, transparent);
-            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border); border-radius: var(--r-lg);
-            padding: 6px; z-index: 50; box-shadow: var(--shadow-md);
+            position: absolute; left: 0; right: 0; bottom: 0;
+            display: flex; background: var(--nav-bg); border-top: 1px solid var(--glass-border);
+            padding: 6px 8px calc(6px + var(--safe-bottom)); z-index: 50;
         }
         .lx-tab {
             flex: 1; background: none; border: none; color: var(--muted);
-            font-size: 0.68rem; font-weight: 600; padding: 8px 4px;
-            border-radius: var(--r-md);
+            font-size: 0.7rem; font-weight: 600; padding: 6px 4px;
             display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
-            transition: color 0.15s var(--ease), background 0.15s var(--ease);
         }
-        .lx-tab.active {
-            color: var(--accent-color);
-            background: color-mix(in srgb, var(--accent-color) 14%, transparent);
-        }
+        .lx-tab.active { color: var(--accent-color); }
         .lx-ico {
             display: inline-flex; width: 18px; height: 18px; flex-shrink: 0;
             color: inherit; vertical-align: middle;
@@ -327,19 +257,16 @@
             display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
         }
         .theme-card {
-            border: 1.5px solid var(--glass-border); border-radius: var(--r-md); padding: 12px;
+            border: 2px solid var(--glass-border); border-radius: 12px; padding: 12px;
             background: var(--panel-2, var(--panel-color)); cursor: pointer; text-align: left;
             color: var(--text-color); font-size: 0.85rem; font-weight: 600;
-            transition: transform 0.14s var(--ease), border-color 0.14s var(--ease);
         }
-        .theme-card:active { transform: scale(0.97); }
-        .theme-card.active { border-color: var(--accent-color); box-shadow: 0 0 0 1px var(--accent-color), var(--shadow-sm); }
+        .theme-card.active { border-color: var(--accent-color); box-shadow: 0 0 0 1px var(--accent-color); }
         .theme-swatch {
-            display: flex; gap: 4px; margin-bottom: 10px;
+            display: flex; gap: 4px; margin-bottom: 8px;
         }
         .theme-swatch i {
-            width: 18px; height: 18px; border-radius: 50%; display: block;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+            width: 16px; height: 16px; border-radius: 50%; display: block;
         }
         .desktop-only { display: none !important; }
         .mobile-only { display: flex !important; }
@@ -360,15 +287,12 @@
                 padding: 16px 12px;
             }
             .lx-side-brand {
-                font-size: 1.35rem; font-weight: 700; padding: 8px 10px 18px;
-                background: linear-gradient(135deg, var(--text-color), var(--accent-color) 130%);
-                -webkit-background-clip: text; background-clip: text; color: transparent;
+                font-size: 1.3rem; font-weight: 800; padding: 8px 10px 18px; color: var(--text-color);
             }
             .lx-side-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
             .lx-side-item {
                 background: none; border: none; color: var(--muted); text-align: left;
-                padding: 10px 12px; border-radius: var(--r-sm); font-size: 0.9rem; font-weight: 600; cursor: pointer;
-                transition: background 0.14s var(--ease), color 0.14s var(--ease);
+                padding: 10px 12px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
             }
             .lx-side-item.active, .lx-side-item:hover {
                 background: color-mix(in srgb, var(--accent-color) 18%, transparent);
@@ -392,12 +316,11 @@
             padding: 6px 14px 8px; flex-shrink: 0;
         }
         .status-credits, .status-cloud {
-            font-size: 0.75rem; font-weight: 600;
-            padding: 5px 11px; border-radius: var(--r-pill);
+            font-size: 0.78rem; font-weight: 600;
+            padding: 5px 10px; border-radius: 999px;
             border: 1px solid var(--glass-border);
             background: var(--panel-2, var(--panel-color));
             color: var(--muted);
-            letter-spacing: 0.01em;
         }
         .status-credits {
             color: var(--accent-color);
@@ -440,32 +363,22 @@
         .btn-google:active { background: #f0f0f0; }
 
         .btn {
-            background: var(--panel-2, #2a2c35); color: var(--text-color); border: 1px solid var(--hairline);
-            border-radius: var(--r-sm);
-            padding: 8px 13px; font-weight: 600; font-size: 0.9rem;
+            background: #2a2c35; color: #fff; border: none; border-radius: 10px;
+            padding: 8px 12px; font-weight: 600; font-size: 0.9rem;
             min-height: 40px; display: inline-flex; align-items: center; justify-content: center;
-            cursor: pointer; gap: 5px; white-space: nowrap;
-            transition: transform 0.1s var(--ease), filter 0.1s var(--ease), box-shadow 0.15s var(--ease);
+            cursor: pointer; gap: 4px; white-space: nowrap;
         }
-        .btn:active { transform: scale(0.96); filter: brightness(0.92); }
-        .btn-primary {
-            background: linear-gradient(155deg, var(--accent-hover), var(--accent-color));
-            border-color: transparent; color: #fff;
-            box-shadow: 0 3px 14px color-mix(in srgb, var(--accent-color) 45%, transparent);
-        }
-        .btn-primary:active { filter: brightness(0.9); }
-        .btn-play {
-            background: linear-gradient(155deg, #33ff9c, #00c853); color: #04240f;
-            border-color: transparent;
-            box-shadow: 0 3px 14px rgba(0,230,118,0.35);
-        }
-        .btn-back { background: var(--panel-2, #2a2c35); color: var(--accent-color); min-width: 44px; }
+        .btn:active { opacity: 0.8; }
+        .btn-primary { background: var(--accent-color); box-shadow: 0 3px 12px color-mix(in srgb, var(--accent-color) 40%, transparent); }
+        .btn-primary:active { background: var(--accent-hover); }
+        .btn-play { background: #00e676; color: #000; box-shadow: 0 3px 10px rgba(0,230,118,0.3); }
+        .btn-back { background: #2a2c35; color: var(--accent-color); min-width: 44px; }
         .btn-delete {
-            background: transparent; border-color: transparent; color: #ff5252; padding: 8px; min-height: auto;
+            background: transparent; color: #ff5252; padding: 8px; min-height: auto;
             width: 36px; height: 36px;
         }
         .btn-delete svg { width: 18px; height: 18px; display: block; }
-        .btn-sm { padding: 6px 11px; min-height: 34px; font-size: 0.85rem; }
+        .btn-sm { padding: 6px 10px; min-height: 34px; font-size: 0.85rem; }
         .btn.dirty { box-shadow: 0 0 0 2px #ffea00; }
 
         .list-container {
@@ -474,11 +387,12 @@
             -webkit-overflow-scrolling: touch;
         }
         .list-item {
-            font-size: 1rem; font-weight: 500;
+            background: var(--panel-color); padding: 12px 16px; border-radius: 12px;
+            font-size: 1.05rem; font-weight: 500;
             display: flex; justify-content: space-between; align-items: center;
-            cursor: pointer;
+            border: 1px solid var(--glass-border); cursor: pointer;
         }
-        .list-item:active { transform: scale(0.985); box-shadow: var(--shadow-sm); border-color: var(--accent-color); }
+        .list-item:active { background: #2a2c35; }
         .item-title { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
         .item-actions { display: flex; align-items: center; gap: 4px; }
 
@@ -490,42 +404,35 @@
         }
         .modal-content {
             background: var(--panel-color); border: 1px solid var(--glass-border);
-            border-radius: var(--r-lg); width: 100%; max-width: 360px;
-            padding: 22px; box-shadow: var(--shadow-lg);
-            animation: lx-pop-in 0.18s var(--ease);
+            border-radius: 16px; width: 100%; max-width: 360px;
+            padding: 22px; box-shadow: 0 16px 40px rgba(0,0,0,0.5);
         }
-        .modal-content h2 { margin: 0 0 14px; font-size: 1.2rem; font-family: var(--font-display); font-weight: 600; }
+        .modal-content h2 { margin: 0 0 12px; font-size: 1.15rem; }
         .modal-content input, .modal-content select {
-            width: 100%; padding: 12px 14px; border-radius: var(--r-sm); border: 1px solid var(--hairline);
-            background: var(--panel-2, #0f1115); color: var(--text-color); font-size: 1rem; margin-bottom: 14px; outline: none;
-            transition: border-color 0.15s var(--ease);
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333;
+            background: #0f1115; color: #fff; font-size: 1rem; margin-bottom: 14px; outline: none;
         }
         .modal-content input:focus, .modal-content select:focus { border-color: var(--accent-color); }
         .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
         .template-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
         .template-btn {
-            background: var(--panel-2, #0f1115); border: 1px solid var(--hairline); border-radius: var(--r-sm);
-            padding: 12px 14px; color: var(--text-color); text-align: left; cursor: pointer; font-size: 0.95rem;
-            transition: border-color 0.14s var(--ease), background 0.14s var(--ease);
+            background: #0f1115; border: 1px solid #333; border-radius: 10px;
+            padding: 12px 14px; color: #fff; text-align: left; cursor: pointer; font-size: 0.95rem;
         }
-        .template-btn:active, .template-btn.selected { border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 12%, var(--panel-2, #1a1c23)); }
+        .template-btn:active, .template-btn.selected { border-color: var(--accent-color); background: #1a1c23; }
 
         /* Editor tabs */
         .tabs-bar {
-            display: flex; overflow-x: auto; background: var(--panel-color);
-            border-bottom: 1px solid var(--hairline); flex-shrink: 0;
+            display: flex; overflow-x: auto; background: #14161c;
+            border-bottom: 1px solid #2a2c35; flex-shrink: 0;
             -webkit-overflow-scrolling: touch;
         }
         .tab {
-            padding: 10px 14px; font-size: 0.82rem; color: var(--muted); font-family: Menlo, Monaco, monospace;
-            border-right: 1px solid var(--hairline); cursor: pointer; white-space: nowrap;
+            padding: 10px 14px; font-size: 0.85rem; color: #999;
+            border-right: 1px solid #2a2c35; cursor: pointer; white-space: nowrap;
             display: flex; align-items: center; gap: 6px;
-            border-bottom: 2px solid transparent;
         }
-        .tab.active {
-            background: var(--bg-color); color: var(--text-color); font-weight: 600;
-            border-bottom: 2px solid var(--accent-color);
-        }
+        .tab.active { background: var(--bg-color); color: #fff; font-weight: 600; }
         .tab .dirty-dot { color: #ffea00; font-size: 1.1rem; line-height: 1; }
 
         .editor-container { flex: 1; overflow: hidden; position: relative; }
@@ -845,49 +752,26 @@
             width: 100%; max-width: 380px;
             background: var(--panel-color);
             border: 1px solid var(--glass-border);
-            border-radius: var(--r-lg);
-            padding: 36px 28px 28px;
+            border-radius: 20px;
+            padding: 32px 28px 28px;
             text-align: center;
-            box-shadow: var(--shadow-lg);
-            position: relative;
+            box-shadow: 0 20px 48px rgba(0,0,0,0.35);
         }
-        /* Cartridge-insert corner brackets — this app's signature framing device,
-           echoed on the sprite canvas and the play-mode viewport */
-        .login-card::before, .login-card::after,
-        .login-card .lc-br-tr, .login-card .lc-br-bl {
-            content: ''; position: absolute; width: 22px; height: 22px;
-            border-color: var(--accent-color); opacity: 0.85; pointer-events: none;
-        }
-        .login-card::before { top: -1px; left: -1px; border-top: 2.5px solid; border-left: 2.5px solid; border-top-left-radius: 10px; }
-        .login-card::after { bottom: -1px; right: -1px; border-bottom: 2.5px solid; border-right: 2.5px solid; border-bottom-right-radius: 10px; }
-        .login-card .lc-br-tr { top: -1px; right: -1px; border-top: 2.5px solid; border-right: 2.5px solid; border-top-right-radius: 10px; }
-        .login-card .lc-br-bl { bottom: -1px; left: -1px; border-bottom: 2.5px solid; border-left: 2.5px solid; border-bottom-left-radius: 10px; }
-        .login-mark {
-            width: 56px; height: 56px; margin: 0 auto 18px; border-radius: 16px;
-            display: flex; align-items: center; justify-content: center;
-            background: linear-gradient(145deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 50%, #000));
-            box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-color) 45%, transparent),
-                        inset 0 1px 0 rgba(255,255,255,0.25);
-        }
-        .login-mark svg { width: 28px; height: 28px; color: #fff; }
         .login-card .login-logo {
-            font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em;
-            font-family: var(--font-display);
+            font-size: 2rem; font-weight: 800; letter-spacing: -0.02em;
             color: var(--text-color); margin: 0 0 8px;
         }
         .login-card .login-sub {
-            margin: 0 0 26px; color: var(--muted); font-size: 0.95rem; line-height: 1.45;
+            margin: 0 0 24px; color: var(--muted); font-size: 0.95rem; line-height: 1.4;
         }
         .login-card .btn-google-login {
             width: 100%; min-height: 48px; font-size: 1rem;
             background: #fff; color: #1f1f1f; border: 1px solid #dadce0;
-            border-radius: var(--r-sm); font-weight: 600; gap: 10px;
-            transition: transform 0.1s var(--ease), box-shadow 0.15s var(--ease);
-            box-shadow: var(--shadow-sm);
+            border-radius: 12px; font-weight: 600; gap: 10px;
         }
-        .login-card .btn-google-login:active { background: #f1f3f4; transform: scale(0.98); }
+        .login-card .btn-google-login:active { background: #f1f3f4; }
         .login-card .login-hint {
-            margin: 20px 0 0; font-size: 0.78rem; color: var(--muted); line-height: 1.35;
+            margin: 18px 0 0; font-size: 0.78rem; color: var(--muted); line-height: 1.35;
         }
         .login-card .login-error {
             margin: 12px 0 0; font-size: 0.85rem; color: #ff5252; display: none;
@@ -905,7 +789,7 @@
             display: flex; align-items: center; justify-content: space-between;
             padding: 10px 12px; gap: 10px; flex-shrink: 0;
             background: var(--panel-color);
-            border-bottom: 1px solid var(--hairline);
+            border-bottom: 1px solid var(--glass-border);
         }
         .spr-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
         .spr-back {
@@ -950,9 +834,7 @@
             background: transparent; color: var(--muted);
             font-size: 1rem; cursor: pointer;
             display: inline-flex; align-items: center; justify-content: center;
-            transition: transform 0.1s var(--ease), border-color 0.14s var(--ease);
         }
-        .spr-tool:active, .spr-size:active { transform: scale(0.92); }
         .spr-tool.active, .spr-size.active {
             border-color: var(--accent-color);
             background: color-mix(in srgb, var(--accent-color) 18%, transparent);
@@ -984,17 +866,20 @@
             background-color: #1a1a22;
         }
         .spr-palette-inline {
-            flex: 1; min-width: 0;
+            flex: 1; min-width: 0; min-height: 44px;
         }
         .spr-paint-grid {
             display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 6px;
+            grid-template-columns: repeat(10, minmax(18px, 1fr));
+            gap: 5px;
+            width: 100%;
         }
         .spr-swatch {
-            width: 100%; aspect-ratio: 1; border-radius: 8px;
-            border: 1.5px solid transparent;
+            width: 100%; min-width: 18px; min-height: 18px;
+            aspect-ratio: 1; border-radius: 8px;
+            border: 1.5px solid rgba(255,255,255,0.12);
             cursor: pointer; padding: 0;
+            -webkit-appearance: none; appearance: none;
         }
         .spr-swatch.active {
             border-color: var(--accent-color);
@@ -1023,13 +908,15 @@
                         inset 0 0 0 1px color-mix(in srgb, var(--accent-color) 12%, transparent);
             background: #121218;
             position: relative; touch-action: none;
+            -webkit-user-select: none; user-select: none;
+            cursor: crosshair;
         }
-        .spr-canvas-wrap::before, .spr-canvas-wrap::after {
-            content: ''; position: absolute; width: 18px; height: 18px; z-index: 2;
-            border-color: var(--accent-color); opacity: 0.9; pointer-events: none;
+        #sprite-editor-view .spr-body {
+            overscroll-behavior: contain;
         }
-        .spr-canvas-wrap::before { top: 6px; left: 6px; border-top: 2px solid; border-left: 2px solid; border-top-left-radius: 6px; }
-        .spr-canvas-wrap::after { bottom: 6px; right: 6px; border-bottom: 2px solid; border-right: 2px solid; border-bottom-right-radius: 6px; }
+        #sprite-editor-view.spr-drawing .spr-body {
+            overflow: hidden;
+        }
         #sprite-pixel-canvas {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
@@ -1053,16 +940,15 @@
         }
         .spr-layers-list {
             display: flex; flex-direction: column; gap: 6px;
-            flex: 1; overflow-y: auto; overflow-x: visible; max-height: 240px;
+            flex: 1; overflow-y: auto; max-height: 240px;
         }
         .spr-layer-item {
-            display: flex; align-items: center; gap: 4px;
-            padding: 8px 6px; border-radius: 12px;
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px; border-radius: 12px;
             border: 1.5px solid var(--glass-border);
             background: transparent; color: var(--text-color);
             font-size: 0.72rem; font-weight: 700; cursor: pointer;
             text-align: left; width: 100%;
-            position: relative;
         }
         .spr-layer-item.active {
             border-color: var(--accent-color);
@@ -1078,36 +964,6 @@
             flex: 1; min-width: 0; overflow: hidden;
             text-overflow: ellipsis; white-space: nowrap;
         }
-        .spr-layer-menu-wrap {
-            position: relative; flex-shrink: 0;
-        }
-        .spr-layer-more {
-            border: none; background: none; color: inherit;
-            cursor: pointer; padding: 0 2px; margin: 0;
-            font-size: 1rem; line-height: 1; font-weight: 800;
-            letter-spacing: -1px; opacity: 0.7;
-            min-width: 18px; min-height: 22px;
-            display: inline-flex; align-items: center; justify-content: center;
-        }
-        .spr-layer-more:active, .spr-layer-more.open { opacity: 1; color: var(--accent-color); }
-        .spr-layer-menu {
-            display: none; position: fixed;
-            z-index: 4600; min-width: 108px;
-            background: var(--panel-color);
-            border: 1px solid var(--glass-border);
-            border-radius: 10px; padding: 4px;
-            box-shadow: 0 10px 24px rgba(0,0,0,0.45);
-        }
-        .spr-layer-menu.open { display: block; }
-        .spr-layer-menu-item {
-            display: block; width: 100%; border: none;
-            background: transparent; color: var(--text-color);
-            text-align: left; padding: 8px 10px; border-radius: 8px;
-            font-size: 0.75rem; font-weight: 700; cursor: pointer;
-        }
-        .spr-layer-menu-item:active { background: color-mix(in srgb, var(--accent-color) 18%, transparent); }
-        .spr-layer-menu-item.danger { color: #ff5252; }
-        .spr-layer-menu-item.danger:active { background: rgba(255,82,82,0.12); }
         .spr-add-layer {
             border: 1.5px dashed color-mix(in srgb, var(--accent-color) 45%, transparent);
             background: color-mix(in srgb, var(--accent-color) 10%, transparent);
@@ -1134,6 +990,148 @@
             text-align: center; font-size: 0.68rem; color: var(--muted);
             padding: 4px 0 2px;
         }
+
+        /* —— Scene / 2D level editor (Unity-style placement) —— */
+        #scene-editor-view {
+            background: var(--bg-color);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+        #scene-editor-view.active { display: flex; }
+        .sc-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 12px; gap: 10px; flex-shrink: 0;
+            background: var(--panel-color);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .sc-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .sc-back {
+            border: none; border-radius: 999px; padding: 8px 14px;
+            background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+            color: var(--accent-color); font-weight: 700; font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .sc-title {
+            font-weight: 700; font-size: 0.95rem; color: var(--text-color);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .sc-save {
+            border: none; border-radius: 999px; padding: 10px 18px;
+            background: var(--accent-color); color: #fff; font-weight: 800;
+            font-size: 0.85rem; cursor: pointer;
+            box-shadow: 0 0 18px color-mix(in srgb, var(--accent-color) 45%, transparent);
+        }
+        .sc-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        .sc-toolbar {
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+            padding: 8px 12px; flex-shrink: 0;
+            background: var(--panel-color);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .sc-toolbar label {
+            font-size: 0.72rem; font-weight: 700; color: var(--muted);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .sc-toolbar input[type="number"] {
+            background: var(--panel-2, #1a1c23); color: var(--text-color);
+            border: 1px solid var(--glass-border); border-radius: 8px;
+            padding: 6px 8px; font-size: 0.8rem; font-weight: 600;
+            outline: none; width: 64px;
+        }
+        .sc-tool {
+            width: 36px; height: 36px; border-radius: 10px;
+            border: 1.5px solid var(--glass-border);
+            background: transparent; color: var(--muted);
+            font-size: 0.9rem; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .sc-tool.active {
+            border-color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+            color: var(--accent-color);
+        }
+        .sc-main { flex: 1; min-height: 0; display: flex; }
+        .sc-palette-panel {
+            width: 118px; flex-shrink: 0;
+            border-right: 1px solid var(--glass-border);
+            background: var(--panel-color);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .sc-palette-label {
+            font-size: 0.7rem; font-weight: 700; color: var(--muted);
+            padding: 8px 10px 4px;
+        }
+        .sc-palette-scroll {
+            flex: 1; overflow-y: auto; padding: 6px 8px 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .sc-sprite-item {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            width: 100%; margin-bottom: 8px; padding: 6px;
+            border: 1.5px solid var(--glass-border); border-radius: 10px;
+            background: transparent; color: var(--text-color); cursor: pointer;
+        }
+        .sc-sprite-item.active {
+            border-color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+        }
+        .sc-sprite-item img {
+            width: 40px; height: 40px; object-fit: contain;
+            image-rendering: pixelated; background: #111; border-radius: 4px;
+        }
+        .sc-sprite-item span {
+            font-size: 0.62rem; font-weight: 600; color: var(--muted);
+            max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .sc-canvas-wrap {
+            flex: 1; min-width: 0; min-height: 0;
+            overflow: auto; position: relative;
+            background: #0a0a10;
+            -webkit-overflow-scrolling: touch;
+            touch-action: none;
+        }
+        #scene-editor-canvas {
+            display: block;
+            image-rendering: pixelated;
+            cursor: default;
+            background: #121218;
+        }
+        .sc-props-panel {
+            width: 140px; flex-shrink: 0;
+            border-left: 1px solid var(--glass-border);
+            background: var(--panel-color);
+            padding: 10px 10px 16px;
+            overflow-y: auto;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .sc-props-panel h4 {
+            margin: 0 0 4px; font-size: 0.72rem; color: var(--muted); font-weight: 700;
+        }
+        .sc-props-panel label {
+            display: flex; flex-direction: column; gap: 3px;
+            font-size: 0.68rem; font-weight: 700; color: var(--muted);
+        }
+        .sc-props-panel input {
+            background: var(--panel-2, #1a1c23); color: var(--text-color);
+            border: 1px solid var(--glass-border); border-radius: 8px;
+            padding: 7px 8px; font-size: 0.8rem; font-weight: 600; outline: none;
+            width: 100%;
+        }
+        .sc-props-empty {
+            font-size: 0.75rem; color: var(--muted); line-height: 1.35;
+        }
+        .sc-footer-meta {
+            flex-shrink: 0; text-align: center;
+            font-size: 0.7rem; color: var(--muted);
+            padding: 6px 10px;
+            border-top: 1px solid var(--glass-border);
+            background: var(--panel-color);
+        }
+        @media (min-width: 800px) {
+            .sc-palette-panel { width: 150px; }
+            .sc-props-panel { width: 170px; }
+        }
+
         /* Custom HSV spectrum — works with finger drag on mobile */
         #spr-spectrum-overlay {
             display: none; position: fixed; inset: 0; z-index: 4500;
@@ -1274,11 +1272,13 @@
         .spr-spectrum-actions .btn { flex: 1; }
         @media (max-width: 480px) {
             .spr-paint-grid {
-                grid-template-columns: repeat(14, 20px);
-                grid-template-rows: repeat(2, 20px);
-                gap: 4px; padding: 8px;
+                grid-template-columns: repeat(7, minmax(22px, 1fr));
+                gap: 5px;
             }
-            .spr-swatch { width: 20px; height: 20px; border-radius: 6px; }
+            .spr-swatch {
+                width: 100%; min-width: 22px; min-height: 22px;
+                height: auto; aspect-ratio: 1; border-radius: 6px;
+            }
             .spr-paint-active { width: 40px; height: 40px; }
         }
     </style>
@@ -1300,11 +1300,8 @@
     <!-- Login gate (required account) -->
     <div id="login-view" class="view active">
         <div class="login-card">
-            <span class="lc-br-tr" aria-hidden="true"></span>
-            <span class="lc-br-bl" aria-hidden="true"></span>
-            <div class="login-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7L8 5Z" fill="currentColor"/></svg></div>
             <h1 class="login-logo">LuaX</h1>
-            <p class="login-sub">Sign in with Google to open your projects and keep them synced.</p>
+            <p class="login-sub">Sign in with Google to open the editor and sync your projects.</p>
             <button type="button" class="btn btn-google-login" id="login-google-btn" onclick="loginWithGoogle()">
                 <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
                 Sign in with Google
@@ -1342,7 +1339,6 @@
                                 <img class="profile-avatar" id="profile-avatar" alt="" src="" style="display:none">
                                 <span class="profile-avatar placeholder" id="profile-avatar-ph"><i class="lx-ico" data-ico="user"></i></span>
                             </button>
-                            <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7L8 5Z" fill="currentColor"/></svg></span>
                             <h1 class="site-title">LuaX</h1>
                         </div>
                     </div>
@@ -1423,6 +1419,7 @@
             <button class="btn btn-sm" onclick="importLuaFile()">Import .lua</button>
             <button class="btn btn-sm" onclick="openSpriteEditor()">+ Sprite</button>
             <button class="btn btn-sm" onclick="importSpriteFile()">Import PNG</button>
+            <button class="btn btn-sm" onclick="openSceneEditor()">+ Scene</button>
             <button class="btn btn-sm" onclick="exportProject()">Export</button>
             <button class="btn btn-sm" onclick="sharePlayLink()">Share play</button>
             <button class="btn btn-sm" id="btn-gamepad-toggle" onclick="toggleProjectGamepad()" title="On-screen joystick + buttons">Gamepad: ON</button>
@@ -1545,6 +1542,53 @@
                 <button type="button" class="btn" onclick="closeSpriteSpectrum(false)">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="closeSpriteSpectrum(true)">OK</button>
             </div>
+        </div>
+    </div>
+
+
+    <!-- Scene / 2D level editor -->
+    <div id="scene-editor-view" class="view">
+        <div class="sc-header">
+            <div class="sc-header-left">
+                <button type="button" class="sc-back" onclick="closeSceneEditor()">‹ Back</button>
+                <span class="sc-title" id="scene-editor-title">New Scene</span>
+            </div>
+            <button type="button" class="sc-save" onclick="saveSceneFromEditor()">▶ SAVE</button>
+        </div>
+        <div class="sc-body">
+            <div class="sc-toolbar">
+                <button type="button" class="sc-tool active" data-sctool="select" onclick="setSceneTool('select')" title="Select / move">↖</button>
+                <button type="button" class="sc-tool" data-sctool="place" onclick="setSceneTool('place')" title="Place sprite">＋</button>
+                <button type="button" class="sc-tool" data-sctool="delete" onclick="setSceneTool('delete')" title="Delete">⌫</button>
+                <label>World W <input type="number" id="sc-world-w" min="64" max="4096" value="400" onchange="onSceneWorldChange()"></label>
+                <label>H <input type="number" id="sc-world-h" min="64" max="4096" value="300" onchange="onSceneWorldChange()"></label>
+                <label>Snap <input type="number" id="sc-snap" min="0" max="64" value="8" title="0 = free"></label>
+                <button type="button" class="btn btn-sm" onclick="sceneEditorUndo()">↺</button>
+                <button type="button" class="btn btn-sm" onclick="sceneEditorRedo()">↻</button>
+                <button type="button" class="btn btn-sm" onclick="deleteSelectedSceneObject()">Delete</button>
+            </div>
+            <div class="sc-main">
+                <div class="sc-palette-panel">
+                    <div class="sc-palette-label">Sprites</div>
+                    <div class="sc-palette-scroll" id="sc-palette-list"></div>
+                </div>
+                <div class="sc-canvas-wrap" id="sc-canvas-wrap">
+                    <canvas id="scene-editor-canvas" width="400" height="300"></canvas>
+                </div>
+                <div class="sc-props-panel" id="sc-props-panel">
+                    <h4>Object</h4>
+                    <div class="sc-props-empty" id="sc-props-empty">Select a sprite from the left, then place it on the canvas. Drag to move.</div>
+                    <div id="sc-props-fields" style="display:none">
+                        <label>Name <input type="text" id="sc-prop-name" onchange="applySceneProps()"></label>
+                        <label>X <input type="number" id="sc-prop-x" onchange="applySceneProps()"></label>
+                        <label>Y <input type="number" id="sc-prop-y" onchange="applySceneProps()"></label>
+                        <label>W <input type="number" id="sc-prop-w" onchange="applySceneProps()"></label>
+                        <label>H <input type="number" id="sc-prop-h" onchange="applySceneProps()"></label>
+                        <label>Sprite <input type="text" id="sc-prop-sprite" readonly></label>
+                    </div>
+                </div>
+            </div>
+            <div class="sc-footer-meta" id="sc-footer-meta">Scene · 0 objects · pick a sprite to place</div>
         </div>
     </div>
 
@@ -2153,6 +2197,7 @@ const STORAGE_KEY = 'luadeck_projects';
 const STORAGE_META = 'luadeck_meta';
 const SETTINGS_KEY = 'luadeck_project_settings';
 const ASSETS_KEY = 'luadeck_project_assets';
+const MAPS_KEY = 'luadeck_project_maps';
 
 function loadProjectsFromStorage() {
     // Try localStorage, then sessionStorage fallback
@@ -2208,6 +2253,35 @@ function getProjectAssetMap(name) {
     if (!name) return {};
     if (!projectAssets[name]) projectAssets[name] = {};
     return projectAssets[name];
+}
+
+/** Per-project scenes: { [projectName]: { [sceneName]: sceneObj } } */
+function loadProjectMaps() {
+    try {
+        const raw = localStorage.getItem(MAPS_KEY);
+        if (!raw) return {};
+        const data = JSON.parse(raw);
+        return (data && typeof data === 'object') ? data : {};
+    } catch (_) { return {}; }
+}
+let projectMaps = loadProjectMaps();
+
+function saveProjectMaps() {
+    try { localStorage.setItem(MAPS_KEY, JSON.stringify(projectMaps)); } catch (e) {
+        console.warn('maps save failed', e);
+    }
+}
+
+function getProjectMapMap(name) {
+    if (!name) return {};
+    if (!projectMaps[name]) projectMaps[name] = {};
+    return projectMaps[name];
+}
+
+function getProjectTilemap(projectName, mapName) {
+    if (!projectName || !mapName) return null;
+    const maps = getProjectMapMap(projectName);
+    return maps[mapName] || null;
 }
 
 function getProjectGamepad(name) {
@@ -2356,8 +2430,8 @@ function renderProjects() {
         list.innerHTML = `
             <div class="lx-empty">
                 <div class="item-icon-svg" style="width:80px;height:80px;margin-bottom:12px">${LX_SVG.folderLg}</div>
-                <h3>${q ? 'No matches' : 'Nothing built yet'}</h3>
-                <p>${q ? 'Try a different search.' : 'Create a project or import one to start making a game.'}</p>
+                <h3>${q ? 'No matches' : 'Your projects will appear here'}</h3>
+                <p>${q ? 'Try a different search.' : 'Create or import your first project to get started.'}</p>
                 ${!q ? '<button class="btn btn-primary" onclick="promptNewProject()">+ New Project</button>' : ''}
             </div>`;
         return;
@@ -2598,6 +2672,33 @@ function renderFiles() {
             </div>`;
         list.appendChild(div);
     });
+    // Tilemaps
+    const maps = getProjectMapMap(currentProjectName);
+    Object.keys(maps).sort().forEach(fn => {
+        const m = maps[fn] || {};
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `
+            <div class="item-title" onclick="openSceneEditor('${esc(fn)}')" title="Edit scene">
+                <span class="item-icon-svg">${LX_SVG.layers || LX_SVG.file}</span>
+                <span>${fn}</span>
+                <span class="item-badge">SCENE</span>
+            </div>
+            <div class="item-actions">
+                <button class="btn-icon-sm" title="Edit" onclick="event.stopPropagation();openSceneEditor('${esc(fn)}')">✎</button>
+                <button class="btn btn-delete" onclick="deleteSceneAsset(event,'${esc(fn)}')">${LX_SVG.trash}</button>
+            </div>`;
+        list.appendChild(div);
+    });
+}
+
+function deleteSceneAsset(e, name) {
+    e.stopPropagation();
+    if (!confirm('Delete scene "' + name + '"?')) return;
+    const maps = getProjectMapMap(currentProjectName);
+    delete maps[name];
+    saveProjectMaps();
+    renderFiles();
 }
 
 function promptRenameFile(oldName) {
@@ -2795,52 +2896,6 @@ function toggleSpriteLayerVisible(idx, e) {
     redrawSpriteCanvas();
 }
 
-function closeSpriteLayerMenus() {
-    document.querySelectorAll('.spr-layer-menu.open').forEach(m => m.classList.remove('open'));
-    document.querySelectorAll('.spr-layer-more.open').forEach(m => m.classList.remove('open'));
-}
-
-function toggleSpriteLayerMenu(e, btn) {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    const wrap = btn && btn.closest('.spr-layer-menu-wrap');
-    const menu = wrap && wrap.querySelector('.spr-layer-menu');
-    if (!menu) return;
-    const wasOpen = menu.classList.contains('open');
-    closeSpriteLayerMenus();
-    if (!wasOpen) {
-        const r = btn.getBoundingClientRect();
-        menu.style.top = Math.round(r.bottom + 4) + 'px';
-        const menuW = 108;
-        let left = Math.round(r.right - menuW);
-        if (left < 8) left = 8;
-        if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
-        menu.style.left = left + 'px';
-        menu.classList.add('open');
-        btn.classList.add('open');
-    }
-}
-
-function deleteSpriteLayer(idx, e) {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    closeSpriteLayerMenus();
-    if (!spriteEd.layers[idx]) return;
-    if (spriteEd.layers.length <= 1) {
-        alert('You need at least one layer.');
-        return;
-    }
-    pushSpriteHistory();
-    spriteEd.layers.splice(idx, 1);
-    if (spriteEd.activeLayer >= spriteEd.layers.length) {
-        spriteEd.activeLayer = spriteEd.layers.length - 1;
-    } else if (spriteEd.activeLayer > idx) {
-        spriteEd.activeLayer -= 1;
-    }
-    pushSpriteHistory();
-    spriteEd.dirty = true;
-    renderSpriteLayersUI();
-    redrawSpriteCanvas();
-}
-
 function renderSpriteLayersUI() {
     const list = document.getElementById('spr-layers-list');
     const title = document.getElementById('spr-layers-title');
@@ -2862,29 +2917,8 @@ function renderSpriteLayersUI() {
         const name = document.createElement('span');
         name.className = 'spr-layer-name';
         name.textContent = L.name;
-        const menuWrap = document.createElement('div');
-        menuWrap.className = 'spr-layer-menu-wrap';
-        const more = document.createElement('button');
-        more.type = 'button';
-        more.className = 'spr-layer-more';
-        more.title = 'Layer options';
-        more.setAttribute('aria-label', 'Layer options');
-        more.textContent = '⋮';
-        more.onclick = (e) => toggleSpriteLayerMenu(e, more);
-        const menu = document.createElement('div');
-        menu.className = 'spr-layer-menu';
-        menu.onclick = (e) => e.stopPropagation();
-        const del = document.createElement('button');
-        del.type = 'button';
-        del.className = 'spr-layer-menu-item danger';
-        del.textContent = 'Delete';
-        del.onclick = (e) => deleteSpriteLayer(i, e);
-        menu.appendChild(del);
-        menuWrap.appendChild(more);
-        menuWrap.appendChild(menu);
         btn.appendChild(eye);
         btn.appendChild(name);
-        btn.appendChild(menuWrap);
         list.appendChild(btn);
     }
 }
@@ -3373,16 +3407,22 @@ function clearSpriteCanvas() {
 
 function canvasToGridPos(clientX, clientY) {
     const canvas = document.getElementById('sprite-pixel-canvas');
+    if (!canvas) return { x: 0, y: 0, valid: false };
     const rect = canvas.getBoundingClientRect();
-    const d = spriteEd._draw || { ox: 0, oy: 0, scale: 1, dispW: rect.width, dispH: rect.height };
-    // Map client → canvas buffer coords
-    const cx = ((clientX - rect.left) / rect.width) * d.dispW;
-    const cy = ((clientY - rect.top) / rect.height) * d.dispH;
-    const x = Math.floor((cx - d.ox) / d.scale);
-    const y = Math.floor((cy - d.oy) / d.scale);
+    if (rect.width < 1 || rect.height < 1) return { x: 0, y: 0, valid: false };
+    const d = spriteEd._draw || { ox: 0, oy: 0, scale: 1, dispW: canvas.width || rect.width, dispH: canvas.height || rect.height };
+    const scaleX = (d.dispW || canvas.width) / rect.width;
+    const scaleY = (d.dispH || canvas.height) / rect.height;
+    const cx = (clientX - rect.left) * scaleX;
+    const cy = (clientY - rect.top) * scaleY;
+    const sc = Math.max(1, d.scale || 1);
+    const x = Math.floor((cx - (d.ox || 0)) / sc);
+    const y = Math.floor((cy - (d.oy || 0)) / sc);
+    const valid = x >= 0 && y >= 0 && x < spriteEd.w && y < spriteEd.h;
     return {
         x: Math.max(0, Math.min(spriteEd.w - 1, x)),
         y: Math.max(0, Math.min(spriteEd.h - 1, y)),
+        valid
     };
 }
 
@@ -3404,7 +3444,10 @@ function floodFill(sx, sy, target, replace) {
 }
 
 function applySpriteToolAt(clientX, clientY, isDown) {
-    const { x, y } = canvasToGridPos(clientX, clientY);
+    ensureSpritePixels();
+    const pos = canvasToGridPos(clientX, clientY);
+    if (!pos.valid && !isDown) return;
+    const x = pos.x, y = pos.y;
     if (spriteEd.tool === 'picker') {
         const p = getSpritePixel(x, y);
         if (p[3] < 8) {
@@ -3416,7 +3459,8 @@ function applySpriteToolAt(clientX, clientY, isDown) {
     }
     if (spriteEd.tool === 'fill' && isDown) {
         pushSpriteHistory();
-        floodFill(x, y, getSpritePixel(x, y), hexToRgba(spriteEd.color));
+        const fillColor = spriteEd.tool === 'eraser' ? [0,0,0,0] : hexToRgba(spriteEd.color || '#ffffff');
+        floodFill(x, y, getSpritePixel(x, y), fillColor);
         pushSpriteHistory();
         redrawSpriteCanvas();
         return;
@@ -3424,47 +3468,86 @@ function applySpriteToolAt(clientX, clientY, isDown) {
     if (spriteEd.tool === 'eraser') {
         setSpritePixel(x, y, [0, 0, 0, 0]);
     } else {
-        setSpritePixel(x, y, hexToRgba(spriteEd.color));
+        setSpritePixel(x, y, hexToRgba(spriteEd.color || '#ffffff'));
     }
     redrawSpriteCanvas();
 }
 
 function setupSpriteCanvasInput() {
     const canvas = document.getElementById('sprite-pixel-canvas');
-    if (!canvas || canvas._luaxBound) return;
-    canvas._luaxBound = true;
+    const wrap = document.getElementById('spr-canvas-wrap');
+    if (!canvas) return;
+    // Re-bind every open so a previous broken state cannot stick
+    if (canvas._luaxCleanup) {
+        try { canvas._luaxCleanup(); } catch (_) {}
+        canvas._luaxCleanup = null;
+    }
+
+    const ptrPos = (e) => {
+        if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        if (e.changedTouches && e.changedTouches.length) {
+            return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    };
 
     const down = (e) => {
+        // Only primary button / touches
+        if (e.button != null && e.button !== 0) return;
         e.preventDefault();
+        e.stopPropagation();
+        document.getElementById('sprite-editor-view')?.classList.add('spr-drawing');
         spriteEd.drawing = true;
         if (spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
             pushSpriteHistory();
         }
-        const t = e.touches ? e.touches[0] : e;
-        applySpriteToolAt(t.clientX, t.clientY, true);
+        const p = ptrPos(e);
+        applySpriteToolAt(p.x, p.y, true);
     };
     const move = (e) => {
         if (!spriteEd.drawing) return;
         e.preventDefault();
-        const t = e.touches ? e.touches[0] : e;
         if (spriteEd.tool === 'fill' || spriteEd.tool === 'picker') return;
-        applySpriteToolAt(t.clientX, t.clientY, false);
+        const p = ptrPos(e);
+        applySpriteToolAt(p.x, p.y, false);
     };
-    const up = () => {
-        if (spriteEd.drawing && spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
+    const up = (e) => {
+        if (!spriteEd.drawing) return;
+        if (e) e.preventDefault();
+        if (spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
             pushSpriteHistory();
         }
         spriteEd.drawing = false;
+        document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
     };
 
-    canvas.addEventListener('mousedown', down);
+    const targets = [canvas];
+    if (wrap) targets.push(wrap);
+    targets.forEach(el => {
+        el.addEventListener('mousedown', down);
+        el.addEventListener('touchstart', down, { passive: false });
+        el.addEventListener('touchmove', move, { passive: false });
+        el.addEventListener('touchend', up, { passive: false });
+        el.addEventListener('touchcancel', up, { passive: false });
+        el.addEventListener('contextmenu', e => e.preventDefault());
+    });
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', up);
-    canvas.addEventListener('touchstart', down, { passive: false });
-    canvas.addEventListener('touchmove', move, { passive: false });
-    canvas.addEventListener('touchend', up);
-    canvas.addEventListener('touchcancel', up);
-    canvas.addEventListener('contextmenu', e => e.preventDefault());
+    window.addEventListener('blur', up);
+
+    canvas._luaxCleanup = () => {
+        targets.forEach(el => {
+            el.removeEventListener('mousedown', down);
+            el.removeEventListener('touchstart', down);
+            el.removeEventListener('touchmove', move);
+            el.removeEventListener('touchend', up);
+            el.removeEventListener('touchcancel', up);
+        });
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+        window.removeEventListener('blur', up);
+    };
+    canvas._luaxBound = true;
 }
 
 /**
@@ -3505,13 +3588,17 @@ function openSpriteEditor(existingName) {
     }
 
     setSpriteTool('pencil');
+    if (!spriteEd.color) spriteEd.color = '#ffffff';
     renderSpritePalette();
     setupSpriteCanvasInput();
     switchView('sprite-editor-view');
     setTimeout(() => {
         renderSpriteLayersUI();
+        renderSpritePalette();
         redrawSpriteCanvas();
-    }, 40);
+        setupSpriteCanvasInput();
+    }, 50);
+    setTimeout(() => { redrawSpriteCanvas(); }, 200);
     if (!window._sprResizeBound) {
         window._sprResizeBound = true;
         window.addEventListener('resize', () => {
@@ -3618,6 +3705,576 @@ function saveSpriteFromEditor() {
     renderFiles();
 }
 
+
+
+// ============================================================
+// SCENE / 2D LEVEL EDITOR (Unity-style object placement)
+// ============================================================
+/**
+ * Scene shape:
+ * {
+ *   width, height,
+ *   objects: [{ id, sprite, x, y, w, h, name }]
+ * }
+ * Place imported PNGs on a canvas; runtime draws with gfx.scene("name").
+ */
+
+const sceneEd = {
+    name: '',
+    width: 400,
+    height: 300,
+    objects: [],
+    selectedId: null,
+    placeSprite: null,
+    tool: 'select',
+    dirty: false,
+    scale: 1,
+    dragging: false,
+    dragOffX: 0,
+    dragOffY: 0,
+    history: [],
+    historyIdx: -1,
+    nextId: 1
+};
+
+function sceneSnap() {
+    const el = document.getElementById('sc-snap');
+    const n = el ? (+el.value || 0) : 0;
+    return n > 0 ? n : 0;
+}
+
+function snapVal(v) {
+    const s = sceneSnap();
+    if (!s) return Math.round(v);
+    return Math.round(v / s) * s;
+}
+
+function pushSceneHistory() {
+    const snap = {
+        width: sceneEd.width,
+        height: sceneEd.height,
+        objects: sceneEd.objects.map(o => ({ ...o })),
+        nextId: sceneEd.nextId
+    };
+    sceneEd.history = sceneEd.history.slice(0, sceneEd.historyIdx + 1);
+    sceneEd.history.push(snap);
+    if (sceneEd.history.length > 40) sceneEd.history.shift();
+    sceneEd.historyIdx = sceneEd.history.length - 1;
+}
+
+function restoreSceneHistory(snap) {
+    if (!snap) return;
+    sceneEd.width = snap.width;
+    sceneEd.height = snap.height;
+    sceneEd.objects = (snap.objects || []).map(o => ({ ...o }));
+    sceneEd.nextId = snap.nextId || (sceneEd.objects.length + 1);
+    const wIn = document.getElementById('sc-world-w');
+    const hIn = document.getElementById('sc-world-h');
+    if (wIn) wIn.value = sceneEd.width;
+    if (hIn) hIn.value = sceneEd.height;
+    if (sceneEd.selectedId && !sceneEd.objects.find(o => o.id === sceneEd.selectedId)) {
+        sceneEd.selectedId = null;
+    }
+    updateScenePropsUI();
+    redrawSceneEditor();
+    updateSceneFooter();
+}
+
+function sceneEditorUndo() {
+    if (sceneEd.historyIdx <= 0) return;
+    sceneEd.historyIdx--;
+    restoreSceneHistory(sceneEd.history[sceneEd.historyIdx]);
+    sceneEd.dirty = true;
+}
+
+function sceneEditorRedo() {
+    if (sceneEd.historyIdx >= sceneEd.history.length - 1) return;
+    sceneEd.historyIdx++;
+    restoreSceneHistory(sceneEd.history[sceneEd.historyIdx]);
+    sceneEd.dirty = true;
+}
+
+function setSceneTool(tool) {
+    sceneEd.tool = tool || 'select';
+    document.querySelectorAll('.sc-tool').forEach(b => {
+        b.classList.toggle('active', b.dataset.sctool === sceneEd.tool);
+    });
+    const canvas = document.getElementById('scene-editor-canvas');
+    if (canvas) {
+        canvas.style.cursor = sceneEd.tool === 'place' ? 'crosshair'
+            : sceneEd.tool === 'delete' ? 'not-allowed' : 'default';
+    }
+}
+
+function updateSceneFooter() {
+    const el = document.getElementById('sc-footer-meta');
+    if (!el) return;
+    const n = sceneEd.objects.length;
+    const spr = sceneEd.placeSprite || 'none';
+    el.textContent = 'Scene · ' + n + ' object' + (n === 1 ? '' : 's') +
+        ' · ' + sceneEd.width + '×' + sceneEd.height +
+        (sceneEd.tool === 'place' ? ' · placing: ' + spr : '');
+}
+
+function getSceneObject(id) {
+    return sceneEd.objects.find(o => o.id === id) || null;
+}
+
+function updateScenePropsUI() {
+    const empty = document.getElementById('sc-props-empty');
+    const fields = document.getElementById('sc-props-fields');
+    const obj = getSceneObject(sceneEd.selectedId);
+    if (!obj) {
+        if (empty) empty.style.display = 'block';
+        if (fields) fields.style.display = 'none';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+    if (fields) fields.style.display = 'block';
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    set('sc-prop-name', obj.name || '');
+    set('sc-prop-x', obj.x | 0);
+    set('sc-prop-y', obj.y | 0);
+    set('sc-prop-w', obj.w | 0);
+    set('sc-prop-h', obj.h | 0);
+    set('sc-prop-sprite', obj.sprite || '');
+}
+
+function applySceneProps() {
+    const obj = getSceneObject(sceneEd.selectedId);
+    if (!obj) return;
+    pushSceneHistory();
+    const num = (id, fallback) => {
+        const el = document.getElementById(id);
+        const v = el ? +el.value : fallback;
+        return isNaN(v) ? fallback : v;
+    };
+    const nameEl = document.getElementById('sc-prop-name');
+    obj.name = nameEl ? String(nameEl.value || '').trim() : (obj.name || '');
+    obj.x = snapVal(num('sc-prop-x', obj.x));
+    obj.y = snapVal(num('sc-prop-y', obj.y));
+    obj.w = Math.max(1, num('sc-prop-w', obj.w));
+    obj.h = Math.max(1, num('sc-prop-h', obj.h));
+    pushSceneHistory();
+    sceneEd.dirty = true;
+    redrawSceneEditor();
+    updateScenePropsUI();
+}
+
+function renderScenePalette() {
+    const list = document.getElementById('sc-palette-list');
+    if (!list || !currentProjectName) return;
+    list.innerHTML = '';
+    const assets = getProjectAssetMap(currentProjectName);
+    const names = Object.keys(assets).sort();
+    if (!names.length) {
+        list.innerHTML = '<p style="font-size:0.72rem;color:var(--muted);margin:8px 4px;line-height:1.35">Import or create sprites first, then place them here.</p>';
+        return;
+    }
+    names.forEach(fn => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sc-sprite-item' + (sceneEd.placeSprite === fn ? ' active' : '');
+        btn.innerHTML = '<img alt="" src="' + assets[fn] + '"><span>' + fn.replace(/</g, '') + '</span>';
+        btn.onclick = () => {
+            sceneEd.placeSprite = fn;
+            setSceneTool('place');
+            renderScenePalette();
+            updateSceneFooter();
+        };
+        list.appendChild(btn);
+    });
+}
+
+function loadSceneSpriteImage(name, cb) {
+    if (!name || !currentProjectName) { if (cb) cb(null); return; }
+    const src = getProjectAssetMap(currentProjectName)[name];
+    if (!src) { if (cb) cb(null); return; }
+    const key = currentProjectName + '::' + name;
+    let img = spriteImageCache[key];
+    if (img && img.complete && img.naturalWidth) {
+        if (cb) cb(img);
+        return;
+    }
+    img = new Image();
+    img.onload = () => { spriteImageCache[key] = img; if (cb) cb(img); };
+    img.onerror = () => { if (cb) cb(null); };
+    img.src = src;
+    spriteImageCache[key] = img;
+}
+
+function redrawSceneEditor() {
+    const canvas = document.getElementById('scene-editor-canvas');
+    if (!canvas) return;
+    // Scale so world fits reasonably in view
+    const wrap = document.getElementById('sc-canvas-wrap');
+    const availW = wrap ? Math.max(160, wrap.clientWidth - 12) : 400;
+    const availH = wrap ? Math.max(120, wrap.clientHeight - 12) : 300;
+    const sx = availW / Math.max(1, sceneEd.width);
+    const sy = availH / Math.max(1, sceneEd.height);
+    sceneEd.scale = Math.max(0.25, Math.min(3, Math.min(sx, sy)));
+    const scale = sceneEd.scale;
+    const cw = Math.max(1, Math.round(sceneEd.width * scale));
+    const ch = Math.max(1, Math.round(sceneEd.height * scale));
+    canvas.width = cw;
+    canvas.height = ch;
+    canvas.style.width = cw + 'px';
+    canvas.style.height = ch + 'px';
+    const ctx2 = canvas.getContext('2d');
+    ctx2.imageSmoothingEnabled = false;
+    // checker bg
+    const cell = Math.max(8, Math.round(16 * scale));
+    for (let y = 0; y < ch; y += cell) {
+        for (let x = 0; x < cw; x += cell) {
+            const on = ((x / cell) | 0) + ((y / cell) | 0);
+            ctx2.fillStyle = (on % 2 === 0) ? '#1a1a22' : '#121218';
+            ctx2.fillRect(x, y, cell, cell);
+        }
+    }
+    // world border
+    ctx2.strokeStyle = 'rgba(139,92,246,0.45)';
+    ctx2.lineWidth = 2;
+    ctx2.strokeRect(1, 1, cw - 2, ch - 2);
+
+    // draw objects
+    sceneEd.objects.forEach(obj => {
+        const key = currentProjectName + '::' + obj.sprite;
+        const img = spriteImageCache[key];
+        const dx = obj.x * scale;
+        const dy = obj.y * scale;
+        const dw = Math.max(1, obj.w * scale);
+        const dh = Math.max(1, obj.h * scale);
+        if (img && img.complete && img.naturalWidth) {
+            ctx2.drawImage(img, dx, dy, dw, dh);
+        } else {
+            ctx2.fillStyle = 'rgba(255,82,82,0.35)';
+            ctx2.fillRect(dx, dy, dw, dh);
+            loadSceneSpriteImage(obj.sprite, () => redrawSceneEditor());
+        }
+        if (obj.id === sceneEd.selectedId) {
+            ctx2.strokeStyle = '#00e676';
+            ctx2.lineWidth = 2;
+            ctx2.strokeRect(dx - 1, dy - 1, dw + 2, dh + 2);
+            // handles hint
+            ctx2.fillStyle = '#00e676';
+            ctx2.fillRect(dx + dw - 4, dy + dh - 4, 8, 8);
+        }
+    });
+}
+
+function sceneCanvasToWorld(clientX, clientY) {
+    const canvas = document.getElementById('scene-editor-canvas');
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / Math.max(1, rect.width);
+    const scaleY = canvas.height / Math.max(1, rect.height);
+    const px = (clientX - rect.left) * scaleX;
+    const py = (clientY - rect.top) * scaleY;
+    return {
+        x: px / sceneEd.scale,
+        y: py / sceneEd.scale
+    };
+}
+
+function hitTestSceneObject(wx, wy) {
+    // top-most first
+    for (let i = sceneEd.objects.length - 1; i >= 0; i--) {
+        const o = sceneEd.objects[i];
+        if (wx >= o.x && wy >= o.y && wx < o.x + o.w && wy < o.y + o.h) return o;
+    }
+    return null;
+}
+
+function placeSceneObjectAt(wx, wy) {
+    if (!sceneEd.placeSprite) {
+        alert('Select a sprite on the left first.');
+        return;
+    }
+    pushSceneHistory();
+    const key = currentProjectName + '::' + sceneEd.placeSprite;
+    const img = spriteImageCache[key];
+    let w = 32, h = 32;
+    if (img && img.naturalWidth) {
+        w = img.naturalWidth;
+        h = img.naturalHeight;
+    } else {
+        loadSceneSpriteImage(sceneEd.placeSprite);
+    }
+    const id = 'obj_' + (sceneEd.nextId++);
+    const obj = {
+        id,
+        sprite: sceneEd.placeSprite,
+        x: snapVal(wx - w / 2),
+        y: snapVal(wy - h / 2),
+        w, h,
+        name: sceneEd.placeSprite.replace(/\.\w+$/, '')
+    };
+    sceneEd.objects.push(obj);
+    sceneEd.selectedId = id;
+    pushSceneHistory();
+    sceneEd.dirty = true;
+    updateScenePropsUI();
+    redrawSceneEditor();
+    updateSceneFooter();
+}
+
+function deleteSelectedSceneObject() {
+    if (!sceneEd.selectedId) return;
+    pushSceneHistory();
+    sceneEd.objects = sceneEd.objects.filter(o => o.id !== sceneEd.selectedId);
+    sceneEd.selectedId = null;
+    pushSceneHistory();
+    sceneEd.dirty = true;
+    updateScenePropsUI();
+    redrawSceneEditor();
+    updateSceneFooter();
+}
+
+function onSceneWorldChange() {
+    const wIn = document.getElementById('sc-world-w');
+    const hIn = document.getElementById('sc-world-h');
+    let w = Math.max(64, Math.min(4096, +(wIn && wIn.value) || sceneEd.width));
+    let h = Math.max(64, Math.min(4096, +(hIn && hIn.value) || sceneEd.height));
+    if (wIn) wIn.value = w;
+    if (hIn) hIn.value = h;
+    if (w === sceneEd.width && h === sceneEd.height) return;
+    pushSceneHistory();
+    sceneEd.width = w;
+    sceneEd.height = h;
+    pushSceneHistory();
+    sceneEd.dirty = true;
+    redrawSceneEditor();
+    updateSceneFooter();
+}
+
+function setupSceneCanvasInput() {
+    const canvas = document.getElementById('scene-editor-canvas');
+    if (!canvas || canvas._scBound) return;
+    canvas._scBound = true;
+
+    const onDown = (e) => {
+        e.preventDefault();
+        const t = e.changedTouches ? e.changedTouches[0] : e;
+        const world = sceneCanvasToWorld(t.clientX, t.clientY);
+        if (!world) return;
+
+        if (sceneEd.tool === 'place') {
+            placeSceneObjectAt(world.x, world.y);
+            return;
+        }
+        if (sceneEd.tool === 'delete') {
+            const hit = hitTestSceneObject(world.x, world.y);
+            if (hit) {
+                sceneEd.selectedId = hit.id;
+                deleteSelectedSceneObject();
+            }
+            return;
+        }
+        // select / move
+        const hit = hitTestSceneObject(world.x, world.y);
+        sceneEd.selectedId = hit ? hit.id : null;
+        updateScenePropsUI();
+        redrawSceneEditor();
+        if (hit) {
+            sceneEd.dragging = true;
+            sceneEd.dragOffX = world.x - hit.x;
+            sceneEd.dragOffY = world.y - hit.y;
+            pushSceneHistory();
+        }
+    };
+    const onMove = (e) => {
+        if (!sceneEd.dragging || !sceneEd.selectedId) return;
+        e.preventDefault();
+        const t = e.changedTouches ? e.changedTouches[0] : e;
+        const world = sceneCanvasToWorld(t.clientX, t.clientY);
+        if (!world) return;
+        const obj = getSceneObject(sceneEd.selectedId);
+        if (!obj) return;
+        obj.x = snapVal(world.x - sceneEd.dragOffX);
+        obj.y = snapVal(world.y - sceneEd.dragOffY);
+        sceneEd.dirty = true;
+        updateScenePropsUI();
+        redrawSceneEditor();
+    };
+    const onUp = () => {
+        if (sceneEd.dragging) {
+            sceneEd.dragging = false;
+            pushSceneHistory();
+        }
+    };
+
+    canvas.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    canvas.addEventListener('touchstart', onDown, { passive: false });
+    canvas.addEventListener('touchmove', onMove, { passive: false });
+    canvas.addEventListener('touchend', onUp);
+    canvas.addEventListener('touchcancel', onUp);
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+function openSceneEditor(existingName) {
+    if (!isAuthed()) { applyAuthGate(); return; }
+    if (!currentProjectName) return alert('Open a project first');
+
+    sceneEd.tool = 'select';
+    sceneEd.placeSprite = null;
+    sceneEd.selectedId = null;
+    sceneEd.dirty = false;
+    sceneEd.dragging = false;
+    sceneEd.history = [];
+    sceneEd.historyIdx = -1;
+    sceneEd.nextId = 1;
+
+    const maps = getProjectMapMap(currentProjectName);
+    if (existingName && maps[existingName]) {
+        const s = maps[existingName];
+        sceneEd.name = existingName;
+        // Support legacy tilemaps? Skip — only scenes with objects
+        if (Array.isArray(s.objects)) {
+            sceneEd.width = s.width || 400;
+            sceneEd.height = s.height || 300;
+            sceneEd.objects = s.objects.map(o => ({ ...o }));
+            let maxN = 0;
+            sceneEd.objects.forEach(o => {
+                const m = String(o.id || '').match(/(\d+)$/);
+                if (m) maxN = Math.max(maxN, +m[1]);
+            });
+            sceneEd.nextId = maxN + 1;
+        } else {
+            // old tilemap data — start empty scene with same name
+            sceneEd.width = 400;
+            sceneEd.height = 300;
+            sceneEd.objects = [];
+        }
+        document.getElementById('scene-editor-title').textContent = existingName;
+    } else {
+        sceneEd.name = '';
+        sceneEd.width = 400;
+        sceneEd.height = 300;
+        sceneEd.objects = [];
+        document.getElementById('scene-editor-title').textContent = 'New Scene';
+    }
+
+    const wIn = document.getElementById('sc-world-w');
+    const hIn = document.getElementById('sc-world-h');
+    if (wIn) wIn.value = sceneEd.width;
+    if (hIn) hIn.value = sceneEd.height;
+
+    setSceneTool('select');
+    renderScenePalette();
+    updateScenePropsUI();
+    setupSceneCanvasInput();
+    // preload images
+    sceneEd.objects.forEach(o => loadSceneSpriteImage(o.sprite));
+    switchView('scene-editor-view');
+    pushSceneHistory();
+    setTimeout(() => {
+        redrawSceneEditor();
+        updateSceneFooter();
+    }, 40);
+    if (!window._scResizeBound) {
+        window._scResizeBound = true;
+        window.addEventListener('resize', () => {
+            if (document.getElementById('scene-editor-view')?.classList.contains('active')) {
+                redrawSceneEditor();
+            }
+        });
+    }
+}
+
+function closeSceneEditor() {
+    if (sceneEd.dirty && !confirm('Discard unsaved scene changes?')) return;
+    sceneEd.dirty = false;
+    switchView('files-view');
+    renderFiles();
+}
+
+function saveSceneFromEditor() {
+    if (!currentProjectName) return;
+    let name = sceneEd.name;
+    if (!name) {
+        name = prompt('Scene name (e.g. level1)', 'level1');
+        if (!name) return;
+        name = name.trim().replace(/[^\w.\-]+/g, '_');
+        if (!name) return;
+    }
+    const maps = getProjectMapMap(currentProjectName);
+    if (maps[name] && name !== sceneEd.name && !confirm('Replace existing "' + name + '"?')) return;
+
+    maps[name] = {
+        width: sceneEd.width,
+        height: sceneEd.height,
+        objects: sceneEd.objects.map(o => ({
+            id: o.id,
+            sprite: o.sprite,
+            x: o.x | 0,
+            y: o.y | 0,
+            w: o.w | 0,
+            h: o.h | 0,
+            name: o.name || ''
+        }))
+    };
+    saveProjectMaps();
+    sceneEd.name = name;
+    sceneEd.dirty = false;
+    document.getElementById('scene-editor-title').textContent = name;
+    alert(
+        'Saved scene "' + name + '".\n\n' +
+        'In Lua:\n' +
+        '  gfx.scene("' + name + '")\n' +
+        '  -- draws every placed sprite at its position'
+    );
+    switchView('files-view');
+    renderFiles();
+}
+
+/**
+ * Draw a scene (all placed sprites) onto the play canvas.
+ * gfx.scene("level1")
+ * gfx.scene("level1", offsetX, offsetY)
+ */
+function drawProjectScene(name, offsetX, offsetY) {
+    if (!name || !currentProjectName) return;
+    const s = getProjectTilemap(currentProjectName, name);
+    if (!s || !Array.isArray(s.objects)) return;
+    const ox = offsetX || 0;
+    const oy = offsetY || 0;
+    const assets = getProjectAssetMap(currentProjectName);
+    for (let i = 0; i < s.objects.length; i++) {
+        const o = s.objects[i];
+        if (!o || !o.sprite) continue;
+        const src = assets[o.sprite];
+        if (!src) continue;
+        const key = currentProjectName + '::' + o.sprite;
+        let img = spriteImageCache[key];
+        if (!img) {
+            img = new Image();
+            img.src = src;
+            spriteImageCache[key] = img;
+        }
+        if (!img.complete || !img.naturalWidth) continue;
+        const w = o.w != null ? o.w : img.naturalWidth;
+        const h = o.h != null ? o.h : img.naturalHeight;
+        ctx.drawImage(img, (o.x || 0) + ox, (o.y || 0) + oy, w, h);
+    }
+}
+
+function getSceneObjectsData(name) {
+    const s = getProjectTilemap(currentProjectName, name);
+    if (!s || !Array.isArray(s.objects)) return [];
+    return s.objects.map(o => ({
+        id: o.id,
+        sprite: o.sprite,
+        x: o.x | 0,
+        y: o.y | 0,
+        w: o.w | 0,
+        h: o.h | 0,
+        name: o.name || ''
+    }));
+}
+
+
 /** Encode project into a shareable play URL (hash). Free. */
 function encodeSharePayload(obj) {
     try {
@@ -3641,7 +4298,8 @@ function sharePlayLink() {
         name: currentProjectName,
         files: projects[currentProjectName],
         gamepad: getProjectGamepad(currentProjectName),
-        assets: getProjectAssetMap(currentProjectName)
+        assets: getProjectAssetMap(currentProjectName),
+        maps: getProjectMapMap(currentProjectName)
     };
     const encoded = encodeSharePayload(payload);
     if (!encoded) return alert('Could not build share link');
@@ -3701,6 +4359,10 @@ function tryLoadSharedPlay() {
             projectAssets[name] = data.assets;
             saveProjectAssets();
         }
+        if (data.maps && typeof data.maps === 'object') {
+            projectMaps[name] = data.maps;
+            saveProjectMaps();
+        }
         saveState();
         currentProjectName = name;
         return name;
@@ -3743,6 +4405,7 @@ function exportProject() {
         files: projects[currentProjectName],
         gamepad: getProjectGamepad(currentProjectName),
         assets: getProjectAssetMap(currentProjectName),
+        maps: getProjectMapMap(currentProjectName),
         exportedAt: new Date().toISOString(),
         engine: 'LuaX'
     };
@@ -3775,6 +4438,10 @@ function handleImport(ev) {
             if (data.assets && typeof data.assets === 'object') {
                 projectAssets[name] = data.assets;
                 saveProjectAssets();
+            }
+            if (data.maps && typeof data.maps === 'object') {
+                projectMaps[name] = data.maps;
+                saveProjectMaps();
             }
             saveState();
             renderProjects();
@@ -4717,6 +5384,34 @@ window.LuaDeckAPI = {
         },
 
         /**
+         * Draw a scene from the Scene editor (all placed sprites).
+         * gfx.scene("level1")
+         * gfx.scene("level1", offsetX, offsetY)
+         */
+        scene(name, ox, oy) {
+            drawProjectScene(name, ox, oy);
+        },
+        /** Array of { id, sprite, x, y, w, h, name } for a scene */
+        sceneObjects(name) {
+            return getSceneObjectsData(name);
+        },
+        /** { width, height, count } or null */
+        sceneinfo(name) {
+            const s = getProjectTilemap(currentProjectName, name);
+            if (!s || !Array.isArray(s.objects)) return null;
+            return {
+                width: s.width | 0,
+                height: s.height | 0,
+                count: s.objects.length
+            };
+        },
+        /** List scene names */
+        scenes() {
+            if (!currentProjectName) return [];
+            return Object.keys(getProjectMapMap(currentProjectName));
+        },
+
+        /**
          * Raycast renderer (Wolfenstein-style solid walls).
          * opts = {
          *   map: 2D array of numbers (0 = empty, 1+ = wall id),
@@ -4957,6 +5652,47 @@ gfx = {
     sprite = function(name, x, y, w, h) api.gfx:sprite(name, x, y, w, h) end,
     sprites = function()
         local arr = api.gfx:sprites()
+        local t = {}
+        if arr then
+            local n = tonumber(arr.length) or 0
+            for i = 0, n - 1 do t[#t+1] = arr[i] end
+        end
+        return t
+    end,
+    scene = function(name, ox, oy) api.gfx:scene(name, ox, oy) end,
+    sceneinfo = function(name)
+        local info = api.gfx:sceneinfo(name)
+        if not info then return nil end
+        return {
+            width = tonumber(info.width) or 0,
+            height = tonumber(info.height) or 0,
+            count = tonumber(info.count) or 0
+        }
+    end,
+    scene_objects = function(name)
+        local arr = api.gfx:sceneObjects(name)
+        local t = {}
+        if arr then
+            local n = tonumber(arr.length) or 0
+            for i = 0, n - 1 do
+                local o = arr[i]
+                if o then
+                    t[#t+1] = {
+                        id = tostring(o.id or ""),
+                        sprite = tostring(o.sprite or ""),
+                        x = tonumber(o.x) or 0,
+                        y = tonumber(o.y) or 0,
+                        w = tonumber(o.w) or 0,
+                        h = tonumber(o.h) or 0,
+                        name = tostring(o.name or "")
+                    }
+                end
+            end
+        end
+        return t
+    end,
+    scenes = function()
+        local arr = api.gfx:scenes()
         local t = {}
         if arr then
             local n = tonumber(arr.length) or 0
@@ -5881,10 +6617,7 @@ function closeAccountMenu() {
     if (menu) menu.style.display = 'none';
 }
 
-document.addEventListener('click', () => {
-    closeAccountMenu();
-    try { closeSpriteLayerMenus(); } catch (_) {}
-});
+document.addEventListener('click', () => closeAccountMenu());
 
 let authRefreshing = false; // silent token refresh in progress
 let authRefreshStartedAt = 0;
