@@ -796,55 +796,85 @@
             background: color-mix(in srgb, var(--accent-color) 22%, transparent);
             color: var(--accent-color);
         }
+        /* Classic MS Paint-style palette */
         .spr-palette {
-            display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px;
+            display: flex; flex-wrap: nowrap; gap: 10px; padding: 10px 12px;
             border-bottom: 1px solid var(--glass-border); flex-shrink: 0;
             background: var(--panel-color); align-items: center;
+            overflow-x: auto; -webkit-overflow-scrolling: touch;
+        }
+        .spr-paint-fgbg {
+            display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
+            align-items: center;
+        }
+        .spr-paint-active {
+            width: 44px; height: 44px; border-radius: 2px;
+            border: 2px solid #808080;
+            box-shadow: inset 1px 1px 0 #fff, 1px 1px 0 #000;
+            background: #000; position: relative;
+        }
+        .spr-paint-active.checker {
+            background-image:
+                linear-gradient(45deg, #c0c0c0 25%, transparent 25%),
+                linear-gradient(-45deg, #c0c0c0 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #c0c0c0 75%),
+                linear-gradient(-45deg, transparent 75%, #c0c0c0 75%);
+            background-size: 8px 8px;
+            background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+            background-color: #fff;
+        }
+        .spr-paint-label {
+            font-size: 0.65rem; color: var(--muted); font-weight: 600;
+        }
+        .spr-paint-grid {
+            display: grid;
+            grid-template-columns: repeat(14, 22px);
+            grid-template-rows: repeat(2, 22px);
+            gap: 2px;
+            flex-shrink: 0;
+            padding: 4px;
+            background: #c0c0c0;
+            border: 2px solid;
+            border-color: #fff #808080 #808080 #fff;
         }
         .spr-swatch {
-            width: 28px; height: 28px; border-radius: 8px; border: 2px solid transparent;
+            width: 22px; height: 22px; border-radius: 0; border: 1px solid #808080;
             cursor: pointer; padding: 0; flex-shrink: 0;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+            box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4);
         }
-        .spr-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--accent-color); }
+        .spr-swatch.active {
+            outline: 2px solid #000;
+            outline-offset: 0;
+            position: relative;
+            z-index: 1;
+        }
         .spr-swatch.checker {
             background-image:
-                linear-gradient(45deg, #333 25%, transparent 25%),
-                linear-gradient(-45deg, #333 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #333 75%),
-                linear-gradient(-45deg, transparent 75%, #333 75%);
-            background-size: 10px 10px;
-            background-position: 0 0, 0 5px, 5px -5px, -5px 0;
-            background-color: #222;
+                linear-gradient(45deg, #aaa 25%, transparent 25%),
+                linear-gradient(-45deg, #aaa 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #aaa 75%),
+                linear-gradient(-45deg, transparent 75%, #aaa 75%);
+            background-size: 6px 6px;
+            background-position: 0 0, 0 3px, 3px -3px, -3px 0;
+            background-color: #fff;
         }
-        .spr-color-custom {
-            display: inline-flex; align-items: center; gap: 6px;
-            margin-left: 4px; padding-left: 8px;
-            border-left: 1px solid var(--glass-border);
+        .spr-paint-edit {
+            flex-shrink: 0;
+            display: flex; flex-direction: column; gap: 4px; align-items: center;
         }
-        .spr-color-picker {
-            width: 36px; height: 36px; padding: 0; border: none;
-            border-radius: 10px; cursor: pointer; background: transparent;
-            overflow: hidden;
+        .spr-paint-edit input[type="color"] {
+            width: 40px; height: 28px; padding: 0; border: 2px solid #808080;
+            border-radius: 2px; cursor: pointer; background: #c0c0c0;
         }
-        .spr-color-picker::-webkit-color-swatch-wrapper { padding: 0; }
-        .spr-color-picker::-webkit-color-swatch {
-            border: 2px solid var(--accent-color); border-radius: 8px;
+        .spr-paint-edit span {
+            font-size: 0.65rem; color: var(--muted); font-weight: 600; white-space: nowrap;
         }
-        .spr-color-picker::-moz-color-swatch {
-            border: 2px solid var(--accent-color); border-radius: 8px;
-        }
-        .spr-hex-input {
-            width: 78px; padding: 6px 8px; border-radius: 8px;
-            border: 1px solid var(--glass-border); background: var(--panel-2, #111);
-            color: var(--text-color); font-size: 0.8rem; font-family: Menlo, Monaco, monospace;
-            outline: none;
-        }
-        .spr-hex-input:focus { border-color: var(--accent-color); }
-        .spr-current-preview {
-            width: 28px; height: 28px; border-radius: 8px;
-            border: 2px solid var(--accent-color); flex-shrink: 0;
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3);
+        @media (max-width: 480px) {
+            .spr-paint-grid {
+                grid-template-columns: repeat(14, 18px);
+                grid-template-rows: repeat(2, 18px);
+            }
+            .spr-swatch { width: 18px; height: 18px; }
         }
         .spr-canvas-wrap {
             flex: 1; display: flex; align-items: center; justify-content: center;
@@ -2175,27 +2205,27 @@ function handleSpriteImport(ev) {
 // ============================================================
 // PIXEL SPRITE EDITOR (mini Aseprite-style)
 // ============================================================
+/**
+ * Classic Microsoft Paint-style palette (2 rows × 14 = 28 colors).
+ * First cell is transparent (eraser).
+ * Layout matches the familiar Windows Paint color box.
+ */
+// Classic Windows Paint colors — 2 rows × 14 (incl. transparent)
 const SPRITE_PALETTE = [
-    null, // transparent
-    '#000000', '#ffffff', '#9e9e9e', '#ef5350', '#e91e63',
-    '#ab47bc', '#5c6bc0', '#42a5f5', '#26c6da', '#26a69a',
-    '#66bb6a', '#d4e157', '#ffee58', '#ffa726', '#8d6e63',
-    '#ff1744', '#00e676', '#2979ff', '#ffea00', '#7c4dff',
+    // Row 1
+    null,      '#000000', '#7f7f7f', '#880015', '#ed1c24', '#ff7f27', '#fff200',
+    '#22b14c', '#00a2e8', '#3f48cc', '#a349a4', '#ffffff', '#c3c3c3', '#b97a57',
+    // Row 2
+    '#ffaec9', '#ffc90e', '#efe4b0', '#b5e61d', '#99d9ea', '#7092be', '#c8bfe7',
+    '#7f7f7f', '#c3c3c3', '#fafafa', '#e5d3b3', '#d5c4a1', '#a5734d', '#63300f',
 ];
-
-/** Recently used custom colors (any hex the user picks) */
-let spriteRecentColors = [];
-try {
-    const raw = localStorage.getItem('luax_sprite_recent_colors');
-    if (raw) spriteRecentColors = JSON.parse(raw).filter(c => /^#[0-9a-fA-F]{6}$/.test(c)).slice(0, 12);
-} catch (_) {}
 
 const spriteEd = {
     w: 16,
     h: 16,
-    pixels: null, // Uint8ClampedArray RGBA length w*h*4
+    pixels: null,
     tool: 'pencil',
-    color: '#ffffff',
+    color: '#000000',
     name: '',
     drawing: false,
     dirty: false,
@@ -2212,18 +2242,9 @@ function normalizeSpriteHex(v) {
     return h.toLowerCase();
 }
 
-function rememberSpriteColor(hex) {
-    hex = normalizeSpriteHex(hex);
-    if (!hex) return;
-    // Don't duplicate presets at front of recent list unnecessarily still ok
-    spriteRecentColors = [hex].concat(spriteRecentColors.filter(c => c !== hex)).slice(0, 12);
-    try { localStorage.setItem('luax_sprite_recent_colors', JSON.stringify(spriteRecentColors)); } catch (_) {}
-}
-
-function setSpriteColor(hex, opts) {
-    hex = normalizeSpriteHex(hex) || '#ffffff';
+function setSpriteColor(hex) {
+    hex = normalizeSpriteHex(hex) || '#000000';
     spriteEd.color = hex;
-    if (!opts || opts.remember !== false) rememberSpriteColor(hex);
     if (spriteEd.tool === 'eraser' || spriteEd.tool === 'picker') {
         setSpriteTool('pencil');
     } else {
@@ -2295,75 +2316,57 @@ function renderSpritePalette() {
     const el = document.getElementById('spr-palette');
     if (!el) return;
     el.innerHTML = '';
-    const cur = normalizeSpriteHex(spriteEd.color) || '#ffffff';
+    const cur = normalizeSpriteHex(spriteEd.color) || '#000000';
+    const isTransparent = spriteEd.tool === 'eraser';
 
-    function addSwatch(c) {
+    // Active color box (like Paint's foreground color)
+    const fgWrap = document.createElement('div');
+    fgWrap.className = 'spr-paint-fgbg';
+    const fg = document.createElement('div');
+    fg.className = 'spr-paint-active' + (isTransparent ? ' checker' : '');
+    if (!isTransparent) fg.style.background = cur;
+    fg.title = isTransparent ? 'Transparent' : cur;
+    const fgLab = document.createElement('span');
+    fgLab.className = 'spr-paint-label';
+    fgLab.textContent = 'Color';
+    fgWrap.appendChild(fg);
+    fgWrap.appendChild(fgLab);
+    el.appendChild(fgWrap);
+
+    // Classic 2×14 Paint grid
+    const grid = document.createElement('div');
+    grid.className = 'spr-paint-grid';
+    SPRITE_PALETTE.forEach((c) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'spr-swatch' + (c === null ? ' checker' : '');
         if (c) btn.style.background = c;
-        const isActive = (c === null && spriteEd.tool === 'eraser') ||
-            (c && cur === normalizeSpriteHex(c) && spriteEd.tool !== 'eraser');
-        if (isActive) btn.classList.add('active');
+        const active = (c === null && isTransparent) ||
+            (c && !isTransparent && normalizeSpriteHex(c) === cur);
+        if (active) btn.classList.add('active');
         btn.title = c || 'Transparent';
         btn.onclick = () => {
             if (c === null) setSpriteTool('eraser');
-            else setSpriteColor(c, { remember: false });
+            else setSpriteColor(c);
         };
-        el.appendChild(btn);
-    }
-
-    // Presets
-    SPRITE_PALETTE.forEach(addSwatch);
-
-    // Recent custom colors
-    spriteRecentColors.forEach(c => {
-        if (SPRITE_PALETTE.indexOf(c) >= 0) return;
-        addSwatch(c);
+        grid.appendChild(btn);
     });
+    el.appendChild(grid);
 
-    // Infinite color: native picker + hex + current preview
-    const custom = document.createElement('div');
-    custom.className = 'spr-color-custom';
-
-    const preview = document.createElement('div');
-    preview.className = 'spr-current-preview';
-    preview.style.background = cur;
-    preview.title = 'Current: ' + cur;
-
+    // Edit colors (Paint's custom color dialog → system color picker)
+    const edit = document.createElement('div');
+    edit.className = 'spr-paint-edit';
     const picker = document.createElement('input');
     picker.type = 'color';
-    picker.className = 'spr-color-picker';
     picker.value = cur;
-    picker.title = 'Pick any color';
+    picker.title = 'Edit colors';
     picker.oninput = () => setSpriteColor(picker.value);
     picker.onchange = () => setSpriteColor(picker.value);
-
-    const hex = document.createElement('input');
-    hex.type = 'text';
-    hex.className = 'spr-hex-input';
-    hex.value = cur;
-    hex.spellcheck = false;
-    hex.maxLength = 7;
-    hex.placeholder = '#rrggbb';
-    hex.title = 'Hex color';
-    hex.onchange = () => {
-        const n = normalizeSpriteHex(hex.value);
-        if (n) setSpriteColor(n);
-        else hex.value = cur;
-    };
-    hex.onkeydown = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            hex.onchange();
-            hex.blur();
-        }
-    };
-
-    custom.appendChild(preview);
-    custom.appendChild(picker);
-    custom.appendChild(hex);
-    el.appendChild(custom);
+    const editLab = document.createElement('span');
+    editLab.textContent = 'Edit';
+    edit.appendChild(picker);
+    edit.appendChild(editLab);
+    el.appendChild(edit);
 }
 
 function setSpriteTool(tool) {
