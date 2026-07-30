@@ -965,11 +965,11 @@
         }
         .spr-main {
             display: flex; gap: 10px; align-items: stretch;
-            min-height: 0; flex: 1;
+            min-height: 0; flex: 1 1 auto;
         }
         .spr-canvas-wrap {
             flex: 1; display: block;
-            min-width: 0; min-height: 260px; padding: 0; overflow: hidden;
+            min-width: 0; min-height: 180px; padding: 0; overflow: hidden;
             border-radius: 16px;
             border: 2px solid color-mix(in srgb, var(--accent-color) 35%, transparent);
             box-shadow: 0 0 24px color-mix(in srgb, var(--accent-color) 18%, transparent),
@@ -979,12 +979,25 @@
             -webkit-user-select: none; user-select: none;
             cursor: crosshair;
         }
+        .spr-canvas-wrap.panning { cursor: grab; }
+        .spr-canvas-wrap.panning.dragging { cursor: grabbing; }
         #sprite-editor-view .spr-body {
             overscroll-behavior: contain;
+            display: flex; flex-direction: column; gap: 10px;
+            flex: 1; min-height: 0;
+            overflow: hidden;
+            padding-bottom: 0;
         }
         #sprite-editor-view.spr-drawing .spr-body {
             overflow: hidden;
         }
+        #sprite-editor-view.spr-fullscreen .spr-header { display: none; }
+        #sprite-editor-view.spr-fullscreen .spr-top-tools { display: none; }
+        #sprite-editor-view.spr-fullscreen .spr-color-block-card { display: none; }
+        #sprite-editor-view.spr-fullscreen .spr-layers-card { display: none; }
+        #sprite-editor-view.spr-fullscreen .spr-footer-meta { display: none; }
+        #sprite-editor-view.spr-fullscreen .spr-main { flex: 1; }
+        #sprite-editor-view.spr-fullscreen .spr-canvas-wrap { min-height: 0; border-radius: 0; }
         #sprite-pixel-canvas {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
@@ -994,7 +1007,101 @@
             border: none; border-radius: 14px;
             background: transparent;
             touch-action: none;
-            cursor: crosshair;
+            cursor: inherit;
+        }
+        .spr-tool-divider {
+            width: 1px; align-self: stretch; min-height: 36px;
+            background: var(--glass-border); margin: 0 4px;
+            flex-shrink: 0;
+        }
+        .spr-zoom-row {
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .spr-bottom-bar {
+            flex-shrink: 0;
+            padding: 8px 0 4px;
+            background: var(--bg-color);
+            border-top: 1px solid var(--glass-border);
+            z-index: 5;
+        }
+        .spr-fs-btn {
+            border: none; border-radius: 999px; padding: 8px 12px;
+            background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+            color: var(--accent-color); font-weight: 700; font-size: 0.8rem;
+            cursor: pointer; margin-right: 6px;
+        }
+        /* Music editor */
+        #music-editor-view {
+            background: var(--bg-color);
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #music-editor-view.active { display: flex; }
+        .mus-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 12px; gap: 10px; flex-shrink: 0;
+            background: var(--panel-color);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .mus-body {
+            flex: 1; min-height: 0; overflow: auto;
+            padding: 12px; display: flex; flex-direction: column; gap: 12px;
+        }
+        .mus-controls {
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+        }
+        .mus-controls label {
+            font-size: 0.75rem; font-weight: 700; color: var(--muted);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .mus-controls input[type="number"], .mus-controls select {
+            height: 36px; border-radius: 10px; border: 1.5px solid var(--glass-border);
+            background: var(--panel-2, #1a1c23); color: var(--text-color);
+            padding: 0 8px; font-weight: 700; font-size: 0.85rem;
+        }
+        .mus-btn {
+            height: 36px; padding: 0 14px; border-radius: 10px; border: none;
+            font-weight: 800; font-size: 0.85rem; cursor: pointer;
+        }
+        .mus-btn.play { background: #00e676; color: #000; }
+        .mus-btn.stop { background: #2a2c35; color: #fff; border: 1px solid var(--glass-border); }
+        .mus-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .mus-grid {
+            display: grid;
+            gap: 3px;
+            min-width: max-content;
+        }
+        .mus-cell {
+            width: 36px; height: 36px; border-radius: 8px;
+            border: 1.5px solid var(--glass-border);
+            background: #1a1c23; color: var(--text-color);
+            font-size: 0.65rem; font-weight: 800; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0;
+        }
+        .mus-cell.on {
+            background: color-mix(in srgb, var(--accent-color) 35%, transparent);
+            border-color: var(--accent-color); color: #fff;
+        }
+        .mus-cell.playhead {
+            box-shadow: 0 0 0 2px #00e676;
+        }
+        .mus-row-label {
+            width: 52px; height: 36px; display: flex; align-items: center;
+            font-size: 0.72rem; font-weight: 800; color: var(--muted);
+        }
+        .mus-note-bar {
+            display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+        }
+        .mus-note-btn {
+            min-width: 40px; height: 34px; border-radius: 8px;
+            border: 1.5px solid var(--glass-border); background: transparent;
+            color: var(--muted); font-weight: 800; font-size: 0.72rem; cursor: pointer;
+        }
+        .mus-note-btn.active {
+            border-color: var(--accent-color); color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 16%, transparent);
         }
         .spr-layers-card {
             width: 112px; flex-shrink: 0;
@@ -1375,6 +1482,7 @@
             <button type="button" class="btn btn-sm" onclick="importLuaFile()">Import .lua</button>
             <button type="button" class="btn btn-sm" onclick="openSpriteEditor()">Draw image</button>
             <button type="button" class="btn btn-sm" onclick="importSpriteFile()">Import PNG</button>
+            <button type="button" class="btn btn-sm" onclick="openMusicEditor()">Music</button>
             <button type="button" class="btn btn-sm" onclick="exportProject()">Export</button>
             <button type="button" class="btn btn-sm" onclick="sharePlayLink()">Share link</button>
             <button type="button" class="btn btn-sm" id="btn-gamepad-toggle" onclick="toggleProjectGamepad()" title="On-screen joystick + buttons">Gamepad: ON</button>
@@ -1391,39 +1499,43 @@
                 <button type="button" class="spr-back" onclick="closeSpriteEditor()">‹ Back</button>
                 <span class="spr-title" id="sprite-editor-title">New Sprite</span>
             </div>
-            <button type="button" class="spr-save" onclick="saveSpriteFromEditor()">SAVE</button>
+            <div style="display:flex;align-items:center;gap:6px">
+                <button type="button" class="spr-fs-btn" onclick="toggleSpriteFullscreen()">⛶</button>
+                <button type="button" class="spr-save" onclick="saveSpriteFromEditor()">SAVE</button>
+            </div>
         </div>
         <div class="spr-body">
-            <div class="spr-row-split">
-                <div class="spr-card">
-                    <div class="spr-card-label">Tools</div>
-                    <div class="spr-row" id="spr-toolbar">
-                        <button type="button" class="spr-tool active" data-tool="pencil" onclick="setSpriteTool('pencil')" title="Pencil">✎</button>
-                        <button type="button" class="spr-tool" data-tool="eraser" onclick="setSpriteTool('eraser')" title="Eraser">⌫</button>
-                        <button type="button" class="spr-tool" data-tool="fill" onclick="setSpriteTool('fill')" title="Fill">▤</button>
-                        <button type="button" class="spr-tool" data-tool="picker" onclick="setSpriteTool('picker')" title="Eyedropper">◎</button>
-                    </div>
+            <div class="spr-card spr-top-tools">
+                <div class="spr-card-label">Tools · Size</div>
+                <div class="spr-row" id="spr-toolbar">
+                    <button type="button" class="spr-tool active" data-tool="pencil" onclick="setSpriteTool('pencil')" title="Pencil">✎</button>
+                    <button type="button" class="spr-tool" data-tool="eraser" onclick="setSpriteTool('eraser')" title="Eraser">⌫</button>
+                    <button type="button" class="spr-tool" data-tool="fill" onclick="setSpriteTool('fill')" title="Fill">▤</button>
+                    <button type="button" class="spr-tool" data-tool="picker" onclick="setSpriteTool('picker')" title="Eyedropper">◎</button>
+                    <button type="button" class="spr-tool" data-tool="hand" onclick="setSpriteTool('hand')" title="Hand (pan)">✋</button>
+                    <div class="spr-tool-divider"></div>
+                    <button type="button" class="spr-size" data-size="8" onclick="setSpriteSize(8)">8</button>
+                    <button type="button" class="spr-size active" data-size="16" onclick="setSpriteSize(16)">16</button>
+                    <button type="button" class="spr-size" data-size="24" onclick="setSpriteSize(24)">24</button>
+                    <button type="button" class="spr-size" data-size="32" onclick="setSpriteSize(32)">32</button>
+                    <button type="button" class="spr-size" data-size="64" onclick="setSpriteSize(64)">64</button>
                 </div>
-                <div class="spr-card">
-                    <div class="spr-card-label">Canvas size</div>
-                    <div class="spr-row" id="spr-sizes">
-                        <button type="button" class="spr-size" data-size="8" onclick="setSpriteSize(8)">8</button>
-                        <button type="button" class="spr-size active" data-size="16" onclick="setSpriteSize(16)">16</button>
-                        <button type="button" class="spr-size" data-size="24" onclick="setSpriteSize(24)">24</button>
-                        <button type="button" class="spr-size" data-size="32" onclick="setSpriteSize(32)">32</button>
-                        <button type="button" class="spr-size" data-size="64" onclick="setSpriteSize(64)">64</button>
-                    </div>
-                    <div class="spr-size-custom">
-                        <input type="number" id="spr-custom-w" min="1" max="512" value="16" inputmode="numeric" oninput="onSpriteCustomSizeInput('w')">
-                        <span class="spr-size-x">×</span>
-                        <input type="number" id="spr-custom-h" min="1" max="512" value="16" inputmode="numeric" oninput="onSpriteCustomSizeInput('h')">
-                        <button type="button" class="spr-size-lock on" id="spr-size-lock" title="Lock square (same W and H)" onclick="toggleSpriteSizeLock()">🔗</button>
-                        <button type="button" class="spr-size-apply" onclick="applyCustomSpriteSize()">Apply</button>
-                    </div>
+                <div class="spr-size-custom">
+                    <input type="number" id="spr-custom-w" min="1" max="512" value="16" inputmode="numeric" oninput="onSpriteCustomSizeInput('w')">
+                    <span class="spr-size-x">×</span>
+                    <input type="number" id="spr-custom-h" min="1" max="512" value="16" inputmode="numeric" oninput="onSpriteCustomSizeInput('h')">
+                    <button type="button" class="spr-size-lock on" id="spr-size-lock" title="Lock square" onclick="toggleSpriteSizeLock()">🔗</button>
+                    <button type="button" class="spr-size-apply" onclick="applyCustomSpriteSize()">Apply</button>
+                </div>
+                <div class="spr-zoom-row">
+                    <button type="button" class="spr-size" onclick="spriteZoom(-1)" title="Zoom out">−</button>
+                    <button type="button" class="spr-size" onclick="spriteZoom(1)" title="Zoom in">+</button>
+                    <button type="button" class="spr-size" onclick="spriteZoomReset()" title="Reset zoom">100%</button>
+                    <button type="button" class="spr-fs-btn" id="spr-fs-btn" onclick="toggleSpriteFullscreen()">Fullscreen</button>
                 </div>
             </div>
 
-            <div class="spr-card">
+            <div class="spr-card spr-color-block-card">
                 <div class="spr-card-label">Color · Palette</div>
                 <div class="spr-color-block">
                     <button type="button" class="spr-paint-active" id="spr-color-btn" title="Pick color" onclick="openSpriteSpectrum()"></button>
@@ -1444,13 +1556,57 @@
                 </div>
             </div>
 
-            <div class="spr-actions">
-                <button type="button" class="spr-action" onclick="spriteUndo()">↺ Undo</button>
-                <button type="button" class="spr-action" onclick="spriteRedo()">↻ Redo</button>
-                <button type="button" class="spr-action" onclick="setSpriteTool('fill')">▤ Fill</button>
-                <button type="button" class="spr-action" onclick="clearSpriteCanvas()">🗑 Clear</button>
+            <div class="spr-bottom-bar">
+                <div class="spr-actions">
+                    <button type="button" class="spr-action" onclick="spriteUndo()">↺ Undo</button>
+                    <button type="button" class="spr-action" onclick="spriteRedo()">↻ Redo</button>
+                    <button type="button" class="spr-action" onclick="setSpriteTool('fill')">▤ Fill</button>
+                    <button type="button" class="spr-action" onclick="clearSpriteCanvas()">🗑 Clear</button>
+                </div>
+                <div class="spr-footer-meta" id="spr-footer-meta">PNG · 16×16 · Transparent background</div>
             </div>
-            <div class="spr-footer-meta" id="spr-footer-meta">PNG · 16×16 · Transparent background</div>
+        </div>
+    </div>
+
+
+    <!-- Music step sequencer editor -->
+    <div id="music-editor-view" class="view">
+        <div class="mus-header">
+            <div class="spr-header-left">
+                <button type="button" class="spr-back" onclick="closeMusicEditor()">‹ Back</button>
+                <span class="spr-title" id="music-editor-title">Music editor</span>
+            </div>
+            <button type="button" class="spr-save" onclick="saveMusicFromEditor()">SAVE</button>
+        </div>
+        <div class="mus-body">
+            <div class="mus-controls">
+                <label>BPM <input type="number" id="mus-bpm" min="40" max="240" value="120"></label>
+                <label>Steps
+                    <select id="mus-steps" onchange="musicEditorResizeSteps()">
+                        <option value="8">8</option>
+                        <option value="16" selected>16</option>
+                        <option value="32">32</option>
+                    </select>
+                </label>
+                <label>Wave
+                    <select id="mus-wave">
+                        <option value="square">square</option>
+                        <option value="sine">sine</option>
+                        <option value="triangle">triangle</option>
+                        <option value="sawtooth">sawtooth</option>
+                    </select>
+                </label>
+                <button type="button" class="mus-btn play" onclick="previewMusicEditor()">▶ Play</button>
+                <button type="button" class="mus-btn stop" onclick="stopMusic()">Stop</button>
+            </div>
+            <div class="spr-card">
+                <div class="spr-card-label">Paint notes (tap cells)</div>
+                <div class="mus-note-bar" id="mus-note-bar"></div>
+            </div>
+            <div class="mus-grid-wrap">
+                <div class="mus-grid" id="mus-grid"></div>
+            </div>
+            <p class="lx-hint" style="margin:0">4 channels × steps. Empty = rest. SAVE stores the pattern — use <code>sfx.music("name")</code> in Lua.</p>
         </div>
     </div>
 
@@ -2371,6 +2527,60 @@ function _draw()
     gfx.text("Bouncing ball", 12, 28, "#fff", "16px sans-serif")
 end
 `
+    },
+    music: {
+        name: "Music tracker demo",
+        desc: "4-channel step sequencer background tune",
+        code: () => `-- Chiptune demo — 4 channels × 16 steps
+local C4 = sfx.note("C4")
+local D4 = sfx.note("D4")
+local E4 = sfx.note("E4")
+local F4 = sfx.note("F4")
+local G4 = sfx.note("G4")
+local A4 = sfx.note("A4")
+local C3 = sfx.note("C3")
+local E3 = sfx.note("E3")
+local F3 = sfx.note("F3")
+local G3 = sfx.note("G3")
+local C5 = sfx.note("C5")
+
+local started = false
+
+function _update(dt)
+    if not started then
+        started = true
+        sfx.music({
+            bpm = 110,
+            loop = true,
+            wave = "square",
+            steps = 16,
+            -- melody
+            {
+                C4, 0, E4, 0, G4, 0, E4, 0,
+                F4, 0, A4, 0, G4, 0, 0, 0
+            },
+            -- bass
+            {
+                C3, C3, 0, 0, E3, E3, 0, 0,
+                F3, F3, 0, 0, G3, G3, 0, 0
+            },
+            -- sparkle
+            {
+                C5, 0, 0, 0, G4, 0, 0, 0,
+                A4, 0, 0, 0, G4, 0, 0, 0
+            },
+            {}
+        })
+    end
+end
+
+function _draw()
+    gfx.cls("#0d1118")
+    gfx.text("Music tracker", 16, 40, "#fff", "20px sans-serif")
+    gfx.text(sfx.playing() and "Playing..." or "Stopped", 16, 72, "#6c5ce7", "16px sans-serif")
+    gfx.text("EXIT stops the tune", 16, 100, "#888", "14px sans-serif")
+end
+`
     }
 };
 
@@ -2725,6 +2935,32 @@ function renderFiles() {
             </div>`;
         list.appendChild(div);
     });
+    // Music patterns
+    const musicMap = getProjectMusicMap(currentProjectName);
+    Object.keys(musicMap).sort().forEach(fn => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `
+            <div class="item-title" onclick="openMusicEditor('${esc(fn)}')" title="Edit music">
+                <span style="font-size:1.1rem">♪</span>
+                <span>${fn}</span>
+                <span class="item-badge">MUSIC</span>
+            </div>
+            <div class="item-actions">
+                <button class="btn-icon-sm" title="Edit" onclick="event.stopPropagation();openMusicEditor('${esc(fn)}')">✎</button>
+                <button class="btn btn-delete" onclick="deleteMusicPattern(event,'${esc(fn)}')">${LX_SVG.trash}</button>
+            </div>`;
+        list.appendChild(div);
+    });
+}
+
+function deleteMusicPattern(e, name) {
+    e.stopPropagation();
+    if (!confirm('Delete music pattern "' + name + '"?')) return;
+    const map = getProjectMusicMap(currentProjectName);
+    delete map[name];
+    saveProjectMusic();
+    renderFiles();
 }
 
 
@@ -2812,7 +3048,7 @@ const spriteEd = {
     lockAspect: true,
     w: 16,
     h: 16,
-    layers: [],       // { name, visible, pixels }
+    layers: [],
     activeLayer: 0,
     tool: 'pencil',
     color: '#000000',
@@ -2822,6 +3058,12 @@ const spriteEd = {
     showGrid: true,
     history: [],
     historyIdx: -1,
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    fullscreen: false,
+    _panning: false,
+    _panLast: null,
 };
 
 function emptySpritePixels(w, h) {
@@ -3365,12 +3607,12 @@ function redrawSpriteCanvas() {
     if (!canvas) return;
     ensureSpritePixels();
 
-    // Fill the outline completely — canvas buffer matches display box size
     const wrap = document.getElementById('spr-canvas-wrap');
     const dispW = Math.max(1, Math.floor((wrap && wrap.clientWidth) || canvas.clientWidth || 256));
     const dispH = Math.max(1, Math.floor((wrap && wrap.clientHeight) || canvas.clientHeight || 256));
-    // Use square cell size so pixels stay square, covering the full area
-    const scale = Math.max(1, Math.floor(Math.min(dispW / spriteEd.w, dispH / spriteEd.h)));
+    const z = Math.max(0.25, Math.min(8, Number(spriteEd.zoom) || 1));
+    const base = Math.max(1, Math.floor(Math.min(dispW / spriteEd.w, dispH / spriteEd.h)));
+    const scale = Math.max(1, Math.round(base * z));
     const drawW = spriteEd.w * scale;
     const drawH = spriteEd.h * scale;
     canvas.width = dispW;
@@ -3378,11 +3620,9 @@ function redrawSpriteCanvas() {
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
-    // Center the pixel grid inside the outline
-    const ox = Math.floor((dispW - drawW) / 2);
-    const oy = Math.floor((dispH - drawH) / 2);
+    let ox = Math.floor((dispW - drawW) / 2) + Math.round(spriteEd.panX || 0);
+    let oy = Math.floor((dispH - drawH) / 2) + Math.round(spriteEd.panY || 0);
 
-    // Full-area checker behind
     const chk = 8;
     for (let y = 0; y < dispH; y += chk) {
         for (let x = 0; x < dispW; x += chk) {
@@ -3402,7 +3642,6 @@ function redrawSpriteCanvas() {
         }
     }
 
-    // Pixel grid lines over the art area
     if (spriteEd.showGrid && scale >= 3) {
         ctx.strokeStyle = 'rgba(255,255,255,0.1)';
         ctx.lineWidth = 1;
@@ -3420,11 +3659,44 @@ function redrawSpriteCanvas() {
         }
     }
 
-    // Store draw offset for input mapping
     spriteEd._draw = { ox, oy, scale, dispW, dispH };
 
     const meta = document.getElementById('spr-footer-meta');
-    if (meta) meta.textContent = 'PNG · ' + spriteEd.w + '×' + spriteEd.h + ' · ' + spriteEd.layers.length + ' layer' + (spriteEd.layers.length === 1 ? '' : 's');
+    if (meta) {
+        meta.textContent = 'PNG · ' + spriteEd.w + '×' + spriteEd.h + ' · zoom ' + Math.round(z * 100) + '% · ' +
+            spriteEd.layers.length + ' layer' + (spriteEd.layers.length === 1 ? '' : 's');
+    }
+    const wrapEl = document.getElementById('spr-canvas-wrap');
+    if (wrapEl) {
+        wrapEl.classList.toggle('panning', spriteEd.tool === 'hand');
+    }
+}
+
+function spriteZoom(dir) {
+    const steps = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6];
+    let z = Number(spriteEd.zoom) || 1;
+    let i = 0;
+    for (let s = 0; s < steps.length; s++) {
+        if (Math.abs(steps[s] - z) < 0.01) { i = s; break; }
+        if (steps[s] < z) i = s;
+    }
+    i = Math.max(0, Math.min(steps.length - 1, i + (dir > 0 ? 1 : -1)));
+    spriteEd.zoom = steps[i];
+    redrawSpriteCanvas();
+}
+function spriteZoomReset() {
+    spriteEd.zoom = 1;
+    spriteEd.panX = 0;
+    spriteEd.panY = 0;
+    redrawSpriteCanvas();
+}
+function toggleSpriteFullscreen() {
+    spriteEd.fullscreen = !spriteEd.fullscreen;
+    const view = document.getElementById('sprite-editor-view');
+    if (view) view.classList.toggle('spr-fullscreen', spriteEd.fullscreen);
+    const btn = document.getElementById('spr-fs-btn');
+    if (btn) btn.textContent = spriteEd.fullscreen ? 'Exit full' : 'Fullscreen';
+    setTimeout(() => redrawSpriteCanvas(), 50);
 }
 
 function renderSpritePalette() {
@@ -3601,6 +3873,7 @@ function floodFill(sx, sy, target, replace) {
 }
 
 function applySpriteToolAt(clientX, clientY, isDown) {
+    if (spriteEd.tool === 'hand') return;
     ensureSpritePixels();
     const pos = canvasToGridPos(clientX, clientY);
     if (!pos.valid && !isDown) return;
@@ -3649,29 +3922,47 @@ function setupSpriteCanvasInput() {
     };
 
     const down = (e) => {
-        // Only primary button / touches
         if (e.button != null && e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
+        const p = ptrPos(e);
+        if (spriteEd.tool === 'hand') {
+            spriteEd._panning = true;
+            spriteEd._panLast = { x: p.x, y: p.y };
+            spriteEd.drawing = true;
+            document.getElementById('spr-canvas-wrap')?.classList.add('dragging');
+            document.getElementById('sprite-editor-view')?.classList.add('spr-drawing');
+            return;
+        }
         document.getElementById('sprite-editor-view')?.classList.add('spr-drawing');
         spriteEd.drawing = true;
         if (spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
             pushSpriteHistory();
         }
-        const p = ptrPos(e);
         applySpriteToolAt(p.x, p.y, true);
     };
     const move = (e) => {
         if (!spriteEd.drawing) return;
         e.preventDefault();
-        if (spriteEd.tool === 'fill' || spriteEd.tool === 'picker') return;
         const p = ptrPos(e);
+        if (spriteEd.tool === 'hand' && spriteEd._panning && spriteEd._panLast) {
+            spriteEd.panX = (spriteEd.panX || 0) + (p.x - spriteEd._panLast.x);
+            spriteEd.panY = (spriteEd.panY || 0) + (p.y - spriteEd._panLast.y);
+            spriteEd._panLast = { x: p.x, y: p.y };
+            redrawSpriteCanvas();
+            return;
+        }
+        if (spriteEd.tool === 'fill' || spriteEd.tool === 'picker' || spriteEd.tool === 'hand') return;
         applySpriteToolAt(p.x, p.y, false);
     };
     const up = (e) => {
         if (!spriteEd.drawing) return;
         if (e) e.preventDefault();
-        if (spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
+        if (spriteEd.tool === 'hand') {
+            spriteEd._panning = false;
+            spriteEd._panLast = null;
+            document.getElementById('spr-canvas-wrap')?.classList.remove('dragging');
+        } else if (spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
             pushSpriteHistory();
         }
         spriteEd.drawing = false;
@@ -4132,6 +4423,10 @@ const LUAX_API_DOCS = [
     { name: 'mouse.btn', insert: 'mouse.btn', detail: 'bool', doc: 'True while primary pointer is down.' },
     // Audio / system
     { name: 'sfx.beep', insert: 'sfx.beep(', detail: 'freq,dur?,type?', doc: 'Play a short beep.\nsfx.beep(440, 0.1)\nsfx.beep(880, 0.05, "square")\nTypes: square, sine, sawtooth, triangle' },
+    { name: 'sfx.music', insert: 'sfx.music({', detail: 'bpm,loop,wave,ch…', doc: '4-channel step sequencer (8–32 steps).\nsfx.music({ bpm=120, loop=true, wave=\"square\",\n  { 523,0,587,0,659,0,523,0,440,0,523,0,0,0,0,0 },\n  { 262,262,294,294,330,330,262,262,220,220,262,262,0,0,0,0 },\n})\n0 = rest. sfx.note(\"C4\") for Hz.' },
+    { name: 'sfx.stop', insert: 'sfx.stop(', detail: '', doc: 'Stop music pattern.' },
+    { name: 'sfx.playing', insert: 'sfx.playing(', detail: '', doc: 'true while music plays.' },
+    { name: 'sfx.note', insert: 'sfx.note(', detail: 'name', doc: 'Note name to Hz. sfx.note(\"C4\")' },
     { name: 'dt', insert: 'dt', detail: 'number', doc: 'Delta time in seconds for this frame (use in _update).' },
     { name: 'print', insert: 'print(', detail: '...', doc: 'Log to the in-game console (☰ Log).' },
     { name: 'require', insert: 'require(', detail: 'mod', doc: 'Load another .lua file in this project.\nlocal p = require("player")' },
@@ -4902,22 +5197,356 @@ function ensureAudio() {
     }
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 }
-function playBeep(freq, dur, type) {
+function playBeep(freq, dur, type, vol) {
     ensureAudio();
     if (!audioCtx) return;
     try {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = type || 'square';
-        osc.frequency.value = freq || 440;
-        gain.gain.value = 0.08;
+        osc.frequency.value = Math.max(20, Number(freq) || 440);
+        const v = (vol != null && vol > 0) ? Math.min(0.25, Number(vol)) : 0.08;
+        gain.gain.value = v;
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start();
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (dur || 0.1));
-        osc.stop(audioCtx.currentTime + (dur || 0.1) + 0.02);
+        const d = Math.max(0.02, Number(dur) || 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d);
+        osc.stop(audioCtx.currentTime + d + 0.02);
     } catch (_) {}
 }
+
+const musicState = {
+    active: false, loop: true, bpm: 120, steps: 16, step: 0, acc: 0,
+    wave: 'square', vol: 0.05,
+    channels: [[], [], [], []],
+    waves: ['square', 'square', 'square', 'square'],
+};
+
+const NOTE_FREQ = {
+    'C2':65.41,'C#2':69.30,'D2':73.42,'D#2':77.78,'E2':82.41,'F2':87.31,'F#2':92.50,'G2':98.00,'G#2':103.83,'A2':110.00,'A#2':116.54,'B2':123.47,
+    'C3':130.81,'C#3':138.59,'D3':146.83,'D#3':155.56,'E3':164.81,'F3':174.61,'F#3':185.00,'G3':196.00,'G#3':207.65,'A3':220.00,'A#3':233.08,'B3':246.94,
+    'C4':261.63,'C#4':277.18,'D4':293.66,'D#4':311.13,'E4':329.63,'F4':349.23,'F#4':369.99,'G4':392.00,'G#4':415.30,'A4':440.00,'A#4':466.16,'B4':493.88,
+    'C5':523.25,'C#5':554.37,'D5':587.33,'D#5':622.25,'E5':659.25,'F5':698.46,'F#5':739.99,'G5':783.99,'G#5':830.61,'A5':880.00,'A#5':932.33,'B5':987.77,
+    'C6':1046.50
+};
+
+function noteToFreq(n) {
+    if (n == null || n === 0 || n === '0' || n === '-') return 0;
+    if (typeof n === 'number') return n > 0 ? n : 0;
+    const s = String(n).trim().toUpperCase().replace('S', '#');
+    if (NOTE_FREQ[s]) return NOTE_FREQ[s];
+    const num = Number(n);
+    return (num > 0) ? num : 0;
+}
+
+function normalizeChannel(row, steps) {
+    const out = new Array(steps).fill(0);
+    if (!row) return out;
+    const len = row.length != null ? Number(row.length) : 0;
+    for (let i = 0; i < steps; i++) {
+        let cell = (i < len) ? row[i] : 0;
+        if ((cell == null || cell === undefined) && row[i + 1] != null) cell = row[i + 1];
+        if (cell && typeof cell === 'object') {
+            out[i] = {
+                f: noteToFreq(cell.f != null ? cell.f : (cell.freq != null ? cell.freq : cell.note)),
+                wave: cell.wave || cell.type || null,
+                dur: cell.dur != null ? cell.dur : null,
+                vol: cell.vol != null ? cell.vol : null
+            };
+        } else {
+            out[i] = noteToFreq(cell);
+        }
+    }
+    return out;
+}
+
+function startMusic(spec) {
+    ensureAudio();
+    if (!spec || typeof spec !== 'object') return;
+    const steps = Math.max(4, Math.min(32, Math.floor(Number(spec.steps) || 16)));
+    const bpm = Math.max(40, Math.min(240, Number(spec.bpm) || 120));
+    const wave = spec.wave || spec.type || 'square';
+    const vol = (spec.vol != null) ? Number(spec.vol) : 0.05;
+    const loop = spec.loop !== false && spec.loop !== 0;
+    let rows = spec.channels || spec.ch || null;
+    if (!rows) {
+        rows = [];
+        for (let i = 0; i < 4; i++) {
+            if (spec[i] != null) rows[i] = spec[i];
+            else if (spec[String(i + 1)] != null) rows[i] = spec[String(i + 1)];
+            else if (spec['ch' + (i + 1)] != null) rows[i] = spec['ch' + (i + 1)];
+        }
+    }
+    const channels = [];
+    const waves = [];
+    for (let c = 0; c < 4; c++) {
+        channels[c] = normalizeChannel(rows[c], steps);
+        let cw = wave;
+        if (spec.waves && spec.waves[c]) cw = spec.waves[c];
+        if (spec['wave' + (c + 1)]) cw = spec['wave' + (c + 1)];
+        waves[c] = cw || 'square';
+    }
+    musicState.active = true;
+    musicState.loop = loop;
+    musicState.bpm = bpm;
+    musicState.steps = steps;
+    musicState.step = 0;
+    musicState.acc = 0;
+    musicState.wave = wave;
+    musicState.vol = vol;
+    musicState.channels = channels;
+    musicState.waves = waves;
+    playMusicStep(0);
+    musicState.step = 1;
+    if (musicState.step >= steps) {
+        if (loop) musicState.step = 0;
+        else musicState.active = false;
+    }
+}
+
+function playMusicStep(stepIdx) {
+    if (!audioCtx) return;
+    const steps = musicState.steps;
+    if (stepIdx < 0 || stepIdx >= steps) return;
+    const stepDur = (60 / musicState.bpm) * (4 / steps);
+    const noteDur = stepDur * 0.85;
+    for (let c = 0; c < 4; c++) {
+        const cell = musicState.channels[c][stepIdx];
+        if (!cell) continue;
+        let f = 0, w = musicState.waves[c], dur = noteDur, v = musicState.vol;
+        if (typeof cell === 'object') {
+            f = cell.f || 0;
+            if (cell.wave) w = cell.wave;
+            if (cell.dur != null) dur = Number(cell.dur);
+            if (cell.vol != null) v = Number(cell.vol);
+        } else {
+            f = cell;
+        }
+        if (f > 0) playBeep(f, dur, w, v);
+    }
+}
+
+function tickMusic(dt) {
+    if (!musicState.active) return;
+    const steps = musicState.steps;
+    const stepDur = (60 / musicState.bpm) * (4 / steps);
+    musicState.acc += dt;
+    let guard = 0;
+    while (musicState.acc >= stepDur && guard++ < 8) {
+        musicState.acc -= stepDur;
+        playMusicStep(musicState.step);
+        musicState.step++;
+        if (musicState.step >= steps) {
+            if (musicState.loop) musicState.step = 0;
+            else { musicState.active = false; musicState.acc = 0; break; }
+        }
+    }
+}
+
+function stopMusic() {
+    musicState.active = false;
+    musicState.acc = 0;
+    musicState.step = 0;
+}
+
+function isMusicPlaying() {
+    return !!musicState.active;
+}
+
+// ============================================================
+// MUSIC EDITOR (visual step sequencer)
+// ============================================================
+const MUSIC_KEY = 'luadeck_project_music';
+let projectMusic = {};
+try { projectMusic = JSON.parse(localStorage.getItem(MUSIC_KEY) || '{}') || {}; } catch (_) { projectMusic = {}; }
+
+function saveProjectMusic() {
+    try { localStorage.setItem(MUSIC_KEY, JSON.stringify(projectMusic)); } catch (_) {}
+}
+function getProjectMusicMap(name) {
+    if (!projectMusic[name]) projectMusic[name] = {};
+    return projectMusic[name];
+}
+
+const musEd = {
+    name: '',
+    bpm: 120,
+    steps: 16,
+    wave: 'square',
+    channels: null, // 4 x steps of note strings or ''
+    paintNote: 'C4',
+};
+
+const MUS_NOTES = ['', 'C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'];
+
+function musicEmptyGrid(steps) {
+    return [0,1,2,3].map(() => Array(steps).fill(''));
+}
+
+function openMusicEditor(existingName) {
+    if (!currentProjectName) return alert('Open a project first');
+    musEd.name = existingName || '';
+    const map = getProjectMusicMap(currentProjectName);
+    if (existingName && map[existingName]) {
+        const p = map[existingName];
+        musEd.bpm = p.bpm || 120;
+        musEd.steps = p.steps || 16;
+        musEd.wave = p.wave || 'square';
+        musEd.channels = (p.channels || musicEmptyGrid(musEd.steps)).map(ch => {
+            const row = Array(musEd.steps).fill('');
+            for (let i = 0; i < musEd.steps; i++) row[i] = (ch && ch[i]) || '';
+            return row;
+        });
+    } else {
+        musEd.bpm = 120;
+        musEd.steps = 16;
+        musEd.wave = 'square';
+        musEd.channels = musicEmptyGrid(16);
+    }
+    const title = document.getElementById('music-editor-title');
+    if (title) title.textContent = musEd.name || 'New pattern';
+    const bpm = document.getElementById('mus-bpm');
+    if (bpm) bpm.value = musEd.bpm;
+    const st = document.getElementById('mus-steps');
+    if (st) st.value = String(musEd.steps);
+    const wv = document.getElementById('mus-wave');
+    if (wv) wv.value = musEd.wave;
+    renderMusicNoteBar();
+    renderMusicGrid();
+    switchView('music-editor-view');
+}
+
+function closeMusicEditor() {
+    try { stopMusic(); } catch (_) {}
+    switchView('files-view');
+}
+
+function musicEditorResizeSteps() {
+    const st = document.getElementById('mus-steps');
+    const n = Math.max(4, Math.min(32, parseInt(st && st.value, 10) || 16));
+    const old = musEd.channels || musicEmptyGrid(n);
+    musEd.steps = n;
+    musEd.channels = [0,1,2,3].map(c => {
+        const row = Array(n).fill('');
+        for (let i = 0; i < n; i++) row[i] = (old[c] && old[c][i]) || '';
+        return row;
+    });
+    renderMusicGrid();
+}
+
+function renderMusicNoteBar() {
+    const bar = document.getElementById('mus-note-bar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    MUS_NOTES.forEach(n => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'mus-note-btn' + (musEd.paintNote === n ? ' active' : '');
+        b.textContent = n === '' ? '∅' : n;
+        b.title = n === '' ? 'Rest (clear)' : n;
+        b.onclick = () => {
+            musEd.paintNote = n;
+            renderMusicNoteBar();
+        };
+        bar.appendChild(b);
+    });
+}
+
+function renderMusicGrid() {
+    const grid = document.getElementById('mus-grid');
+    if (!grid || !musEd.channels) return;
+    const steps = musEd.steps;
+    grid.style.gridTemplateColumns = '52px repeat(' + steps + ', 36px)';
+    grid.innerHTML = '';
+    for (let c = 0; c < 4; c++) {
+        const lab = document.createElement('div');
+        lab.className = 'mus-row-label';
+        lab.textContent = 'Ch' + (c + 1);
+        grid.appendChild(lab);
+        for (let s = 0; s < steps; s++) {
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            const val = musEd.channels[c][s] || '';
+            cell.className = 'mus-cell' + (val ? ' on' : '');
+            cell.textContent = val || '';
+            cell.dataset.ch = c;
+            cell.dataset.step = s;
+            cell.onclick = () => {
+                const cur = musEd.channels[c][s] || '';
+                if (musEd.paintNote === '') {
+                    musEd.channels[c][s] = '';
+                } else if (cur === musEd.paintNote) {
+                    musEd.channels[c][s] = '';
+                } else {
+                    musEd.channels[c][s] = musEd.paintNote;
+                }
+                renderMusicGrid();
+            };
+            grid.appendChild(cell);
+        }
+    }
+}
+
+function musicEditorSpec() {
+    const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || musEd.bpm;
+    const wave = (document.getElementById('mus-wave') || {}).value || musEd.wave;
+    const steps = musEd.steps;
+    const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch =>
+        ch.map(n => n ? noteToFreq(n) : 0)
+    );
+    return { bpm, wave, steps, loop: true, channels };
+}
+
+function previewMusicEditor() {
+    const spec = musicEditorSpec();
+    startMusic(spec);
+}
+
+function saveMusicFromEditor() {
+    if (!currentProjectName) return;
+    let name = musEd.name;
+    if (!name) {
+        name = prompt('Pattern name (e.g. theme)', 'theme');
+        if (!name) return;
+        name = name.trim().replace(/[^\w\-]+/g, '_');
+        if (!name) return;
+    }
+    const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || 120;
+    const wave = (document.getElementById('mus-wave') || {}).value || 'square';
+    const steps = musEd.steps;
+    const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch => ch.slice());
+    const map = getProjectMusicMap(currentProjectName);
+    map[name] = { bpm, wave, steps, channels };
+    saveProjectMusic();
+    musEd.name = name;
+    const title = document.getElementById('music-editor-title');
+    if (title) title.textContent = name;
+    alert('Saved pattern "' + name + '".\\n\\nIn Lua:\\nsfx.music("' + name + '")');
+    renderFiles();
+}
+
+// Allow sfx.music("patternName") to load saved patterns
+const _startMusicRaw = startMusic;
+startMusic = function(spec) {
+    if (typeof spec === 'string') {
+        const map = currentProjectName ? getProjectMusicMap(currentProjectName) : {};
+        const p = map[spec];
+        if (!p) {
+            console.warn('Music pattern not found:', spec);
+            return;
+        }
+        const channels = (p.channels || []).map(ch =>
+            (ch || []).map(n => {
+                if (typeof n === 'number') return n;
+                return n ? noteToFreq(n) : 0;
+            })
+        );
+        spec = { bpm: p.bpm, wave: p.wave, steps: p.steps, loop: true, channels: channels };
+    }
+    return _startMusicRaw(spec);
+};
+
 
 // ============================================================
 // CONSOLE
@@ -5272,7 +5901,11 @@ window.LuaDeckAPI = {
         mouseBtn: () => !!pointer.btn
     },
     sfx: {
-        beep: (freq, dur, type) => playBeep(freq, dur, type)
+        beep: (freq, dur, type) => playBeep(freq, dur, type),
+        music(spec) { startMusic(spec); },
+        stop() { stopMusic(); },
+        playing() { return isMusicPlaying(); },
+        note(name) { return noteToFreq(name); },
     },
     sys: {
         getFileContent(filename) {
@@ -5376,7 +6009,14 @@ mouse = setmetatable({}, {
 })
 
 sfx = {
-    beep = function(freq, dur, typ) api.sfx:beep(freq, dur, typ) end
+    beep = function(freq, dur, typ) api.sfx:beep(freq, dur, typ) end,
+    music = function(opts)
+        if type(opts) ~= "table" then return end
+        api.sfx:music(tojs(opts))
+    end,
+    stop = function() api.sfx:stop() end,
+    playing = function() return api.sfx:playing() end,
+    note = function(name) return api.sfx:note(tostring(name or "")) end,
 }
 
 dt = 0.016
@@ -5505,6 +6145,8 @@ function gameLoop(timestamp) {
     let dt = (timestamp - lastTime) / 1000;
     lastTime = timestamp;
     if (dt > 0.1) dt = 0.1; // clamp big stalls
+
+    tickMusic(dt);
 
     // FPS
     fpsFrames++;
@@ -5644,6 +6286,7 @@ window.startPlayMode = startPlayMode;
 function stopPlayMode() {
     isPlaying = false;
     isPaused = false;
+    try { stopMusic(); } catch (_) {}
     if (loopId) { cancelAnimationFrame(loopId); loopId = null; }
     btnState.fill(false);
     resetStick();
