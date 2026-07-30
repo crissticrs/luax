@@ -778,43 +778,83 @@
         }
         .login-card .login-error.show { display: block; }
 
-        /* —— Pixel sprite editor —— */
-        #sprite-editor-view { background: var(--bg-color); }
-        .spr-toolbar {
-            display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-            padding: 10px 12px; border-bottom: 1px solid var(--glass-border);
-            background: var(--panel-color); flex-shrink: 0;
+        /* —— Pixel sprite editor (mockup style) —— */
+        #sprite-editor-view {
+            background: var(--bg-color);
+            display: flex; flex-direction: column;
+            overflow: hidden;
         }
-        .spr-tool-group { display: flex; gap: 4px; flex-wrap: wrap; }
+        #sprite-editor-view.active { display: flex; }
+        .spr-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 12px; gap: 10px; flex-shrink: 0;
+            background: var(--panel-color);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .spr-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .spr-back {
+            border: none; border-radius: 999px; padding: 8px 14px;
+            background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+            color: var(--accent-color); font-weight: 700; font-size: 0.85rem;
+            cursor: pointer; display: flex; align-items: center; gap: 4px;
+        }
+        .spr-title {
+            font-weight: 700; font-size: 0.95rem; color: var(--text-color);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .spr-save {
+            border: none; border-radius: 999px; padding: 10px 18px;
+            background: var(--accent-color); color: #fff; font-weight: 800;
+            font-size: 0.85rem; cursor: pointer;
+            box-shadow: 0 0 18px color-mix(in srgb, var(--accent-color) 45%, transparent);
+        }
+        .spr-body {
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+            padding: 10px 12px 12px;
+            display: flex; flex-direction: column; gap: 10px;
+            min-height: 0;
+        }
+        .spr-card {
+            background: color-mix(in srgb, var(--panel-color) 92%, transparent);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px; padding: 10px 12px;
+        }
+        .spr-card-label {
+            font-size: 0.72rem; font-weight: 700; color: var(--muted);
+            margin-bottom: 8px; letter-spacing: 0.02em;
+        }
+        .spr-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .spr-row-split {
+            display: flex; gap: 10px; flex-wrap: wrap;
+        }
+        .spr-row-split > .spr-card { flex: 1; min-width: 140px; }
         .spr-tool, .spr-size {
-            min-width: 40px; min-height: 40px; border-radius: 10px;
-            border: 1px solid var(--glass-border); background: var(--panel-2, var(--panel-color));
-            color: var(--text-color); font-weight: 700; font-size: 0.95rem; cursor: pointer;
+            width: 40px; height: 40px; border-radius: 12px;
+            border: 1.5px solid var(--glass-border);
+            background: transparent; color: var(--muted);
+            font-size: 1rem; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
         }
         .spr-tool.active, .spr-size.active {
             border-color: var(--accent-color);
-            background: color-mix(in srgb, var(--accent-color) 22%, transparent);
+            background: color-mix(in srgb, var(--accent-color) 18%, transparent);
             color: var(--accent-color);
+            box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color) 35%, transparent);
         }
-        /* Paint-style grid, matched to LuaX theme */
-        .spr-palette {
-            display: flex; flex-wrap: nowrap; gap: 12px; padding: 12px 14px;
-            border-bottom: 1px solid var(--glass-border); flex-shrink: 0;
-            background: var(--panel-color); align-items: center;
-            overflow-x: auto; -webkit-overflow-scrolling: touch;
+        .spr-size {
+            width: auto; min-width: 40px; padding: 0 10px;
+            font-weight: 800; font-size: 0.85rem;
         }
-        .spr-paint-fgbg {
-            display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
-            align-items: center;
+        .spr-color-block {
+            display: flex; align-items: center; gap: 12px;
         }
         .spr-paint-active {
-            width: 48px; height: 48px; border-radius: 12px;
-            border: 2px solid var(--accent-color);
-            box-shadow: 0 0 14px color-mix(in srgb, var(--accent-color) 35%, transparent);
-            background: #000;
-            padding: 0; cursor: pointer; display: block;
+            width: 52px; height: 52px; border-radius: 50%;
+            border: 3px solid color-mix(in srgb, var(--accent-color) 55%, transparent);
+            box-shadow: 0 0 16px color-mix(in srgb, var(--accent-color) 40%, transparent);
+            background: #000; padding: 0; cursor: pointer; flex-shrink: 0;
         }
-        .spr-paint-active:active { transform: scale(0.96); opacity: 0.9; }
+        .spr-paint-active:active { transform: scale(0.96); }
         .spr-paint-active.checker {
             background-image:
                 linear-gradient(45deg, #3a3a48 25%, transparent 25%),
@@ -825,34 +865,22 @@
             background-position: 0 0, 0 5px, 5px -5px, -5px 0;
             background-color: #1a1a22;
         }
-        .spr-paint-label {
-            font-size: 0.7rem; color: var(--muted); font-weight: 600;
-            letter-spacing: 0.02em;
+        .spr-palette-inline {
+            flex: 1; min-width: 0;
         }
         .spr-paint-grid {
             display: grid;
-            grid-template-columns: repeat(14, 24px);
-            grid-template-rows: repeat(2, 24px);
-            gap: 5px;
-            flex-shrink: 0;
-            padding: 10px;
-            background: var(--panel-2, var(--panel-color));
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            grid-template-columns: repeat(10, 1fr);
+            gap: 6px;
         }
         .spr-swatch {
-            width: 24px; height: 24px; border-radius: 7px;
-            border: 1.5px solid color-mix(in srgb, var(--glass-border) 80%, transparent);
-            cursor: pointer; padding: 0; flex-shrink: 0;
-            transition: transform 0.08s ease, box-shadow 0.08s ease;
+            width: 100%; aspect-ratio: 1; border-radius: 8px;
+            border: 1.5px solid transparent;
+            cursor: pointer; padding: 0;
         }
-        .spr-swatch:active { transform: scale(0.92); }
         .spr-swatch.active {
             border-color: var(--accent-color);
-            box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 45%, transparent);
-            transform: scale(1.08);
-            z-index: 1;
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 40%, transparent);
         }
         .spr-swatch.checker {
             background-image:
@@ -864,21 +892,106 @@
             background-position: 0 0, 0 4px, 4px -4px, -4px 0;
             background-color: #1a1a22;
         }
-        .spr-paint-edit {
+        .spr-main {
+            display: flex; gap: 8px; align-items: stretch;
+            min-height: 0; flex: 1;
+        }
+        .spr-side {
+            display: flex; flex-direction: column; gap: 6px;
             flex-shrink: 0;
-            display: flex; flex-direction: column; gap: 6px; align-items: center;
         }
-        .spr-paint-edit-btn {
-            width: 44px; height: 44px; padding: 0;
+        .spr-side-btn {
+            width: 40px; height: 40px; border-radius: 12px;
             border: 1.5px solid var(--glass-border);
-            border-radius: 12px; cursor: pointer;
-            background: var(--panel-2, var(--panel-color));
+            background: color-mix(in srgb, var(--panel-color) 90%, transparent);
+            color: var(--muted); cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.1rem; color: var(--text-color);
+            font-size: 0.95rem;
         }
-        .spr-paint-edit-btn:active { opacity: 0.85; transform: scale(0.96); }
-        .spr-paint-edit span {
-            font-size: 0.7rem; color: var(--muted); font-weight: 600;
+        .spr-side-btn:active { color: var(--accent-color); border-color: var(--accent-color); }
+        .spr-canvas-wrap {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            min-width: 0; min-height: 220px; padding: 8px;
+            border-radius: 16px;
+            border: 2px solid color-mix(in srgb, var(--accent-color) 35%, transparent);
+            box-shadow: 0 0 24px color-mix(in srgb, var(--accent-color) 18%, transparent),
+                        inset 0 0 0 1px color-mix(in srgb, var(--accent-color) 12%, transparent);
+            background:
+                linear-gradient(45deg, #1a1a22 25%, transparent 25%),
+                linear-gradient(-45deg, #1a1a22 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #1a1a22 75%),
+                linear-gradient(-45deg, transparent 75%, #1a1a22 75%);
+            background-size: 16px 16px;
+            background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+            background-color: #121218;
+            position: relative; touch-action: none;
+        }
+        .spr-canvas-wrap.grid-on #sprite-pixel-canvas {
+            /* grid drawn in JS */
+        }
+        #sprite-pixel-canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            max-width: 100%;
+            max-height: min(48vh, 360px);
+            width: auto; height: auto;
+            aspect-ratio: 1;
+            border: none; border-radius: 4px;
+            background: transparent;
+            touch-action: none;
+            cursor: crosshair;
+        }
+        .spr-preview-card {
+            width: 88px; flex-shrink: 0;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .spr-preview-box {
+            width: 88px; height: 88px; border-radius: 14px;
+            border: 1.5px solid var(--glass-border);
+            background:
+                linear-gradient(45deg, #1a1a22 25%, transparent 25%),
+                linear-gradient(-45deg, #1a1a22 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #1a1a22 75%),
+                linear-gradient(-45deg, transparent 75%, #1a1a22 75%);
+            background-size: 10px 10px;
+            background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+            background-color: #121218;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        #spr-preview-canvas {
+            image-rendering: pixelated;
+            max-width: 72px; max-height: 72px;
+        }
+        .spr-preview-size {
+            text-align: center; font-size: 0.68rem; color: var(--muted); font-weight: 600;
+        }
+        .spr-view-opts {
+            font-size: 0.72rem; color: var(--muted);
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .spr-view-opts label {
+            display: flex; align-items: center; gap: 6px; cursor: pointer;
+            color: var(--text-color); font-weight: 600;
+        }
+        .spr-view-opts input { accent-color: var(--accent-color); }
+        .spr-actions {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+        }
+        .spr-action {
+            border: 1.5px solid var(--glass-border);
+            background: color-mix(in srgb, var(--panel-color) 90%, transparent);
+            color: var(--muted); border-radius: 14px;
+            padding: 12px 6px; font-size: 0.75rem; font-weight: 700;
+            cursor: pointer; display: flex; flex-direction: column;
+            align-items: center; gap: 4px;
+        }
+        .spr-action:active {
+            color: var(--accent-color); border-color: var(--accent-color);
+        }
+        .spr-footer-meta {
+            text-align: center; font-size: 0.68rem; color: var(--muted);
+            padding: 4px 0 2px;
         }
         /* Custom HSV spectrum — works with finger drag on mobile */
         #spr-spectrum-overlay {
@@ -1027,38 +1140,6 @@
             .spr-swatch { width: 20px; height: 20px; border-radius: 6px; }
             .spr-paint-active { width: 40px; height: 40px; }
         }
-        .spr-canvas-wrap {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            min-height: 0; padding: 12px; touch-action: none;
-            background:
-                linear-gradient(45deg, #1a1a22 25%, transparent 25%),
-                linear-gradient(-45deg, #1a1a22 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #1a1a22 75%),
-                linear-gradient(-45deg, transparent 75%, #1a1a22 75%);
-            background-size: 16px 16px;
-            background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-            background-color: #121218;
-        }
-        #sprite-pixel-canvas {
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
-            max-width: min(92vw, 420px);
-            max-height: min(60vh, 420px);
-            width: min(92vw, 420px);
-            height: auto;
-            aspect-ratio: 1;
-            border: 2px solid var(--glass-border);
-            border-radius: 8px;
-            background: #000;
-            touch-action: none;
-            cursor: crosshair;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.45);
-        }
-        .spr-hint {
-            margin: 0; padding: 8px 14px 12px; font-size: 0.75rem; color: var(--muted);
-            flex-shrink: 0; line-height: 1.35;
-        }
-        .spr-hint code { color: var(--accent-color); font-size: 0.72rem; }
     </style>
 </head>
 <body>
@@ -1206,37 +1287,74 @@
         <input type="file" id="import-sprite-input" accept="image/png,image/jpeg,image/webp,image/*" style="display:none" onchange="handleSpriteImport(event)">
     </div>
 
-    <!-- Pixel sprite editor -->
+    <!-- Pixel sprite editor (mockup style) -->
     <div id="sprite-editor-view" class="view">
-        <div class="header">
-            <h1>
-                <button class="btn btn-back" onclick="closeSpriteEditor()">◀ Back</button>
-                <span id="sprite-editor-title">Sprite</span>
-            </h1>
-            <div class="header-actions">
-                <button class="btn btn-primary" onclick="saveSpriteFromEditor()">SAVE</button>
+        <div class="spr-header">
+            <div class="spr-header-left">
+                <button type="button" class="spr-back" onclick="closeSpriteEditor()">‹ Back</button>
+                <span class="spr-title" id="sprite-editor-title">New Sprite</span>
             </div>
+            <button type="button" class="spr-save" onclick="saveSpriteFromEditor()">▶ SAVE</button>
         </div>
-        <div class="spr-toolbar" id="spr-toolbar">
-            <div class="spr-tool-group">
-                <button type="button" class="spr-tool active" data-tool="pencil" onclick="setSpriteTool('pencil')" title="Pencil">✎</button>
-                <button type="button" class="spr-tool" data-tool="eraser" onclick="setSpriteTool('eraser')" title="Eraser">⌫</button>
-                <button type="button" class="spr-tool" data-tool="fill" onclick="setSpriteTool('fill')" title="Fill">▣</button>
-                <button type="button" class="spr-tool" data-tool="picker" onclick="setSpriteTool('picker')" title="Eyedropper">◎</button>
+        <div class="spr-body">
+            <div class="spr-row-split">
+                <div class="spr-card">
+                    <div class="spr-card-label">Tools</div>
+                    <div class="spr-row" id="spr-toolbar">
+                        <button type="button" class="spr-tool active" data-tool="pencil" onclick="setSpriteTool('pencil')" title="Pencil">✎</button>
+                        <button type="button" class="spr-tool" data-tool="eraser" onclick="setSpriteTool('eraser')" title="Eraser">⌫</button>
+                        <button type="button" class="spr-tool" data-tool="fill" onclick="setSpriteTool('fill')" title="Fill">▤</button>
+                        <button type="button" class="spr-tool" data-tool="picker" onclick="setSpriteTool('picker')" title="Eyedropper">◎</button>
+                    </div>
+                </div>
+                <div class="spr-card">
+                    <div class="spr-card-label">Brush Size</div>
+                    <div class="spr-row" id="spr-sizes">
+                        <button type="button" class="spr-size" data-size="8" onclick="setSpriteSize(8)">8</button>
+                        <button type="button" class="spr-size active" data-size="16" onclick="setSpriteSize(16)">16</button>
+                        <button type="button" class="spr-size" data-size="24" onclick="setSpriteSize(24)">24</button>
+                        <button type="button" class="spr-size" data-size="32" onclick="setSpriteSize(32)">32</button>
+                    </div>
+                </div>
             </div>
-            <div class="spr-tool-group spr-sizes" id="spr-sizes">
-                <button type="button" class="spr-size" data-size="8" onclick="setSpriteSize(8)">8</button>
-                <button type="button" class="spr-size active" data-size="16" onclick="setSpriteSize(16)">16</button>
-                <button type="button" class="spr-size" data-size="24" onclick="setSpriteSize(24)">24</button>
-                <button type="button" class="spr-size" data-size="32" onclick="setSpriteSize(32)">32</button>
+
+            <div class="spr-card">
+                <div class="spr-card-label">Color · Palette</div>
+                <div class="spr-color-block">
+                    <button type="button" class="spr-paint-active" id="spr-color-btn" title="Pick color" onclick="openSpriteSpectrum()"></button>
+                    <div class="spr-palette-inline">
+                        <div class="spr-paint-grid" id="spr-palette"></div>
+                    </div>
+                </div>
             </div>
-            <button type="button" class="btn btn-sm" onclick="clearSpriteCanvas()">Clear</button>
+
+            <div class="spr-main">
+                <div class="spr-side">
+                    <button type="button" class="spr-side-btn" title="Undo" onclick="spriteUndo()">↺</button>
+                    <button type="button" class="spr-side-btn" title="Redo" onclick="spriteRedo()">↻</button>
+                </div>
+                <div class="spr-canvas-wrap" id="spr-canvas-wrap">
+                    <canvas id="sprite-pixel-canvas" width="256" height="256"></canvas>
+                </div>
+                <div class="spr-preview-card">
+                    <div class="spr-preview-box">
+                        <canvas id="spr-preview-canvas" width="64" height="64"></canvas>
+                    </div>
+                    <div class="spr-preview-size" id="spr-preview-size">16×16</div>
+                    <div class="spr-view-opts">
+                        <label><input type="checkbox" id="spr-grid-toggle" checked onchange="toggleSpriteGrid(this.checked)"> Pixel Grid</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="spr-actions">
+                <button type="button" class="spr-action" onclick="spriteUndo()">↺ Undo</button>
+                <button type="button" class="spr-action" onclick="spriteRedo()">↻ Redo</button>
+                <button type="button" class="spr-action" onclick="setSpriteTool('fill')">▤ Fill</button>
+                <button type="button" class="spr-action" onclick="clearSpriteCanvas()">🗑 Clear</button>
+            </div>
+            <div class="spr-footer-meta" id="spr-footer-meta">PNG · 16×16 · Transparent background</div>
         </div>
-        <div class="spr-palette" id="spr-palette"></div>
-        <div class="spr-canvas-wrap">
-            <canvas id="sprite-pixel-canvas" width="256" height="256"></canvas>
-        </div>
-        <p class="spr-hint">Tap/drag to paint · Save adds it as a sprite for <code>gfx.sprite("name.png", x, y)</code></p>
     </div>
 
     <!-- Color picker: Presets / Spectrum / Sliders -->
@@ -2434,7 +2552,46 @@ const spriteEd = {
     name: '',
     drawing: false,
     dirty: false,
+    showGrid: true,
+    history: [],
+    historyIdx: -1,
 };
+
+function pushSpriteHistory() {
+    ensureSpritePixels();
+    const snap = new Uint8ClampedArray(spriteEd.pixels);
+    // drop redo branch
+    spriteEd.history = spriteEd.history.slice(0, spriteEd.historyIdx + 1);
+    spriteEd.history.push(snap);
+    if (spriteEd.history.length > 40) {
+        spriteEd.history.shift();
+    } else {
+        spriteEd.historyIdx++;
+    }
+    // keep idx in sync after shift
+    spriteEd.historyIdx = spriteEd.history.length - 1;
+}
+
+function spriteUndo() {
+    if (spriteEd.historyIdx <= 0) return;
+    spriteEd.historyIdx--;
+    spriteEd.pixels = new Uint8ClampedArray(spriteEd.history[spriteEd.historyIdx]);
+    spriteEd.dirty = true;
+    redrawSpriteCanvas();
+}
+
+function spriteRedo() {
+    if (spriteEd.historyIdx >= spriteEd.history.length - 1) return;
+    spriteEd.historyIdx++;
+    spriteEd.pixels = new Uint8ClampedArray(spriteEd.history[spriteEd.historyIdx]);
+    spriteEd.dirty = true;
+    redrawSpriteCanvas();
+}
+
+function toggleSpriteGrid(on) {
+    spriteEd.showGrid = !!on;
+    redrawSpriteCanvas();
+}
 
 function normalizeSpriteHex(v) {
     if (!v) return null;
@@ -2751,14 +2908,61 @@ function redrawSpriteCanvas() {
     const canvas = document.getElementById('sprite-pixel-canvas');
     if (!canvas) return;
     ensureSpritePixels();
-    // Internal resolution = pixel grid; CSS scales it up
-    canvas.width = spriteEd.w;
-    canvas.height = spriteEd.h;
+    // Draw at larger internal res so pixel grid lines are visible
+    const scale = spriteEd.showGrid ? 12 : 8;
+    canvas.width = spriteEd.w * scale;
+    canvas.height = spriteEd.h * scale;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    const img = ctx.createImageData(spriteEd.w, spriteEd.h);
-    img.data.set(spriteEd.pixels);
-    ctx.putImageData(img, 0, 0);
+
+    // Checker bg for transparent
+    const cs = Math.max(1, scale);
+    for (let y = 0; y < spriteEd.h; y++) {
+        for (let x = 0; x < spriteEd.w; x++) {
+            const i = (y * spriteEd.w + x) * 4;
+            const a = spriteEd.pixels[i + 3];
+            if (a < 8) {
+                const chk = ((x + y) & 1) ? '#2a2a35' : '#1a1a22';
+                ctx.fillStyle = chk;
+                ctx.fillRect(x * scale, y * scale, scale, scale);
+            } else {
+                ctx.fillStyle = 'rgba(' + spriteEd.pixels[i] + ',' + spriteEd.pixels[i+1] + ',' + spriteEd.pixels[i+2] + ',' + (a/255) + ')';
+                ctx.fillRect(x * scale, y * scale, scale, scale);
+            }
+        }
+    }
+    if (spriteEd.showGrid && scale >= 4) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= spriteEd.w; x++) {
+            ctx.beginPath();
+            ctx.moveTo(x * scale + 0.5, 0);
+            ctx.lineTo(x * scale + 0.5, spriteEd.h * scale);
+            ctx.stroke();
+        }
+        for (let y = 0; y <= spriteEd.h; y++) {
+            ctx.beginPath();
+            ctx.moveTo(0, y * scale + 0.5);
+            ctx.lineTo(spriteEd.w * scale, y * scale + 0.5);
+            ctx.stroke();
+        }
+    }
+
+    // Preview thumbnail
+    const prev = document.getElementById('spr-preview-canvas');
+    if (prev) {
+        prev.width = spriteEd.w;
+        prev.height = spriteEd.h;
+        const pctx = prev.getContext('2d');
+        pctx.imageSmoothingEnabled = false;
+        const img = pctx.createImageData(spriteEd.w, spriteEd.h);
+        img.data.set(spriteEd.pixels);
+        pctx.putImageData(img, 0, 0);
+    }
+    const sizeEl = document.getElementById('spr-preview-size');
+    if (sizeEl) sizeEl.textContent = spriteEd.w + '×' + spriteEd.h;
+    const meta = document.getElementById('spr-footer-meta');
+    if (meta) meta.textContent = 'PNG · ' + spriteEd.w + '×' + spriteEd.h + ' · Transparent background';
 }
 
 function renderSpritePalette() {
@@ -2768,43 +2972,26 @@ function renderSpritePalette() {
     const cur = normalizeSpriteHex(spriteEd.color) || '#000000';
     const isTransparent = spriteEd.tool === 'eraser';
 
-    // Current color — tap to open full picker (Presets / Spectrum / Sliders)
-    const fgWrap = document.createElement('div');
-    fgWrap.className = 'spr-paint-fgbg';
-    const fg = document.createElement('button');
-    fg.type = 'button';
-    fg.className = 'spr-paint-active' + (isTransparent ? ' checker' : '');
-    if (!isTransparent) fg.style.background = cur;
-    fg.title = 'Pick color';
-    fg.setAttribute('aria-label', 'Pick color');
-    fg.style.cursor = 'pointer';
-    fg.onclick = (e) => { e.preventDefault(); openSpriteSpectrum(); };
-    const fgLab = document.createElement('span');
-    fgLab.className = 'spr-paint-label';
-    fgLab.textContent = 'Color';
-    fgWrap.appendChild(fg);
-    fgWrap.appendChild(fgLab);
-    el.appendChild(fgWrap);
+    // Circular color button
+    const fg = document.getElementById('spr-color-btn');
+    if (fg) {
+        fg.className = 'spr-paint-active' + (isTransparent ? ' checker' : '');
+        if (!isTransparent) fg.style.background = cur;
+        else fg.style.background = '';
+    }
 
-    // Quick preset grid (same Paint colors — no separate Edit control)
-    const grid = document.createElement('div');
-    grid.className = 'spr-paint-grid';
+    // Compact preset row (skip transparent — use eraser tool)
     SPRITE_PALETTE.forEach((c) => {
+        if (c === null) return;
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'spr-swatch' + (c === null ? ' checker' : '');
-        if (c) btn.style.background = c;
-        const active = (c === null && isTransparent) ||
-            (c && !isTransparent && normalizeSpriteHex(c) === cur);
-        if (active) btn.classList.add('active');
-        btn.title = c || 'Transparent';
-        btn.onclick = () => {
-            if (c === null) setSpriteTool('eraser');
-            else setSpriteColor(c);
-        };
-        grid.appendChild(btn);
+        btn.className = 'spr-swatch';
+        btn.style.background = c;
+        if (!isTransparent && normalizeSpriteHex(c) === cur) btn.classList.add('active');
+        btn.title = c;
+        btn.onclick = () => setSpriteColor(c);
+        el.appendChild(btn);
     });
-    el.appendChild(grid);
 }
 
 function setSpriteTool(tool) {
@@ -2838,8 +3025,10 @@ function setSpriteSize(size) {
 function clearSpriteCanvas() {
     if (!confirm('Clear all pixels?')) return;
     ensureSpritePixels();
+    pushSpriteHistory();
     spriteEd.pixels.fill(0);
     spriteEd.dirty = true;
+    pushSpriteHistory();
     redrawSpriteCanvas();
 }
 
@@ -2883,10 +3072,9 @@ function applySpriteToolAt(clientX, clientY, isDown) {
         return;
     }
     if (spriteEd.tool === 'fill' && isDown) {
-        const target = getSpritePixel(x, y);
-        const replace = spriteEd.tool === 'eraser' ? [0, 0, 0, 0] : hexToRgba(spriteEd.color);
-        // fill uses current color (not eraser unless color is transparent)
-        floodFill(x, y, target, hexToRgba(spriteEd.color));
+        pushSpriteHistory();
+        floodFill(x, y, getSpritePixel(x, y), hexToRgba(spriteEd.color));
+        pushSpriteHistory();
         redrawSpriteCanvas();
         return;
     }
@@ -2906,6 +3094,9 @@ function setupSpriteCanvasInput() {
     const down = (e) => {
         e.preventDefault();
         spriteEd.drawing = true;
+        if (spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
+            pushSpriteHistory();
+        }
         const t = e.touches ? e.touches[0] : e;
         applySpriteToolAt(t.clientX, t.clientY, true);
     };
@@ -2916,7 +3107,12 @@ function setupSpriteCanvasInput() {
         if (spriteEd.tool === 'fill' || spriteEd.tool === 'picker') return;
         applySpriteToolAt(t.clientX, t.clientY, false);
     };
-    const up = () => { spriteEd.drawing = false; };
+    const up = () => {
+        if (spriteEd.drawing && spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
+            pushSpriteHistory();
+        }
+        spriteEd.drawing = false;
+    };
 
     canvas.addEventListener('mousedown', down);
     window.addEventListener('mousemove', move);
@@ -2939,11 +3135,15 @@ function openSpriteEditor(existingName) {
     spriteEd.color = '#ffffff';
     spriteEd.drawing = false;
     spriteEd.dirty = false;
+    spriteEd.history = [];
+    spriteEd.historyIdx = -1;
+    spriteEd.showGrid = true;
+    const gridToggle = document.getElementById('spr-grid-toggle');
+    if (gridToggle) gridToggle.checked = true;
 
     if (existingName) {
         spriteEd.name = existingName;
         document.getElementById('sprite-editor-title').textContent = existingName;
-        // Load image into pixel grid (resampled to current size or image size clamped)
         const src = getProjectAssetMap(currentProjectName)[existingName];
         loadSpriteFromDataUrl(src, existingName);
     } else {
@@ -2951,10 +3151,11 @@ function openSpriteEditor(existingName) {
         spriteEd.w = 16;
         spriteEd.h = 16;
         spriteEd.pixels = new Uint8ClampedArray(16 * 16 * 4);
-        document.getElementById('sprite-editor-title').textContent = 'New sprite';
+        document.getElementById('sprite-editor-title').textContent = 'New Sprite';
         document.querySelectorAll('.spr-size').forEach(b => {
             b.classList.toggle('active', +b.dataset.size === 16);
         });
+        pushSpriteHistory();
         redrawSpriteCanvas();
     }
 
@@ -3001,12 +3202,16 @@ function loadSpriteFromDataUrl(dataUrl, name) {
         const data = tctx.getImageData(0, 0, spriteEd.w, spriteEd.h);
         spriteEd.pixels = new Uint8ClampedArray(data.data);
         spriteEd.dirty = false;
+        spriteEd.history = [];
+        spriteEd.historyIdx = -1;
+        pushSpriteHistory();
         redrawSpriteCanvas();
     };
     img.onerror = () => {
         spriteEd.w = 16;
         spriteEd.h = 16;
         spriteEd.pixels = new Uint8ClampedArray(16 * 16 * 4);
+        pushSpriteHistory();
         redrawSpriteCanvas();
     };
     img.src = dataUrl;
