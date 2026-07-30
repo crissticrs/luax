@@ -444,6 +444,29 @@
             -webkit-user-select: text; user-select: text;
         }
         .CodeMirror-vscrollbar, .CodeMirror-hscrollbar { display: none !important; }
+        /* Inline syntax / runtime error markers */
+        .luax-error-gutter {
+            width: 14px;
+        }
+        .luax-error-marker {
+            display: block; width: 10px; height: 10px; margin: 4px auto 0;
+            border-radius: 50%; background: #ff5252;
+            box-shadow: 0 0 6px rgba(255,82,82,0.7);
+            cursor: pointer;
+        }
+        .CodeMirror-linewidget.luax-error-widget {
+            background: rgba(255, 82, 82, 0.12);
+            border-left: 3px solid #ff5252;
+            color: #ff8a80;
+            font-size: 12px;
+            font-family: Menlo, Monaco, monospace;
+            padding: 4px 10px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .luax-error-line {
+            background: rgba(255, 82, 82, 0.1) !important;
+        }
         /* Autocomplete + hover docs */
         .CodeMirror-hints {
             z-index: 4000 !important;
@@ -481,7 +504,28 @@
             font-family: Menlo, Monaco, monospace; font-weight: 700;
             color: var(--accent-color); margin-bottom: 4px; font-size: 12.5px;
         }
-        .luax-hover-tip .tip-body { color: var(--muted); }
+        .luax-hover-tip .tip-body { color: var(--muted); white-space: pre-wrap; }
+        /* Mobile-friendly suggestion strip (above keyboard) */
+        .luax-suggest-bar {
+            display: none; flex-shrink: 0;
+            gap: 8px; padding: 8px 10px;
+            overflow-x: auto; -webkit-overflow-scrolling: touch;
+            background: var(--panel-color);
+            border-top: 1px solid var(--glass-border);
+            max-height: 48px;
+        }
+        .luax-suggest-bar.open { display: flex; }
+        .luax-suggest-chip {
+            flex-shrink: 0; border: 1px solid var(--glass-border);
+            background: var(--panel-2, #1e1a2a); color: var(--text-color);
+            border-radius: 999px; padding: 8px 12px; font-size: 0.8rem;
+            font-weight: 600; font-family: Menlo, Monaco, monospace;
+            white-space: nowrap; cursor: pointer;
+        }
+        .luax-suggest-chip:active {
+            background: color-mix(in srgb, var(--accent-color) 30%, transparent);
+            border-color: var(--accent-color); color: #fff;
+        }
         .lx-shell, #files-view .list-container, #login-view {
             -webkit-user-select: none; user-select: none;
         }
@@ -892,6 +936,7 @@
         </div>
         <div class="tabs-bar" id="tabs-bar"></div>
         <div class="editor-container" id="editor"></div>
+        <div class="luax-suggest-bar" id="luax-suggest-bar" aria-label="API suggestions"></div>
         <div id="status-bar"></div>
     </div>
 
@@ -2291,17 +2336,119 @@ const editor = CodeMirror(document.getElementById('editor'), {
     mode: 'lua', theme: 'material-ocean',
     lineNumbers: true, matchBrackets: true, indentUnit: 4,
     styleActiveLine: true, viewportMargin: Infinity,
+    gutters: ['CodeMirror-linenumbers', 'luax-error-gutter'],
     extraKeys: {
         'Ctrl-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
         'Cmd-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
     },
 });
 
+/** Active error widgets/markers in the editor */
+let editorErrorState = { widgets: [], lineHandle: null, line: null };
+
+function clearEditorErrors() {
+    if (!editor) return;
+    (editorErrorState.widgets || []).forEach(w => {
+        try { editor.removeLineWidget(w); } catch (_) {}
+    });
+    editorErrorState.widgets = [];
+    if (editorErrorState.line != null) {
+        try { editor.setGutterMarker(editorErrorState.line, 'luax-error-gutter', null); } catch (_) {}
+        try { editor.removeLineClass(editorErrorState.line, 'background', 'luax-error-line'); } catch (_) {}
+    }
+    editorErrorState.line = null;
+    editorErrorState.lineHandle = null;
+}
+
+/**
+ * Parse Lua / Fengari error strings for 1-based line number.
+ * Examples:
+ *   [string "@main.lua"]:12: unexpected symbol near 'end'
+ *   main.lua:8: attempt to index a nil value
+ *   @:3: ...
+ */
+function parseLuaErrorLine(errMsg) {
+    if (!errMsg) return null;
+    const s = String(errMsg);
+    const patterns = [
+        /\[string\s+"[^"]*"\]:(\d+)\s*:/,
+        /@[\w./\\-]*:(\d+)\s*:/,
+        /(?:^|[\s(])([\w./\\-]+\.lua):(\d+)\s*:/,
+        /:(\d+)\s*:\s+/,
+    ];
+    for (let i = 0; i < patterns.length; i++) {
+        const m = s.match(patterns[i]);
+        if (!m) continue;
+        // last capture group is usually the line
+        const line = parseInt(m[m.length - 1], 10);
+        if (line > 0 && line < 100000) return line;
+    }
+    return null;
+}
+
+/** Strip source prefix from error for cleaner widget text */
+function formatLuaErrorMessage(errMsg) {
+    let s = String(errMsg || '');
+    s = s.replace(/^\[string\s+"[^"]*"\]:\d+\s*:\s*/i, '');
+    s = s.replace(/^@[\w./\\-]*:\d+\s*:\s*/i, '');
+    s = s.replace(/^[\w./\\-]+\.lua:\d+\s*:\s*/i, '');
+    return s.trim() || String(errMsg);
+}
+
+/**
+ * Highlight a line in the editor and show an inline error widget.
+ * lineNum is 1-based (Lua style).
+ */
+function setEditorError(lineNum, errMsg) {
+    clearEditorErrors();
+    if (!editor || !lineNum || lineNum < 1) return;
+    const lineCount = editor.lineCount();
+    const idx = Math.min(Math.max(lineNum, 1), lineCount) - 1; // 0-based
+
+    editor.addLineClass(idx, 'background', 'luax-error-line');
+
+    const marker = document.createElement('div');
+    marker.className = 'luax-error-marker';
+    marker.title = formatLuaErrorMessage(errMsg);
+    editor.setGutterMarker(idx, 'luax-error-gutter', marker);
+
+    const node = document.createElement('div');
+    node.className = 'luax-error-widget';
+    node.textContent = 'Line ' + lineNum + ': ' + formatLuaErrorMessage(errMsg);
+    const widget = editor.addLineWidget(idx, node, { coverGutter: false, noHScroll: true });
+
+    editorErrorState = { widgets: [widget], line: idx, lineHandle: null };
+
+    try {
+        editor.scrollIntoView({ line: idx, ch: 0 }, 80);
+    } catch (_) {}
+}
+
+/** Run syntax check and apply inline highlight if needed */
+function applyEditorSyntaxCheck(code, filename) {
+    const err = checkSyntax(code, filename || currentFileName || 'file.lua');
+    if (!err) {
+        clearEditorErrors();
+        return null;
+    }
+    const line = parseLuaErrorLine(err);
+    if (line) setEditorError(line, err);
+    else clearEditorErrors();
+    return err;
+}
+
 editor.on('change', () => {
     if (!currentFileName) return;
     const now = editor.getValue();
     isDirty = (now !== savedContent);
     updateDirtyUI();
+    // Clear stale markers while typing; re-check shortly after pause
+    if (editorErrorState.line != null) clearEditorErrors();
+    clearTimeout(editor._luaxLintTimer);
+    editor._luaxLintTimer = setTimeout(() => {
+        if (!currentFileName) return;
+        applyEditorSyntaxCheck(editor.getValue(), currentFileName);
+    }, 650);
 });
 
 // Auto-show hints while typing identifiers / after a dot
@@ -2482,17 +2629,22 @@ function openFile(name) {
     const content = projects[currentProjectName][name] || '';
     savedContent = content;
     isDirty = false;
+    clearEditorErrors();
     editor.setValue(content);
     switchView('editor-view');
     renderTabs();
     updateDirtyUI();
     setStatus('');
-    setTimeout(() => { editor.refresh(); editor.focus(); }, 40);
+    setTimeout(() => {
+        editor.refresh();
+        editor.focus();
+        applyEditorSyntaxCheck(content, name);
+    }, 40);
 }
 
 function setStatus(msg, type) {
     const el = document.getElementById('status-bar');
-    if (!msg) { el.style.display = 'none'; return; }
+    if (!msg) { el.style.display = 'none'; el.className = ''; return; }
     el.style.display = 'block';
     el.textContent = msg;
     el.className = type || '';
@@ -2526,10 +2678,17 @@ function saveCurrentFile() {
     isDirty = false;
     updateDirtyUI();
 
-    const err = checkSyntax(code, currentFileName);
+    const err = applyEditorSyntaxCheck(code, currentFileName);
     if (err) {
-        setStatus('Syntax error: ' + err, 'error');
+        const line = parseLuaErrorLine(err);
+        setStatus(
+            line
+                ? ('Syntax error on line ' + line + ': ' + formatLuaErrorMessage(err))
+                : ('Syntax error: ' + err),
+            'error'
+        );
     } else {
+        clearEditorErrors();
         setStatus('Saved ✓  No syntax errors', 'ok');
         setTimeout(() => setStatus(''), 2500);
     }
@@ -3328,6 +3487,26 @@ function callLua(name, arg) {
         showError('Runtime: ' + err);
         pushConsole(err, 'err');
         stopPlayMode();
+        // Jump to editor and mark the runtime line when possible
+        try {
+            const line = parseLuaErrorLine(err);
+            // Prefer file named in the error, else main.lua
+            let file = 'main.lua';
+            const fm = String(err).match(/([\w./\\-]+\.lua)/);
+            if (fm && currentProjectName && projects[currentProjectName][fm[1]] != null) {
+                file = fm[1];
+            }
+            if (currentProjectName && projects[currentProjectName][file] != null) {
+                openFile(file);
+                if (line) setEditorError(line, err);
+                setStatus(
+                    line
+                        ? ('Runtime error on line ' + line + ': ' + formatLuaErrorMessage(err))
+                        : ('Runtime: ' + err),
+                    'error'
+                );
+            }
+        } catch (_) {}
         return false;
     }
     return true;
@@ -3426,8 +3605,23 @@ async function startPlayMode() {
             throw new Error(err);
         }
     } catch (err) {
-        alert('Compile error:\n' + err.message);
-        pushConsole(err.message, 'err');
+        const msg = err.message || String(err);
+        pushConsole(msg, 'err');
+        // Open main.lua and highlight the failing line in the editor
+        try {
+            if (currentProjectName && projects[currentProjectName]['main.lua'] != null) {
+                openFile('main.lua');
+                const line = parseLuaErrorLine(msg);
+                if (line) setEditorError(line, msg);
+                setStatus(
+                    line
+                        ? ('Compile error on line ' + line + ': ' + formatLuaErrorMessage(msg))
+                        : ('Compile error: ' + msg),
+                    'error'
+                );
+            }
+        } catch (_) {}
+        alert('Compile error:\n' + msg);
         return;
     }
 
