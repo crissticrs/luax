@@ -695,6 +695,27 @@
             z-index: 5;
             position: relative;
         }
+        .files-play-bar {
+            padding: 10px 14px 4px;
+            flex-shrink: 0;
+        }
+        .files-play-bar .btn-run-game {
+            width: 100%;
+            min-height: 52px;
+            border: none;
+            border-radius: 14px;
+            background: #00e676;
+            color: #000;
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            box-shadow: 0 4px 18px rgba(0,230,118,0.4);
+        }
+        .files-play-bar .btn-run-game:active {
+            transform: scale(0.98);
+            opacity: 0.92;
+        }
         #files-view .btn-back {
             background: var(--panel-2, var(--panel-color));
             color: var(--accent-color);
@@ -1298,21 +1319,24 @@
     <div id="files-view" class="view">
         <div class="header">
             <h1>
-                <button class="btn btn-back" onclick="switchView('projects-view')">◀ Back</button>
+                <button type="button" class="btn btn-back" onclick="switchView('projects-view')">◀ Back</button>
                 <span id="current-project-title">Project</span>
             </h1>
             <div class="header-actions">
-                <button type="button" class="btn btn-play" id="btn-start-play">▶ PLAY</button>
+                <button type="button" class="btn btn-play" id="btn-start-play" data-action="run-game">▶ PLAY</button>
             </div>
         </div>
+        <div class="files-play-bar">
+            <button type="button" class="btn-run-game" id="btn-run-game" data-action="run-game">▶ RUN GAME (main.lua)</button>
+        </div>
         <div class="files-toolbar">
-            <button class="btn btn-sm" onclick="promptNewFile()">+ File</button>
-            <button class="btn btn-sm" onclick="importLuaFile()">Import .lua</button>
-            <button class="btn btn-sm" onclick="openSpriteEditor()">+ Sprite</button>
-            <button class="btn btn-sm" onclick="importSpriteFile()">Import PNG</button>
-            <button class="btn btn-sm" onclick="exportProject()">Export</button>
-            <button class="btn btn-sm" onclick="sharePlayLink()">Share play</button>
-            <button class="btn btn-sm" id="btn-gamepad-toggle" onclick="toggleProjectGamepad()" title="On-screen joystick + buttons">Gamepad: ON</button>
+            <button type="button" class="btn btn-sm" onclick="promptNewFile()">+ Lua file</button>
+            <button type="button" class="btn btn-sm" onclick="importLuaFile()">Import .lua</button>
+            <button type="button" class="btn btn-sm" onclick="openSpriteEditor()">Draw image</button>
+            <button type="button" class="btn btn-sm" onclick="importSpriteFile()">Import PNG</button>
+            <button type="button" class="btn btn-sm" onclick="exportProject()">Export</button>
+            <button type="button" class="btn btn-sm" onclick="sharePlayLink()">Share link</button>
+            <button type="button" class="btn btn-sm" id="btn-gamepad-toggle" onclick="toggleProjectGamepad()" title="On-screen joystick + buttons">Gamepad: ON</button>
         </div>
         <div class="list-container" id="files-list"></div>
         <input type="file" id="import-lua-input" accept="*/*" style="display:none" onchange="handleLuaImport(event)">
@@ -1490,6 +1514,20 @@
     </div>
 
 <script>
+// PLAY / RUN GAME — capture-phase so it always works, even if later code fails
+document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest && e.target.closest('[data-action="run-game"]');
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof window.startPlayMode === 'function') {
+        try { window.startPlayMode(); }
+        catch (err) { alert('PLAY error: ' + (err && err.message ? err.message : err)); }
+    } else {
+        alert('Game engine is still loading. Wait 1 second and try RUN GAME again.');
+    }
+}, true);
+
 // ============================================================
 // TEMPLATES
 // ============================================================
@@ -5228,6 +5266,8 @@ async function startPlayMode() {
         gameLoop(performance.now());
     }, 60);
 }
+// Expose immediately when defined
+window.startPlayMode = startPlayMode;
 
 function stopPlayMode() {
     isPlaying = false;
