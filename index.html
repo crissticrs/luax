@@ -898,6 +898,72 @@
         .spr-spectrum-card h3 {
             margin: 0 0 12px; font-size: 1rem; color: var(--text-color);
         }
+        .spr-picker-tabs {
+            display: flex; gap: 4px; margin-bottom: 12px;
+            background: var(--panel-2, #111);
+            border-radius: 12px; padding: 4px;
+            border: 1px solid var(--glass-border);
+        }
+        .spr-picker-tab {
+            flex: 1; border: none; background: transparent;
+            color: var(--muted); font-size: 0.78rem; font-weight: 700;
+            padding: 8px 6px; border-radius: 9px; cursor: pointer;
+            min-height: 36px;
+        }
+        .spr-picker-tab.active {
+            background: color-mix(in srgb, var(--accent-color) 22%, transparent);
+            color: var(--accent-color);
+        }
+        .spr-picker-panel { display: none; }
+        .spr-picker-panel.active { display: block; }
+        .spr-preset-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+        .spr-preset-grid .spr-swatch {
+            width: 100%; aspect-ratio: 1; height: auto; border-radius: 8px;
+        }
+        .spr-slider-block {
+            margin-bottom: 12px;
+        }
+        .spr-slider-block label {
+            display: flex; justify-content: space-between;
+            font-size: 0.78rem; color: var(--muted); font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .spr-slider-block input[type="range"] {
+            width: 100%; height: 28px; margin: 0;
+            -webkit-appearance: none; appearance: none;
+            background: transparent; touch-action: pan-y;
+        }
+        .spr-slider-block input[type="range"]::-webkit-slider-runnable-track {
+            height: 10px; border-radius: 6px;
+            border: 1px solid var(--glass-border);
+        }
+        .spr-slider-block input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 22px; height: 22px;
+            border-radius: 50%; background: #fff;
+            border: 2px solid var(--accent-color);
+            margin-top: -7px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        }
+        .spr-slider-block input[type="range"]::-moz-range-track {
+            height: 10px; border-radius: 6px;
+            border: 1px solid var(--glass-border);
+        }
+        .spr-slider-block input[type="range"]::-moz-range-thumb {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #fff; border: 2px solid var(--accent-color);
+        }
+        #spr-slider-hue {
+            background: linear-gradient(to right,
+                #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+            border-radius: 6px;
+        }
+        #spr-slider-sat, #spr-slider-val {
+            border-radius: 6px;
+        }
         .spr-sv {
             position: relative; width: 100%; aspect-ratio: 1;
             border-radius: 12px; overflow: hidden;
@@ -1171,18 +1237,49 @@
         <p class="spr-hint">Tap/drag to paint · Save adds it as a sprite for <code>gfx.sprite("name.png", x, y)</code></p>
     </div>
 
-    <!-- Mobile-friendly HSV spectrum (finger drag works) -->
+    <!-- Color picker: Presets / Spectrum / Sliders -->
     <div id="spr-spectrum-overlay" aria-hidden="true">
         <div class="spr-spectrum-card" onclick="event.stopPropagation()">
             <h3>Pick color</h3>
-            <div class="spr-sv" id="spr-sv">
-                <div class="spr-sv-white"></div>
-                <div class="spr-sv-black"></div>
-                <div class="spr-sv-cursor" id="spr-sv-cursor"></div>
+            <div class="spr-picker-tabs">
+                <button type="button" class="spr-picker-tab active" data-tab="presets" onclick="setSpectrumTab('presets')">Presets</button>
+                <button type="button" class="spr-picker-tab" data-tab="spectrum" onclick="setSpectrumTab('spectrum')">Spectrum</button>
+                <button type="button" class="spr-picker-tab" data-tab="sliders" onclick="setSpectrumTab('sliders')">Sliders</button>
             </div>
-            <div class="spr-hue" id="spr-hue">
-                <div class="spr-hue-cursor" id="spr-hue-cursor"></div>
+
+            <!-- Tab: Preset colors -->
+            <div class="spr-picker-panel active" id="spr-panel-presets">
+                <div class="spr-preset-grid" id="spr-preset-grid"></div>
             </div>
+
+            <!-- Tab: Spectrum (SV square + hue bar) -->
+            <div class="spr-picker-panel" id="spr-panel-spectrum">
+                <div class="spr-sv" id="spr-sv">
+                    <div class="spr-sv-white"></div>
+                    <div class="spr-sv-black"></div>
+                    <div class="spr-sv-cursor" id="spr-sv-cursor"></div>
+                </div>
+                <div class="spr-hue" id="spr-hue">
+                    <div class="spr-hue-cursor" id="spr-hue-cursor"></div>
+                </div>
+            </div>
+
+            <!-- Tab: Hue / Sat / Val sliders -->
+            <div class="spr-picker-panel" id="spr-panel-sliders">
+                <div class="spr-slider-block">
+                    <label><span>Hue</span><span id="spr-slider-hue-val">0°</span></label>
+                    <input type="range" id="spr-slider-hue" min="0" max="360" step="1" value="0">
+                </div>
+                <div class="spr-slider-block">
+                    <label><span>Saturation</span><span id="spr-slider-sat-val">100%</span></label>
+                    <input type="range" id="spr-slider-sat" min="0" max="100" step="1" value="100">
+                </div>
+                <div class="spr-slider-block">
+                    <label><span>Brightness</span><span id="spr-slider-val-val">100%</span></label>
+                    <input type="range" id="spr-slider-val" min="0" max="100" step="1" value="100">
+                </div>
+            </div>
+
             <div class="spr-spectrum-row">
                 <div class="spr-spectrum-preview" id="spr-spectrum-preview"></div>
                 <input type="text" class="spr-spectrum-hex" id="spr-spectrum-hex" maxlength="7" spellcheck="false">
@@ -2358,8 +2455,8 @@ function setSpriteColor(hex) {
     }
 }
 
-// —— HSV spectrum (drag-friendly on mobile) ——
-const spriteSpectrum = { h: 0, s: 1, v: 1, open: false, drag: null };
+// —— Color picker: Presets / Spectrum / Sliders ——
+const spriteSpectrum = { h: 0, s: 1, v: 1, open: false, drag: null, tab: 'presets' };
 
 function rgbToHsv(r, g, b) {
     r /= 255; g /= 255; b /= 255;
@@ -2400,32 +2497,95 @@ function hsvToHex(h, s, v) {
     return '#' + p(r) + p(g) + p(b);
 }
 
+function setSpectrumTab(tab) {
+    spriteSpectrum.tab = tab;
+    document.querySelectorAll('.spr-picker-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    document.querySelectorAll('.spr-picker-panel').forEach(p => {
+        p.classList.toggle('active', p.id === 'spr-panel-' + tab);
+    });
+    requestAnimationFrame(() => updateSpectrumUI());
+}
+
+function renderSpectrumPresets() {
+    const grid = document.getElementById('spr-preset-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const cur = hsvToHex(spriteSpectrum.h, spriteSpectrum.s, spriteSpectrum.v);
+    SPRITE_PALETTE.forEach((c) => {
+        if (c === null) return; // skip transparent in picker
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'spr-swatch';
+        btn.style.background = c;
+        if (normalizeSpriteHex(c) === normalizeSpriteHex(cur)) btn.classList.add('active');
+        btn.title = c;
+        btn.onclick = () => {
+            let h = c.slice(1);
+            const n = parseInt(h, 16);
+            const hsv = rgbToHsv((n >> 16) & 255, (n >> 8) & 255, n & 255);
+            spriteSpectrum.h = hsv.h;
+            spriteSpectrum.s = hsv.s;
+            spriteSpectrum.v = hsv.v;
+            updateSpectrumUI();
+            renderSpectrumPresets();
+        };
+        grid.appendChild(btn);
+    });
+}
+
 function updateSpectrumUI() {
     const hex = hsvToHex(spriteSpectrum.h, spriteSpectrum.s, spriteSpectrum.v);
+    const preview = document.getElementById('spr-spectrum-preview');
+    const hexInput = document.getElementById('spr-spectrum-hex');
+    if (preview) preview.style.background = hex;
+    if (hexInput && document.activeElement !== hexInput) hexInput.value = hex;
+
+    // Spectrum tab
     const sv = document.getElementById('spr-sv');
     const hueEl = document.getElementById('spr-hue');
     const svCur = document.getElementById('spr-sv-cursor');
     const hueCur = document.getElementById('spr-hue-cursor');
-    const preview = document.getElementById('spr-spectrum-preview');
-    const hexInput = document.getElementById('spr-spectrum-hex');
-    if (!sv) return;
+    if (sv && svCur) {
+        const [hr, hg, hb] = hsvToRgb(spriteSpectrum.h, 1, 1);
+        sv.style.background = 'rgb(' + hr + ',' + hg + ',' + hb + ')';
+        const rect = sv.getBoundingClientRect();
+        const w = rect.width || 1;
+        const h = rect.height || 1;
+        svCur.style.left = (spriteSpectrum.s * w) + 'px';
+        svCur.style.top = ((1 - spriteSpectrum.v) * h) + 'px';
+    }
+    if (hueEl && hueCur) {
+        const hueRect = hueEl.getBoundingClientRect();
+        const hw = hueRect.width || 1;
+        hueCur.style.left = ((spriteSpectrum.h / 360) * hw) + 'px';
+    }
 
-    // SV panel base = pure hue
-    const [hr, hg, hb] = hsvToRgb(spriteSpectrum.h, 1, 1);
-    sv.style.background = 'rgb(' + hr + ',' + hg + ',' + hb + ')';
+    // Sliders tab
+    const sh = document.getElementById('spr-slider-hue');
+    const ss = document.getElementById('spr-slider-sat');
+    const svl = document.getElementById('spr-slider-val');
+    const shv = document.getElementById('spr-slider-hue-val');
+    const ssv = document.getElementById('spr-slider-sat-val');
+    const svv = document.getElementById('spr-slider-val-val');
+    if (sh && document.activeElement !== sh) sh.value = Math.round(spriteSpectrum.h);
+    if (ss && document.activeElement !== ss) ss.value = Math.round(spriteSpectrum.s * 100);
+    if (svl && document.activeElement !== svl) svl.value = Math.round(spriteSpectrum.v * 100);
+    if (shv) shv.textContent = Math.round(spriteSpectrum.h) + '°';
+    if (ssv) ssv.textContent = Math.round(spriteSpectrum.s * 100) + '%';
+    if (svv) svv.textContent = Math.round(spriteSpectrum.v * 100) + '%';
 
-    const rect = sv.getBoundingClientRect();
-    const w = rect.width || 1;
-    const h = rect.height || 1;
-    svCur.style.left = (spriteSpectrum.s * w) + 'px';
-    svCur.style.top = ((1 - spriteSpectrum.v) * h) + 'px';
-
-    const hueRect = hueEl.getBoundingClientRect();
-    const hw = hueRect.width || 1;
-    hueCur.style.left = ((spriteSpectrum.h / 360) * hw) + 'px';
-
-    preview.style.background = hex;
-    if (document.activeElement !== hexInput) hexInput.value = hex;
+    // Slider track fills
+    if (ss) {
+        const [hr, hg, hb] = hsvToRgb(spriteSpectrum.h, 1, spriteSpectrum.v);
+        const gray = Math.round(spriteSpectrum.v * 255);
+        ss.style.background = 'linear-gradient(to right, rgb(' + gray + ',' + gray + ',' + gray + '), rgb(' + hr + ',' + hg + ',' + hb + '))';
+    }
+    if (svl) {
+        const [hr, hg, hb] = hsvToRgb(spriteSpectrum.h, spriteSpectrum.s, 1);
+        svl.style.background = 'linear-gradient(to right, #000, rgb(' + hr + ',' + hg + ',' + hb + '))';
+    }
 }
 
 function openSpriteSpectrum() {
@@ -2443,10 +2603,10 @@ function openSpriteSpectrum() {
     const overlay = document.getElementById('spr-spectrum-overlay');
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden', 'false');
-    // layout then place cursors
+    setSpectrumTab(spriteSpectrum.tab || 'presets');
+    renderSpectrumPresets();
     requestAnimationFrame(() => updateSpectrumUI());
 
-    // Bind once
     if (!overlay._luaxBound) {
         overlay._luaxBound = true;
         overlay.addEventListener('click', (e) => {
@@ -2498,16 +2658,32 @@ function openSpriteSpectrum() {
         bindDrag(sv, 'sv');
         bindDrag(hue, 'hue');
 
+        // Range sliders
+        const sh = document.getElementById('spr-slider-hue');
+        const ss = document.getElementById('spr-slider-sat');
+        const svl = document.getElementById('spr-slider-val');
+        const onSlide = () => {
+            spriteSpectrum.h = +sh.value;
+            spriteSpectrum.s = +ss.value / 100;
+            spriteSpectrum.v = +svl.value / 100;
+            updateSpectrumUI();
+        };
+        [sh, ss, svl].forEach(el => {
+            el.addEventListener('input', onSlide);
+            el.addEventListener('change', onSlide);
+        });
+
         hexInput.addEventListener('change', () => {
             const n = normalizeSpriteHex(hexInput.value);
             if (!n) { updateSpectrumUI(); return; }
-            let h = n.slice(1);
-            const num = parseInt(h, 16);
-            const hsv = rgbToHsv((num >> 16) & 255, (num >> 8) & 255, num & 255);
-            spriteSpectrum.h = hsv.h;
-            spriteSpectrum.s = hsv.s;
-            spriteSpectrum.v = hsv.v;
+            let hx = n.slice(1);
+            const num = parseInt(hx, 16);
+            const hsv2 = rgbToHsv((num >> 16) & 255, (num >> 8) & 255, num & 255);
+            spriteSpectrum.h = hsv2.h;
+            spriteSpectrum.s = hsv2.s;
+            spriteSpectrum.v = hsv2.v;
             updateSpectrumUI();
+            renderSpectrumPresets();
         });
     }
 }
