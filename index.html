@@ -796,85 +796,101 @@
             background: color-mix(in srgb, var(--accent-color) 22%, transparent);
             color: var(--accent-color);
         }
-        /* Classic MS Paint-style palette */
+        /* Paint-style grid, matched to LuaX theme */
         .spr-palette {
-            display: flex; flex-wrap: nowrap; gap: 10px; padding: 10px 12px;
+            display: flex; flex-wrap: nowrap; gap: 12px; padding: 12px 14px;
             border-bottom: 1px solid var(--glass-border); flex-shrink: 0;
             background: var(--panel-color); align-items: center;
             overflow-x: auto; -webkit-overflow-scrolling: touch;
         }
         .spr-paint-fgbg {
-            display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
+            display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
             align-items: center;
         }
         .spr-paint-active {
-            width: 44px; height: 44px; border-radius: 2px;
-            border: 2px solid #808080;
-            box-shadow: inset 1px 1px 0 #fff, 1px 1px 0 #000;
-            background: #000; position: relative;
+            width: 48px; height: 48px; border-radius: 12px;
+            border: 2px solid var(--accent-color);
+            box-shadow: 0 0 14px color-mix(in srgb, var(--accent-color) 35%, transparent);
+            background: #000;
         }
         .spr-paint-active.checker {
             background-image:
-                linear-gradient(45deg, #c0c0c0 25%, transparent 25%),
-                linear-gradient(-45deg, #c0c0c0 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #c0c0c0 75%),
-                linear-gradient(-45deg, transparent 75%, #c0c0c0 75%);
-            background-size: 8px 8px;
-            background-position: 0 0, 0 4px, 4px -4px, -4px 0;
-            background-color: #fff;
+                linear-gradient(45deg, #3a3a48 25%, transparent 25%),
+                linear-gradient(-45deg, #3a3a48 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #3a3a48 75%),
+                linear-gradient(-45deg, transparent 75%, #3a3a48 75%);
+            background-size: 10px 10px;
+            background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+            background-color: #1a1a22;
         }
         .spr-paint-label {
-            font-size: 0.65rem; color: var(--muted); font-weight: 600;
+            font-size: 0.7rem; color: var(--muted); font-weight: 600;
+            letter-spacing: 0.02em;
         }
         .spr-paint-grid {
             display: grid;
-            grid-template-columns: repeat(14, 22px);
-            grid-template-rows: repeat(2, 22px);
-            gap: 2px;
+            grid-template-columns: repeat(14, 24px);
+            grid-template-rows: repeat(2, 24px);
+            gap: 5px;
             flex-shrink: 0;
-            padding: 4px;
-            background: #c0c0c0;
-            border: 2px solid;
-            border-color: #fff #808080 #808080 #fff;
+            padding: 10px;
+            background: var(--panel-2, var(--panel-color));
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
         }
         .spr-swatch {
-            width: 22px; height: 22px; border-radius: 0; border: 1px solid #808080;
+            width: 24px; height: 24px; border-radius: 7px;
+            border: 1.5px solid color-mix(in srgb, var(--glass-border) 80%, transparent);
             cursor: pointer; padding: 0; flex-shrink: 0;
-            box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4);
+            transition: transform 0.08s ease, box-shadow 0.08s ease;
         }
+        .spr-swatch:active { transform: scale(0.92); }
         .spr-swatch.active {
-            outline: 2px solid #000;
-            outline-offset: 0;
-            position: relative;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 45%, transparent);
+            transform: scale(1.08);
             z-index: 1;
         }
         .spr-swatch.checker {
             background-image:
-                linear-gradient(45deg, #aaa 25%, transparent 25%),
-                linear-gradient(-45deg, #aaa 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #aaa 75%),
-                linear-gradient(-45deg, transparent 75%, #aaa 75%);
-            background-size: 6px 6px;
-            background-position: 0 0, 0 3px, 3px -3px, -3px 0;
-            background-color: #fff;
+                linear-gradient(45deg, #3a3a48 25%, transparent 25%),
+                linear-gradient(-45deg, #3a3a48 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #3a3a48 75%),
+                linear-gradient(-45deg, transparent 75%, #3a3a48 75%);
+            background-size: 8px 8px;
+            background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+            background-color: #1a1a22;
         }
         .spr-paint-edit {
             flex-shrink: 0;
-            display: flex; flex-direction: column; gap: 4px; align-items: center;
+            display: flex; flex-direction: column; gap: 6px; align-items: center;
         }
         .spr-paint-edit input[type="color"] {
-            width: 40px; height: 28px; padding: 0; border: 2px solid #808080;
-            border-radius: 2px; cursor: pointer; background: #c0c0c0;
+            width: 44px; height: 44px; padding: 0;
+            border: 1.5px solid var(--glass-border);
+            border-radius: 12px; cursor: pointer;
+            background: var(--panel-2, var(--panel-color));
+            overflow: hidden;
+        }
+        .spr-paint-edit input[type="color"]::-webkit-color-swatch-wrapper { padding: 3px; }
+        .spr-paint-edit input[type="color"]::-webkit-color-swatch {
+            border: none; border-radius: 8px;
+        }
+        .spr-paint-edit input[type="color"]::-moz-color-swatch {
+            border: none; border-radius: 8px;
         }
         .spr-paint-edit span {
-            font-size: 0.65rem; color: var(--muted); font-weight: 600; white-space: nowrap;
+            font-size: 0.7rem; color: var(--muted); font-weight: 600;
         }
         @media (max-width: 480px) {
             .spr-paint-grid {
-                grid-template-columns: repeat(14, 18px);
-                grid-template-rows: repeat(2, 18px);
+                grid-template-columns: repeat(14, 20px);
+                grid-template-rows: repeat(2, 20px);
+                gap: 4px; padding: 8px;
             }
-            .spr-swatch { width: 18px; height: 18px; }
+            .spr-swatch { width: 20px; height: 20px; border-radius: 6px; }
+            .spr-paint-active { width: 40px; height: 40px; }
         }
         .spr-canvas-wrap {
             flex: 1; display: flex; align-items: center; justify-content: center;
