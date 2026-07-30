@@ -1159,6 +1159,15 @@
         }
         .mus-btn.play { background: #00e676; color: #000; }
         .mus-btn.stop { background: #2a2c35; color: #fff; border: 1px solid var(--glass-border); }
+        .mus-btn.clear {
+            background: transparent; color: #ff8a80;
+            border: 1.5px solid rgba(255,82,82,0.45);
+        }
+        .mus-btn.clear:active { background: rgba(255,82,82,0.12); }
+        .mus-btn.playing {
+            background: #ff5252; color: #fff;
+            box-shadow: 0 0 12px rgba(255,82,82,0.35);
+        }
         .mus-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .mus-grid {
             display: grid;
@@ -1747,8 +1756,8 @@
                         <option value="sawtooth">sawtooth</option>
                     </select>
                 </label>
-                <button type="button" class="mus-btn play" onclick="previewMusicEditor()">▶ Play</button>
-                <button type="button" class="mus-btn stop" onclick="stopMusic()">Stop</button>
+                <button type="button" class="mus-btn play" id="mus-play-btn" onclick="toggleMusicPreview()">▶ Play</button>
+                <button type="button" class="mus-btn clear" onclick="clearMusicEditorNotes()">Clear all</button>
             </div>
             <div class="spr-card">
                 <div class="spr-card-label">Now playing</div>
@@ -5590,6 +5599,7 @@ function startMusic(spec) {
     }
     updateMusicLiveBar(0);
     ensureMusicClock();
+    updateMusicPlayButton();
 }
 
 function playMusicStep(stepIdx) {
@@ -5632,7 +5642,14 @@ function tickMusic(dt) {
         musicState.step++;
         if (musicState.step >= steps) {
             if (musicState.loop) musicState.step = 0;
-            else { musicState.active = false; musicState.acc = 0; break; }
+            else {
+                musicState.active = false;
+                musicState.acc = 0;
+                updateMusicPlayButton();
+                updateMusicLiveBar(-1);
+                updateMusicPlayhead(-1);
+                break;
+            }
         }
     }
 }
@@ -5649,6 +5666,44 @@ function stopMusic() {
     musicState._clockLast = 0;
     updateMusicLiveBar(-1);
     updateMusicPlayhead(-1);
+    updateMusicPlayButton();
+}
+
+function updateMusicPlayButton() {
+    const btn = document.getElementById('mus-play-btn');
+    if (!btn) return;
+    if (musicState.active) {
+        btn.textContent = '■ Stop';
+        btn.classList.add('playing');
+        btn.classList.remove('play');
+        btn.classList.add('stop');
+    } else {
+        btn.textContent = '▶ Play';
+        btn.classList.remove('playing');
+        btn.classList.remove('stop');
+        btn.classList.add('play');
+    }
+}
+
+function toggleMusicPreview() {
+    if (musicState.active) {
+        stopMusic();
+    } else {
+        previewMusicEditor();
+    }
+}
+
+function clearMusicEditorNotes() {
+    if (!musEd.channels) return;
+    const steps = musEd.steps || 16;
+    const hasAny = musEd.channels.some(ch => ch && ch.some(n => n));
+    if (hasAny && !confirm('Clear all notes on all channels?')) return;
+    musEd.channels = musicEmptyGrid(steps);
+    renderMusicGrid();
+    syncMusicFromEditorLive();
+    if (musicState.active && musicState.lastPlayedStep >= 0) {
+        updateMusicLiveBar(musicState.lastPlayedStep);
+    }
 }
 
 function isMusicPlaying() {
@@ -5933,6 +5988,7 @@ function previewMusicEditor() {
     const spec = musicEditorSpec();
     spec.vol = 0.1;
     startMusic(spec);
+    updateMusicPlayButton();
 }
 
 function saveMusicFromEditor() {
