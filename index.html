@@ -332,8 +332,54 @@
         .files-toolbar {
             display: flex; gap: 8px; padding: 10px 16px 0;
             flex-shrink: 0; flex-wrap: wrap;
+            position: relative;
         }
-        .files-toolbar .btn { flex: 1; min-width: 100px; }
+        .files-toolbar .btn { flex: 1; min-width: 120px; }
+        .files-menu-wrap { position: relative; flex: 1; min-width: 120px; }
+        .files-menu-wrap > .btn { width: 100%; }
+        .files-menu {
+            display: none;
+            position: absolute;
+            left: 0; right: 0; top: calc(100% + 6px);
+            z-index: 50;
+            background: var(--panel-color);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 6px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+        }
+        .files-menu.open { display: block; }
+        .files-menu button {
+            display: block; width: 100%;
+            text-align: left;
+            border: none; background: transparent;
+            color: var(--text-color);
+            padding: 12px 12px; border-radius: 10px;
+            font-weight: 700; font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .files-menu button:active {
+            background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+            color: var(--accent-color);
+        }
+        .project-title-row {
+            display: flex; align-items: center; gap: 8px; min-width: 0;
+        }
+        .btn-gamepad-emoji {
+            border: 1.5px solid var(--glass-border);
+            background: var(--panel-2, var(--panel-color));
+            border-radius: 10px;
+            min-width: 40px; height: 40px;
+            font-size: 1.15rem;
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0 8px;
+            opacity: 1;
+        }
+        .btn-gamepad-emoji.off {
+            opacity: 0.45;
+            filter: grayscale(0.8);
+        }
         .btn-icon-sm {
             background: transparent; border: none; color: var(--muted);
             padding: 6px; min-height: auto; cursor: pointer; font-size: 0.85rem;
@@ -722,18 +768,6 @@
             background: var(--panel-2, var(--panel-color));
             color: var(--accent-color);
             border: 1px solid var(--glass-border);
-        }
-        #btn-gamepad-toggle {
-            width: 100%;
-            flex: 1 1 100%;
-            background: var(--panel-2, var(--panel-color));
-            border: 1px solid var(--glass-border);
-            color: var(--text-color);
-            font-weight: 700;
-        }
-        #btn-gamepad-toggle.on {
-            color: var(--accent-color);
-            border-color: color-mix(in srgb, var(--accent-color) 40%, transparent);
         }
 
         /* Console */
@@ -1530,21 +1564,33 @@
         <div class="header">
             <h1>
                 <button type="button" class="btn btn-back" onclick="switchView('projects-view')">◀ Back</button>
-                <span id="current-project-title">Project</span>
+                <span class="project-title-row">
+                    <span id="current-project-title">Project</span>
+                    <button type="button" class="btn-gamepad-emoji" id="btn-gamepad-emoji" onclick="toggleProjectGamepad()" title="Toggle on-screen gamepad">🎮</button>
+                </span>
             </h1>
             <div class="header-actions">
                 <button type="button" class="btn btn-play" id="btn-start-play" data-action="run-game">▶ PLAY</button>
             </div>
         </div>
         <div class="files-toolbar">
-            <button type="button" class="btn btn-sm" onclick="promptNewFile()">+ Lua file</button>
-            <button type="button" class="btn btn-sm" onclick="importLuaFile()">Import .lua</button>
-            <button type="button" class="btn btn-sm" onclick="openSpriteEditor()">Draw image</button>
-            <button type="button" class="btn btn-sm" onclick="importSpriteFile()">Import PNG</button>
-            <button type="button" class="btn btn-sm" onclick="openMusicEditor()">Music</button>
-            <button type="button" class="btn btn-sm" onclick="exportProject()">Export</button>
-            <button type="button" class="btn btn-sm" onclick="sharePlayLink()">Share link</button>
-            <button type="button" class="btn btn-sm" id="btn-gamepad-toggle" onclick="toggleProjectGamepad()" title="On-screen joystick + buttons">Gamepad: ON</button>
+            <div class="files-menu-wrap">
+                <button type="button" class="btn btn-sm" onclick="toggleFilesMenu('create')">+ Create ▾</button>
+                <div class="files-menu" id="files-menu-create">
+                    <button type="button" onclick="closeFilesMenus(); promptNewFile()">📄 + Lua file</button>
+                    <button type="button" onclick="closeFilesMenus(); openSpriteEditor()">🎨 Draw image</button>
+                    <button type="button" onclick="closeFilesMenus(); openMusicEditor()">♪ Music</button>
+                </div>
+            </div>
+            <div class="files-menu-wrap">
+                <button type="button" class="btn btn-sm" onclick="toggleFilesMenu('more')">More ▾</button>
+                <div class="files-menu" id="files-menu-more">
+                    <button type="button" onclick="closeFilesMenus(); importLuaFile()">Import .lua</button>
+                    <button type="button" onclick="closeFilesMenus(); importSpriteFile()">Import PNG</button>
+                    <button type="button" onclick="closeFilesMenus(); exportProject()">Export</button>
+                    <button type="button" onclick="closeFilesMenus(); sharePlayLink()">Share link</button>
+                </div>
+            </div>
         </div>
         <div class="list-container" id="files-list"></div>
         <input type="file" id="import-lua-input" accept="*/*" style="display:none" onchange="handleLuaImport(event)">
@@ -2435,10 +2481,27 @@ function setProjectGamepad(name, enabled) {
     } catch (_) {}
 }
 
+function closeFilesMenus() {
+    document.querySelectorAll('.files-menu.open').forEach(m => m.classList.remove('open'));
+}
+function toggleFilesMenu(which) {
+    const id = which === 'create' ? 'files-menu-create' : 'files-menu-more';
+    const menu = document.getElementById(id);
+    if (!menu) return;
+    const wasOpen = menu.classList.contains('open');
+    closeFilesMenus();
+    if (!wasOpen) menu.classList.add('open');
+}
+// Close create/more menus on outside click
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.closest && e.target.closest('.files-menu-wrap')) return;
+    try { closeFilesMenus(); } catch (_) {}
+});
+
 function updateGamepadToggleUI() {
-    const btn = document.getElementById('btn-gamepad-toggle');
+    const btn = document.getElementById('btn-gamepad-emoji');
     if (!btn) return;
-    // Desktop: gamepad UI does not exist — keyboard/mouse only
+    // Desktop: hide — keyboard/mouse only
     if (typeof isMobileDevice !== 'undefined' && !isMobileDevice) {
         btn.style.display = 'none';
         return;
@@ -2446,17 +2509,23 @@ function updateGamepadToggleUI() {
     btn.style.display = '';
     if (!currentProjectName) return;
     const on = getProjectGamepad(currentProjectName);
-    btn.textContent = on ? 'Gamepad: ON' : 'Gamepad: OFF';
-    btn.classList.toggle('on', on);
-    btn.style.opacity = on ? '1' : '0.7';
+    btn.classList.toggle('off', !on);
+    btn.title = on ? 'Gamepad ON — tap to disable' : 'Gamepad OFF — tap to enable';
+    btn.setAttribute('aria-label', on ? 'Gamepad enabled' : 'Gamepad disabled');
 }
 
 function toggleProjectGamepad() {
     if (!currentProjectName) return;
-    if (typeof isMobileDevice !== 'undefined' && !isMobileDevice) return;
+    if (typeof isMobileDevice !== 'undefined' && !isMobileDevice) {
+        alert('On-screen gamepad is for phones / tablets.\nDesktop uses keyboard (WASD) + mouse.');
+        return;
+    }
     const next = !getProjectGamepad(currentProjectName);
     setProjectGamepad(currentProjectName, next);
     updateGamepadToggleUI();
+    alert(next
+        ? 'Gamepad enabled\n\nOn-screen joystick + buttons will show when you press PLAY.'
+        : 'Gamepad disabled\n\nOn-screen controls are hidden during PLAY.');
 }
 
 let currentProjectName = null;
