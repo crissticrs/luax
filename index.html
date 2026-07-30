@@ -1184,8 +1184,41 @@
             width: 52px; height: 36px; display: flex; align-items: center;
             font-size: 0.72rem; font-weight: 800; color: var(--muted);
         }
+        .mus-live-bar {
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+            min-height: 40px; padding: 8px 10px;
+            background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+        }
+        .mus-live-label {
+            font-size: 0.72rem; font-weight: 800; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.04em;
+            margin-right: 4px;
+        }
+        .mus-live-step {
+            font-size: 0.78rem; font-weight: 800; color: #00e676;
+            min-width: 52px;
+        }
+        .mus-live-chip {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 36px; height: 28px; padding: 0 8px;
+            border-radius: 8px; font-size: 0.72rem; font-weight: 800;
+            background: color-mix(in srgb, var(--accent-color) 28%, transparent);
+            border: 1px solid var(--accent-color); color: #fff;
+        }
+        .mus-live-chip.empty {
+            background: transparent; border-color: var(--glass-border);
+            color: var(--muted); opacity: 0.7;
+        }
+        .mus-live-empty {
+            font-size: 0.8rem; color: var(--muted); font-weight: 600;
+        }
         .mus-note-bar {
             display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+        }
+        .mus-row-label {
+            width: 56px;
         }
         .mus-note-btn {
             min-width: 40px; height: 34px; border-radius: 8px;
@@ -1698,7 +1731,7 @@
         </div>
         <div class="mus-body">
             <div class="mus-controls">
-                <label>BPM <input type="number" id="mus-bpm" min="40" max="240" value="120"></label>
+                <label>BPM <input type="number" id="mus-bpm" min="40" max="240" value="120" onchange="syncMusicFromEditorLive()" oninput="syncMusicFromEditorLive()"></label>
                 <label>Steps
                     <select id="mus-steps" onchange="musicEditorResizeSteps()">
                         <option value="8">8</option>
@@ -1707,7 +1740,7 @@
                     </select>
                 </label>
                 <label>Wave
-                    <select id="mus-wave">
+                    <select id="mus-wave" onchange="syncMusicFromEditorLive()">
                         <option value="square">square</option>
                         <option value="sine">sine</option>
                         <option value="triangle">triangle</option>
@@ -1718,13 +1751,21 @@
                 <button type="button" class="mus-btn stop" onclick="stopMusic()">Stop</button>
             </div>
             <div class="spr-card">
+                <div class="spr-card-label">Now playing</div>
+                <div class="mus-live-bar" id="mus-live-bar">
+                    <span class="mus-live-label">Step</span>
+                    <span class="mus-live-step" id="mus-live-step">—</span>
+                    <span class="mus-live-empty" id="mus-live-notes">Press ▶ Play to hear notes live</span>
+                </div>
+            </div>
+            <div class="spr-card">
                 <div class="spr-card-label">Paint notes (tap cells)</div>
                 <div class="mus-note-bar" id="mus-note-bar"></div>
             </div>
             <div class="mus-grid-wrap">
                 <div class="mus-grid" id="mus-grid"></div>
             </div>
-            <p class="lx-hint" style="margin:0">4 channels × steps. Empty = rest. Saves as <code>name.music</code>. Lua: <code>sfx.music("name")</code> or <code>sfx.music("name.music")</code>.</p>
+            <p class="lx-hint" style="margin:0">10 channels × steps. Empty = rest. Changes while playing update live. Saves as <code>name.music</code>. Lua: <code>sfx.music("name")</code> or <code>sfx.music("name.music")</code>.</p>
         </div>
     </div>
 
@@ -5448,13 +5489,16 @@ function playBeep(freq, dur, type, vol) {
     } catch (_) {}
 }
 
+const MUS_CHANNEL_COUNT = 10;
+
 const musicState = {
     active: false, loop: true, bpm: 120, steps: 16, step: 0, acc: 0,
     wave: 'square', vol: 0.08,
-    channels: [[], [], [], []],
-    waves: ['square', 'square', 'square', 'square'],
+    channels: Array.from({ length: MUS_CHANNEL_COUNT }, () => []),
+    waves: Array.from({ length: MUS_CHANNEL_COUNT }, () => 'square'),
     _clockId: null,
     _clockLast: 0,
+    lastPlayedStep: -1,
 };
 
 const NOTE_FREQ = {
@@ -5506,7 +5550,7 @@ function startMusic(spec) {
     let rows = spec.channels || spec.ch || null;
     if (!rows) {
         rows = [];
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < MUS_CHANNEL_COUNT; i++) {
             if (spec[i] != null) rows[i] = spec[i];
             else if (spec[String(i + 1)] != null) rows[i] = spec[String(i + 1)];
             else if (spec['ch' + (i + 1)] != null) rows[i] = spec['ch' + (i + 1)];
@@ -5514,12 +5558,17 @@ function startMusic(spec) {
     }
     const channels = [];
     const waves = [];
-    for (let c = 0; c < 4; c++) {
+    const nCh = Math.max(MUS_CHANNEL_COUNT, (rows && rows.length) || 0);
+    for (let c = 0; c < nCh; c++) {
         channels[c] = normalizeChannel(rows[c], steps);
         let cw = wave;
         if (spec.waves && spec.waves[c]) cw = spec.waves[c];
         if (spec['wave' + (c + 1)]) cw = spec['wave' + (c + 1)];
         waves[c] = cw || 'square';
+    }
+    while (channels.length < MUS_CHANNEL_COUNT) {
+        channels.push(normalizeChannel(null, steps));
+        waves.push(wave || 'square');
     }
     musicState.active = true;
     musicState.loop = loop;
@@ -5532,12 +5581,14 @@ function startMusic(spec) {
     musicState.channels = channels;
     musicState.waves = waves;
     musicState.vol = (vol > 0 ? vol : 0.08);
+    musicState.lastPlayedStep = 0;
     playMusicStep(0);
     musicState.step = 1;
     if (musicState.step >= steps) {
         if (loop) musicState.step = 0;
         else musicState.active = false;
     }
+    updateMusicLiveBar(0);
     ensureMusicClock();
 }
 
@@ -5547,10 +5598,13 @@ function playMusicStep(stepIdx) {
     if (stepIdx < 0 || stepIdx >= steps) return;
     const stepDur = (60 / musicState.bpm) * (4 / steps);
     const noteDur = stepDur * 0.85;
-    for (let c = 0; c < 4; c++) {
-        const cell = musicState.channels[c][stepIdx];
+    const nCh = (musicState.channels && musicState.channels.length) || MUS_CHANNEL_COUNT;
+    for (let c = 0; c < nCh; c++) {
+        const row = musicState.channels[c];
+        if (!row) continue;
+        const cell = row[stepIdx];
         if (!cell) continue;
-        let f = 0, w = musicState.waves[c], dur = noteDur, v = musicState.vol;
+        let f = 0, w = (musicState.waves && musicState.waves[c]) || musicState.wave || 'square', dur = noteDur, v = musicState.vol;
         if (typeof cell === 'object') {
             f = cell.f || 0;
             if (cell.wave) w = cell.wave;
@@ -5561,6 +5615,9 @@ function playMusicStep(stepIdx) {
         }
         if (f > 0) playBeep(f, dur, w, v);
     }
+    musicState.lastPlayedStep = stepIdx;
+    updateMusicLiveBar(stepIdx);
+    updateMusicPlayhead(stepIdx);
 }
 
 function tickMusic(dt) {
@@ -5584,11 +5641,14 @@ function stopMusic() {
     musicState.active = false;
     musicState.acc = 0;
     musicState.step = 0;
+    musicState.lastPlayedStep = -1;
     if (musicState._clockId) {
         cancelAnimationFrame(musicState._clockId);
         musicState._clockId = null;
     }
     musicState._clockLast = 0;
+    updateMusicLiveBar(-1);
+    updateMusicPlayhead(-1);
 }
 
 function isMusicPlaying() {
@@ -5639,14 +5699,84 @@ const musEd = {
     bpm: 120,
     steps: 16,
     wave: 'square',
-    channels: null, // 4 x steps of note strings or ''
+    channels: null, // MUS_CHANNEL_COUNT x steps of note strings or ''
     paintNote: 'C4',
 };
 
 const MUS_NOTES = ['', 'C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'];
 
 function musicEmptyGrid(steps) {
-    return [0,1,2,3].map(() => Array(steps).fill(''));
+    return Array.from({ length: MUS_CHANNEL_COUNT }, () => Array(steps).fill(''));
+}
+
+/** Hot-reload playing pattern from the editor without restarting the step clock. */
+function syncMusicFromEditorLive() {
+    if (!musicState.active) return;
+    if (!document.getElementById('music-editor-view')?.classList.contains('active')) return;
+    const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || musEd.bpm;
+    const wave = (document.getElementById('mus-wave') || {}).value || musEd.wave;
+    const steps = musEd.steps;
+    const nCh = MUS_CHANNEL_COUNT;
+    const channels = [];
+    const waves = [];
+    for (let c = 0; c < nCh; c++) {
+        const row = (musEd.channels && musEd.channels[c]) || [];
+        channels[c] = normalizeChannel(
+            row.map(n => (n ? noteToFreq(n) : 0)),
+            steps
+        );
+        waves[c] = wave || 'square';
+    }
+    musicState.bpm = Math.max(40, Math.min(240, bpm));
+    musicState.wave = wave;
+    musicState.waves = waves;
+    if (musicState.steps !== steps) {
+        musicState.steps = steps;
+        if (musicState.step >= steps) musicState.step = 0;
+    }
+    musicState.channels = channels;
+}
+
+function updateMusicLiveBar(stepIdx) {
+    const stepEl = document.getElementById('mus-live-step');
+    const notesEl = document.getElementById('mus-live-notes');
+    if (!stepEl || !notesEl) return;
+    if (!musicState.active || stepIdx == null || stepIdx < 0) {
+        stepEl.textContent = '—';
+        notesEl.innerHTML = '<span class="mus-live-empty">Press ▶ Play to hear notes live</span>';
+        return;
+    }
+    stepEl.textContent = (stepIdx + 1) + ' / ' + musicState.steps;
+    const chips = [];
+    const nCh = (musicState.channels && musicState.channels.length) || 0;
+    const ed = (document.getElementById('music-editor-view')?.classList.contains('active') && musEd.channels)
+        ? musEd.channels : null;
+    for (let c = 0; c < nCh; c++) {
+        let label = '';
+        if (ed && ed[c]) {
+            label = ed[c][stepIdx] || '';
+        } else {
+            const cell = musicState.channels[c] && musicState.channels[c][stepIdx];
+            if (typeof cell === 'object' && cell && cell.f) label = Math.round(cell.f) + 'Hz';
+            else if (typeof cell === 'number' && cell > 0) label = Math.round(cell) + 'Hz';
+        }
+        if (label) {
+            chips.push('<span class="mus-live-chip" title="Ch' + (c + 1) + '">Ch' + (c + 1) + ' ' + label + '</span>');
+        }
+    }
+    notesEl.innerHTML = chips.length
+        ? chips.join('')
+        : '<span class="mus-live-empty">Rest (no notes this step)</span>';
+}
+
+function updateMusicPlayhead(stepIdx) {
+    const grid = document.getElementById('mus-grid');
+    if (!grid) return;
+    grid.querySelectorAll('.mus-cell.playhead').forEach(el => el.classList.remove('playhead'));
+    if (stepIdx == null || stepIdx < 0 || !musicState.active) return;
+    grid.querySelectorAll('.mus-cell[data-step="' + stepIdx + '"]').forEach(el => {
+        el.classList.add('playhead');
+    });
 }
 
 function openMusicEditor(existingName) {
@@ -5658,11 +5788,15 @@ function openMusicEditor(existingName) {
         musEd.bpm = p.bpm || 120;
         musEd.steps = p.steps || 16;
         musEd.wave = p.wave || 'square';
-        musEd.channels = (p.channels || musicEmptyGrid(musEd.steps)).map(ch => {
+        const loaded = (p.channels || musicEmptyGrid(musEd.steps)).map(ch => {
             const row = Array(musEd.steps).fill('');
             for (let i = 0; i < musEd.steps; i++) row[i] = (ch && ch[i]) || '';
             return row;
         });
+        while (loaded.length < MUS_CHANNEL_COUNT) {
+            loaded.push(Array(musEd.steps).fill(''));
+        }
+        musEd.channels = loaded.slice(0, Math.max(MUS_CHANNEL_COUNT, loaded.length));
     } else {
         musEd.bpm = 120;
         musEd.steps = 16;
@@ -5692,12 +5826,13 @@ function musicEditorResizeSteps() {
     const n = Math.max(4, Math.min(32, parseInt(st && st.value, 10) || 16));
     const old = musEd.channels || musicEmptyGrid(n);
     musEd.steps = n;
-    musEd.channels = [0,1,2,3].map(c => {
+    musEd.channels = Array.from({ length: MUS_CHANNEL_COUNT }, (_, c) => {
         const row = Array(n).fill('');
         for (let i = 0; i < n; i++) row[i] = (old[c] && old[c][i]) || '';
         return row;
     });
     renderMusicGrid();
+    syncMusicFromEditorLive();
 }
 
 function renderMusicNoteBar() {
@@ -5722,9 +5857,15 @@ function renderMusicGrid() {
     const grid = document.getElementById('mus-grid');
     if (!grid || !musEd.channels) return;
     const steps = musEd.steps;
-    grid.style.gridTemplateColumns = '52px repeat(' + steps + ', 36px)';
+    while (musEd.channels.length < MUS_CHANNEL_COUNT) {
+        musEd.channels.push(Array(steps).fill(''));
+    }
+    grid.style.gridTemplateColumns = '56px repeat(' + steps + ', 36px)';
     grid.innerHTML = '';
-    for (let c = 0; c < 4; c++) {
+    const playStep = (musicState.active && musicState.lastPlayedStep >= 0)
+        ? musicState.lastPlayedStep : -1;
+    for (let c = 0; c < MUS_CHANNEL_COUNT; c++) {
+        if (!musEd.channels[c]) musEd.channels[c] = Array(steps).fill('');
         const lab = document.createElement('div');
         lab.className = 'mus-row-label';
         lab.textContent = 'Ch' + (c + 1);
@@ -5733,7 +5874,7 @@ function renderMusicGrid() {
             const cell = document.createElement('button');
             cell.type = 'button';
             const val = musEd.channels[c][s] || '';
-            cell.className = 'mus-cell' + (val ? ' on' : '');
+            cell.className = 'mus-cell' + (val ? ' on' : '') + (s === playStep ? ' playhead' : '');
             cell.textContent = val || '';
             cell.dataset.ch = c;
             cell.dataset.step = s;
@@ -5747,6 +5888,10 @@ function renderMusicGrid() {
                     musEd.channels[c][s] = musEd.paintNote;
                 }
                 renderMusicGrid();
+                syncMusicFromEditorLive();
+                if (musicState.active && musicState.lastPlayedStep >= 0) {
+                    updateMusicLiveBar(musicState.lastPlayedStep);
+                }
             };
             grid.appendChild(cell);
         }
