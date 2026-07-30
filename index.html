@@ -777,6 +777,78 @@
             margin: 12px 0 0; font-size: 0.85rem; color: #ff5252; display: none;
         }
         .login-card .login-error.show { display: block; }
+
+        /* —— Pixel sprite editor —— */
+        #sprite-editor-view { background: var(--bg-color); }
+        .spr-toolbar {
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+            padding: 10px 12px; border-bottom: 1px solid var(--glass-border);
+            background: var(--panel-color); flex-shrink: 0;
+        }
+        .spr-tool-group { display: flex; gap: 4px; flex-wrap: wrap; }
+        .spr-tool, .spr-size {
+            min-width: 40px; min-height: 40px; border-radius: 10px;
+            border: 1px solid var(--glass-border); background: var(--panel-2, var(--panel-color));
+            color: var(--text-color); font-weight: 700; font-size: 0.95rem; cursor: pointer;
+        }
+        .spr-tool.active, .spr-size.active {
+            border-color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 22%, transparent);
+            color: var(--accent-color);
+        }
+        .spr-palette {
+            display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px;
+            border-bottom: 1px solid var(--glass-border); flex-shrink: 0;
+            background: var(--panel-color);
+        }
+        .spr-swatch {
+            width: 28px; height: 28px; border-radius: 8px; border: 2px solid transparent;
+            cursor: pointer; padding: 0;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+        }
+        .spr-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--accent-color); }
+        .spr-swatch.checker {
+            background-image:
+                linear-gradient(45deg, #333 25%, transparent 25%),
+                linear-gradient(-45deg, #333 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #333 75%),
+                linear-gradient(-45deg, transparent 75%, #333 75%);
+            background-size: 10px 10px;
+            background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+            background-color: #222;
+        }
+        .spr-canvas-wrap {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            min-height: 0; padding: 12px; touch-action: none;
+            background:
+                linear-gradient(45deg, #1a1a22 25%, transparent 25%),
+                linear-gradient(-45deg, #1a1a22 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #1a1a22 75%),
+                linear-gradient(-45deg, transparent 75%, #1a1a22 75%);
+            background-size: 16px 16px;
+            background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+            background-color: #121218;
+        }
+        #sprite-pixel-canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            max-width: min(92vw, 420px);
+            max-height: min(60vh, 420px);
+            width: min(92vw, 420px);
+            height: auto;
+            aspect-ratio: 1;
+            border: 2px solid var(--glass-border);
+            border-radius: 8px;
+            background: #000;
+            touch-action: none;
+            cursor: crosshair;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+        }
+        .spr-hint {
+            margin: 0; padding: 8px 14px 12px; font-size: 0.75rem; color: var(--muted);
+            flex-shrink: 0; line-height: 1.35;
+        }
+        .spr-hint code { color: var(--accent-color); font-size: 0.72rem; }
     </style>
 </head>
 <body>
@@ -913,6 +985,7 @@
         <div class="files-toolbar">
             <button class="btn btn-sm" onclick="promptNewFile()">+ File</button>
             <button class="btn btn-sm" onclick="importLuaFile()">Import .lua</button>
+            <button class="btn btn-sm" onclick="openSpriteEditor()">+ Sprite</button>
             <button class="btn btn-sm" onclick="importSpriteFile()">Import PNG</button>
             <button class="btn btn-sm" onclick="exportProject()">Export</button>
             <button class="btn btn-sm" onclick="sharePlayLink()">Share play</button>
@@ -921,6 +994,39 @@
         <div class="list-container" id="files-list"></div>
         <input type="file" id="import-lua-input" accept="*/*" style="display:none" onchange="handleLuaImport(event)">
         <input type="file" id="import-sprite-input" accept="image/png,image/jpeg,image/webp,image/*" style="display:none" onchange="handleSpriteImport(event)">
+    </div>
+
+    <!-- Pixel sprite editor -->
+    <div id="sprite-editor-view" class="view">
+        <div class="header">
+            <h1>
+                <button class="btn btn-back" onclick="closeSpriteEditor()">◀ Back</button>
+                <span id="sprite-editor-title">Sprite</span>
+            </h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="saveSpriteFromEditor()">SAVE</button>
+            </div>
+        </div>
+        <div class="spr-toolbar" id="spr-toolbar">
+            <div class="spr-tool-group">
+                <button type="button" class="spr-tool active" data-tool="pencil" onclick="setSpriteTool('pencil')" title="Pencil">✎</button>
+                <button type="button" class="spr-tool" data-tool="eraser" onclick="setSpriteTool('eraser')" title="Eraser">⌫</button>
+                <button type="button" class="spr-tool" data-tool="fill" onclick="setSpriteTool('fill')" title="Fill">▣</button>
+                <button type="button" class="spr-tool" data-tool="picker" onclick="setSpriteTool('picker')" title="Eyedropper">◎</button>
+            </div>
+            <div class="spr-tool-group spr-sizes" id="spr-sizes">
+                <button type="button" class="spr-size" data-size="8" onclick="setSpriteSize(8)">8</button>
+                <button type="button" class="spr-size active" data-size="16" onclick="setSpriteSize(16)">16</button>
+                <button type="button" class="spr-size" data-size="24" onclick="setSpriteSize(24)">24</button>
+                <button type="button" class="spr-size" data-size="32" onclick="setSpriteSize(32)">32</button>
+            </div>
+            <button type="button" class="btn btn-sm" onclick="clearSpriteCanvas()">Clear</button>
+        </div>
+        <div class="spr-palette" id="spr-palette"></div>
+        <div class="spr-canvas-wrap">
+            <canvas id="sprite-pixel-canvas" width="256" height="256"></canvas>
+        </div>
+        <p class="spr-hint">Tap/drag to paint · Save adds it as a sprite for <code>gfx.sprite("name.png", x, y)</code></p>
     </div>
 
     <!-- Editor -->
@@ -1956,18 +2062,19 @@ function renderFiles() {
             </div>`;
         list.appendChild(div);
     });
-    // Sprites / images
+    // Sprites / images — tap to open in pixel editor
     const assets = getProjectAssetMap(currentProjectName);
     Object.keys(assets).sort().forEach(fn => {
         const div = document.createElement('div');
         div.className = 'list-item';
         div.innerHTML = `
-            <div class="item-title" style="cursor:default">
-                <img src="${assets[fn]}" alt="" style="width:28px;height:28px;object-fit:contain;border-radius:4px;background:#111">
+            <div class="item-title" onclick="openSpriteEditor('${esc(fn)}')" title="Edit sprite">
+                <img src="${assets[fn]}" alt="" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;border-radius:4px;background:#111">
                 <span>${fn}</span>
                 <span class="item-badge">IMG</span>
             </div>
             <div class="item-actions">
+                <button class="btn-icon-sm" title="Edit" onclick="event.stopPropagation();openSpriteEditor('${esc(fn)}')">✎</button>
                 <button class="btn btn-delete" onclick="deleteAsset(event,'${esc(fn)}')">${LX_SVG.trash}</button>
             </div>`;
         list.appendChild(div);
@@ -2034,6 +2141,367 @@ function handleSpriteImport(ev) {
         ev.target.value = '';
     };
     reader.readAsDataURL(file);
+}
+
+// ============================================================
+// PIXEL SPRITE EDITOR (mini Aseprite-style)
+// ============================================================
+const SPRITE_PALETTE = [
+    null, // transparent (eraser via checker swatch also)
+    '#000000', '#ffffff', '#9e9e9e', '#ef5350', '#e91e63',
+    '#ab47bc', '#5c6bc0', '#42a5f5', '#26c6da', '#26a69a',
+    '#66bb6a', '#d4e157', '#ffee58', '#ffa726', '#8d6e63',
+    '#ff1744', '#00e676', '#2979ff', '#ffea00', '#7c4dff',
+];
+
+const spriteEd = {
+    w: 16,
+    h: 16,
+    pixels: null, // Uint8ClampedArray RGBA length w*h*4
+    tool: 'pencil',
+    color: '#ffffff',
+    name: '',
+    drawing: false,
+    dirty: false,
+};
+
+function spritePixelIndex(x, y) {
+    return (y * spriteEd.w + x) * 4;
+}
+
+function ensureSpritePixels() {
+    const n = spriteEd.w * spriteEd.h * 4;
+    if (!spriteEd.pixels || spriteEd.pixels.length !== n) {
+        spriteEd.pixels = new Uint8ClampedArray(n); // transparent black
+    }
+}
+
+function hexToRgba(hex) {
+    if (!hex) return [0, 0, 0, 0];
+    let h = String(hex).replace('#', '');
+    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    const n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 255];
+}
+
+function rgbaToHex(r, g, b, a) {
+    if (a < 8) return null;
+    const h = (v) => v.toString(16).padStart(2, '0');
+    return '#' + h(r) + h(g) + h(b);
+}
+
+function setSpritePixel(x, y, rgba) {
+    if (x < 0 || y < 0 || x >= spriteEd.w || y >= spriteEd.h) return;
+    const i = spritePixelIndex(x, y);
+    spriteEd.pixels[i] = rgba[0];
+    spriteEd.pixels[i + 1] = rgba[1];
+    spriteEd.pixels[i + 2] = rgba[2];
+    spriteEd.pixels[i + 3] = rgba[3];
+    spriteEd.dirty = true;
+}
+
+function getSpritePixel(x, y) {
+    if (x < 0 || y < 0 || x >= spriteEd.w || y >= spriteEd.h) return [0, 0, 0, 0];
+    const i = spritePixelIndex(x, y);
+    return [
+        spriteEd.pixels[i],
+        spriteEd.pixels[i + 1],
+        spriteEd.pixels[i + 2],
+        spriteEd.pixels[i + 3],
+    ];
+}
+
+function redrawSpriteCanvas() {
+    const canvas = document.getElementById('sprite-pixel-canvas');
+    if (!canvas) return;
+    ensureSpritePixels();
+    // Internal resolution = pixel grid; CSS scales it up
+    canvas.width = spriteEd.w;
+    canvas.height = spriteEd.h;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    const img = ctx.createImageData(spriteEd.w, spriteEd.h);
+    img.data.set(spriteEd.pixels);
+    ctx.putImageData(img, 0, 0);
+}
+
+function renderSpritePalette() {
+    const el = document.getElementById('spr-palette');
+    if (!el) return;
+    el.innerHTML = '';
+    SPRITE_PALETTE.forEach((c, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'spr-swatch' + (c === null ? ' checker' : '');
+        if (c) btn.style.background = c;
+        const isActive = (c === null && spriteEd.tool === 'eraser') ||
+            (c && spriteEd.color === c && spriteEd.tool !== 'eraser');
+        if (isActive) btn.classList.add('active');
+        btn.title = c || 'Transparent';
+        btn.onclick = () => {
+            if (c === null) {
+                setSpriteTool('eraser');
+            } else {
+                spriteEd.color = c;
+                if (spriteEd.tool === 'eraser' || spriteEd.tool === 'picker') {
+                    setSpriteTool('pencil');
+                } else {
+                    renderSpritePalette();
+                }
+            }
+            renderSpritePalette();
+        };
+        el.appendChild(btn);
+    });
+}
+
+function setSpriteTool(tool) {
+    spriteEd.tool = tool;
+    document.querySelectorAll('.spr-tool').forEach(b => {
+        b.classList.toggle('active', b.dataset.tool === tool);
+    });
+    renderSpritePalette();
+}
+
+function setSpriteSize(size) {
+    size = size | 0;
+    if (![8, 16, 24, 32].includes(size)) return;
+    if (spriteEd.w === size && spriteEd.h === size) {
+        document.querySelectorAll('.spr-size').forEach(b => {
+            b.classList.toggle('active', +b.dataset.size === size);
+        });
+        return;
+    }
+    if (spriteEd.dirty && !confirm('Resize clears the canvas. Continue?')) return;
+    spriteEd.w = size;
+    spriteEd.h = size;
+    spriteEd.pixels = new Uint8ClampedArray(size * size * 4);
+    spriteEd.dirty = false;
+    document.querySelectorAll('.spr-size').forEach(b => {
+        b.classList.toggle('active', +b.dataset.size === size);
+    });
+    redrawSpriteCanvas();
+}
+
+function clearSpriteCanvas() {
+    if (!confirm('Clear all pixels?')) return;
+    ensureSpritePixels();
+    spriteEd.pixels.fill(0);
+    spriteEd.dirty = true;
+    redrawSpriteCanvas();
+}
+
+function canvasToGridPos(clientX, clientY) {
+    const canvas = document.getElementById('sprite-pixel-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor(((clientX - rect.left) / rect.width) * spriteEd.w);
+    const y = Math.floor(((clientY - rect.top) / rect.height) * spriteEd.h);
+    return {
+        x: Math.max(0, Math.min(spriteEd.w - 1, x)),
+        y: Math.max(0, Math.min(spriteEd.h - 1, y)),
+    };
+}
+
+function floodFill(sx, sy, target, replace) {
+    if (target[0] === replace[0] && target[1] === replace[1] &&
+        target[2] === replace[2] && target[3] === replace[3]) return;
+    const stack = [[sx, sy]];
+    const seen = new Uint8Array(spriteEd.w * spriteEd.h);
+    while (stack.length) {
+        const [x, y] = stack.pop();
+        const key = y * spriteEd.w + x;
+        if (x < 0 || y < 0 || x >= spriteEd.w || y >= spriteEd.h || seen[key]) continue;
+        const p = getSpritePixel(x, y);
+        if (p[0] !== target[0] || p[1] !== target[1] || p[2] !== target[2] || p[3] !== target[3]) continue;
+        seen[key] = 1;
+        setSpritePixel(x, y, replace);
+        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+}
+
+function applySpriteToolAt(clientX, clientY, isDown) {
+    const { x, y } = canvasToGridPos(clientX, clientY);
+    if (spriteEd.tool === 'picker') {
+        const p = getSpritePixel(x, y);
+        if (p[3] < 8) {
+            setSpriteTool('eraser');
+        } else {
+            spriteEd.color = rgbaToHex(p[0], p[1], p[2], p[3]) || '#ffffff';
+            setSpriteTool('pencil');
+        }
+        renderSpritePalette();
+        return;
+    }
+    if (spriteEd.tool === 'fill' && isDown) {
+        const target = getSpritePixel(x, y);
+        const replace = spriteEd.tool === 'eraser' ? [0, 0, 0, 0] : hexToRgba(spriteEd.color);
+        // fill uses current color (not eraser unless color is transparent)
+        floodFill(x, y, target, hexToRgba(spriteEd.color));
+        redrawSpriteCanvas();
+        return;
+    }
+    if (spriteEd.tool === 'eraser') {
+        setSpritePixel(x, y, [0, 0, 0, 0]);
+    } else {
+        setSpritePixel(x, y, hexToRgba(spriteEd.color));
+    }
+    redrawSpriteCanvas();
+}
+
+function setupSpriteCanvasInput() {
+    const canvas = document.getElementById('sprite-pixel-canvas');
+    if (!canvas || canvas._luaxBound) return;
+    canvas._luaxBound = true;
+
+    const down = (e) => {
+        e.preventDefault();
+        spriteEd.drawing = true;
+        const t = e.touches ? e.touches[0] : e;
+        applySpriteToolAt(t.clientX, t.clientY, true);
+    };
+    const move = (e) => {
+        if (!spriteEd.drawing) return;
+        e.preventDefault();
+        const t = e.touches ? e.touches[0] : e;
+        if (spriteEd.tool === 'fill' || spriteEd.tool === 'picker') return;
+        applySpriteToolAt(t.clientX, t.clientY, false);
+    };
+    const up = () => { spriteEd.drawing = false; };
+
+    canvas.addEventListener('mousedown', down);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    canvas.addEventListener('touchstart', down, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    canvas.addEventListener('touchend', up);
+    canvas.addEventListener('touchcancel', up);
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+/**
+ * Open editor for a new sprite, or edit existing asset by name.
+ */
+function openSpriteEditor(existingName) {
+    if (!isAuthed()) { applyAuthGate(); return; }
+    if (!currentProjectName) return alert('Open a project first');
+
+    spriteEd.tool = 'pencil';
+    spriteEd.color = '#ffffff';
+    spriteEd.drawing = false;
+    spriteEd.dirty = false;
+
+    if (existingName) {
+        spriteEd.name = existingName;
+        document.getElementById('sprite-editor-title').textContent = existingName;
+        // Load image into pixel grid (resampled to current size or image size clamped)
+        const src = getProjectAssetMap(currentProjectName)[existingName];
+        loadSpriteFromDataUrl(src, existingName);
+    } else {
+        spriteEd.name = '';
+        spriteEd.w = 16;
+        spriteEd.h = 16;
+        spriteEd.pixels = new Uint8ClampedArray(16 * 16 * 4);
+        document.getElementById('sprite-editor-title').textContent = 'New sprite';
+        document.querySelectorAll('.spr-size').forEach(b => {
+            b.classList.toggle('active', +b.dataset.size === 16);
+        });
+        redrawSpriteCanvas();
+    }
+
+    setSpriteTool('pencil');
+    renderSpritePalette();
+    setupSpriteCanvasInput();
+    switchView('sprite-editor-view');
+    setTimeout(redrawSpriteCanvas, 30);
+}
+
+function loadSpriteFromDataUrl(dataUrl, name) {
+    if (!dataUrl) {
+        spriteEd.w = 16;
+        spriteEd.h = 16;
+        spriteEd.pixels = new Uint8ClampedArray(16 * 16 * 4);
+        redrawSpriteCanvas();
+        return;
+    }
+    const img = new Image();
+    img.onload = () => {
+        let w = img.naturalWidth || 16;
+        let h = img.naturalHeight || 16;
+        // Snap to supported sizes when close; else clamp max 32
+        const snap = [8, 16, 24, 32];
+        if (w === h && snap.includes(w)) {
+            spriteEd.w = spriteEd.h = w;
+        } else {
+            const side = Math.min(32, Math.max(8, Math.round(Math.max(w, h))));
+            // nearest snap
+            spriteEd.w = spriteEd.h = snap.reduce((a, b) =>
+                Math.abs(b - side) < Math.abs(a - side) ? b : a, 16);
+        }
+        document.querySelectorAll('.spr-size').forEach(b => {
+            b.classList.toggle('active', +b.dataset.size === spriteEd.w);
+        });
+        ensureSpritePixels();
+        spriteEd.pixels.fill(0);
+        const tmp = document.createElement('canvas');
+        tmp.width = spriteEd.w;
+        tmp.height = spriteEd.h;
+        const tctx = tmp.getContext('2d');
+        tctx.imageSmoothingEnabled = false;
+        tctx.drawImage(img, 0, 0, spriteEd.w, spriteEd.h);
+        const data = tctx.getImageData(0, 0, spriteEd.w, spriteEd.h);
+        spriteEd.pixels = new Uint8ClampedArray(data.data);
+        spriteEd.dirty = false;
+        redrawSpriteCanvas();
+    };
+    img.onerror = () => {
+        spriteEd.w = 16;
+        spriteEd.h = 16;
+        spriteEd.pixels = new Uint8ClampedArray(16 * 16 * 4);
+        redrawSpriteCanvas();
+    };
+    img.src = dataUrl;
+}
+
+function closeSpriteEditor() {
+    if (spriteEd.dirty && !confirm('Discard unsaved sprite changes?')) return;
+    spriteEd.dirty = false;
+    switchView('files-view');
+    renderFiles();
+}
+
+function saveSpriteFromEditor() {
+    if (!currentProjectName) return;
+    ensureSpritePixels();
+    // Export true pixel size PNG
+    const out = document.createElement('canvas');
+    out.width = spriteEd.w;
+    out.height = spriteEd.h;
+    const octx = out.getContext('2d');
+    const img = octx.createImageData(spriteEd.w, spriteEd.h);
+    img.data.set(spriteEd.pixels);
+    octx.putImageData(img, 0, 0);
+    const dataUrl = out.toDataURL('image/png');
+
+    let name = spriteEd.name;
+    if (!name) {
+        name = prompt('Sprite filename (e.g. hero.png)', 'sprite.png');
+        if (!name) return;
+        name = name.trim().replace(/[^\w.\-]+/g, '_');
+        if (!/\.(png|jpg|jpeg|webp)$/i.test(name)) name += '.png';
+    }
+
+    const map = getProjectAssetMap(currentProjectName);
+    if (map[name] && name !== spriteEd.name && !confirm('Replace existing "' + name + '"?')) return;
+
+    map[name] = dataUrl;
+    delete spriteImageCache[currentProjectName + '::' + name];
+    saveProjectAssets();
+    spriteEd.name = name;
+    spriteEd.dirty = false;
+    document.getElementById('sprite-editor-title').textContent = name;
+    alert('Saved "' + name + '".\n\nIn Lua:\ngfx.sprite("' + name + '", x, y)');
+    switchView('files-view');
+    renderFiles();
 }
 
 /** Encode project into a shareable play URL (hash). Free. */
