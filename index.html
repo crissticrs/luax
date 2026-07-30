@@ -799,11 +799,11 @@
         .spr-palette {
             display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px;
             border-bottom: 1px solid var(--glass-border); flex-shrink: 0;
-            background: var(--panel-color);
+            background: var(--panel-color); align-items: center;
         }
         .spr-swatch {
             width: 28px; height: 28px; border-radius: 8px; border: 2px solid transparent;
-            cursor: pointer; padding: 0;
+            cursor: pointer; padding: 0; flex-shrink: 0;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
         }
         .spr-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--accent-color); }
@@ -816,6 +816,35 @@
             background-size: 10px 10px;
             background-position: 0 0, 0 5px, 5px -5px, -5px 0;
             background-color: #222;
+        }
+        .spr-color-custom {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin-left: 4px; padding-left: 8px;
+            border-left: 1px solid var(--glass-border);
+        }
+        .spr-color-picker {
+            width: 36px; height: 36px; padding: 0; border: none;
+            border-radius: 10px; cursor: pointer; background: transparent;
+            overflow: hidden;
+        }
+        .spr-color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+        .spr-color-picker::-webkit-color-swatch {
+            border: 2px solid var(--accent-color); border-radius: 8px;
+        }
+        .spr-color-picker::-moz-color-swatch {
+            border: 2px solid var(--accent-color); border-radius: 8px;
+        }
+        .spr-hex-input {
+            width: 78px; padding: 6px 8px; border-radius: 8px;
+            border: 1px solid var(--glass-border); background: var(--panel-2, #111);
+            color: var(--text-color); font-size: 0.8rem; font-family: Menlo, Monaco, monospace;
+            outline: none;
+        }
+        .spr-hex-input:focus { border-color: var(--accent-color); }
+        .spr-current-preview {
+            width: 28px; height: 28px; border-radius: 8px;
+            border: 2px solid var(--accent-color); flex-shrink: 0;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3);
         }
         .spr-canvas-wrap {
             flex: 1; display: flex; align-items: center; justify-content: center;
@@ -2147,12 +2176,19 @@ function handleSpriteImport(ev) {
 // PIXEL SPRITE EDITOR (mini Aseprite-style)
 // ============================================================
 const SPRITE_PALETTE = [
-    null, // transparent (eraser via checker swatch also)
+    null, // transparent
     '#000000', '#ffffff', '#9e9e9e', '#ef5350', '#e91e63',
     '#ab47bc', '#5c6bc0', '#42a5f5', '#26c6da', '#26a69a',
     '#66bb6a', '#d4e157', '#ffee58', '#ffa726', '#8d6e63',
     '#ff1744', '#00e676', '#2979ff', '#ffea00', '#7c4dff',
 ];
+
+/** Recently used custom colors (any hex the user picks) */
+let spriteRecentColors = [];
+try {
+    const raw = localStorage.getItem('luax_sprite_recent_colors');
+    if (raw) spriteRecentColors = JSON.parse(raw).filter(c => /^#[0-9a-fA-F]{6}$/.test(c)).slice(0, 12);
+} catch (_) {}
 
 const spriteEd = {
     w: 16,
@@ -2164,6 +2200,36 @@ const spriteEd = {
     drawing: false,
     dirty: false,
 };
+
+function normalizeSpriteHex(v) {
+    if (!v) return null;
+    let h = String(v).trim();
+    if (h[0] !== '#') h = '#' + h;
+    if (/^#[0-9a-fA-F]{3}$/.test(h)) {
+        h = '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+    }
+    if (!/^#[0-9a-fA-F]{6}$/.test(h)) return null;
+    return h.toLowerCase();
+}
+
+function rememberSpriteColor(hex) {
+    hex = normalizeSpriteHex(hex);
+    if (!hex) return;
+    // Don't duplicate presets at front of recent list unnecessarily still ok
+    spriteRecentColors = [hex].concat(spriteRecentColors.filter(c => c !== hex)).slice(0, 12);
+    try { localStorage.setItem('luax_sprite_recent_colors', JSON.stringify(spriteRecentColors)); } catch (_) {}
+}
+
+function setSpriteColor(hex, opts) {
+    hex = normalizeSpriteHex(hex) || '#ffffff';
+    spriteEd.color = hex;
+    if (!opts || opts.remember !== false) rememberSpriteColor(hex);
+    if (spriteEd.tool === 'eraser' || spriteEd.tool === 'picker') {
+        setSpriteTool('pencil');
+    } else {
+        renderSpritePalette();
+    }
+}
 
 function spritePixelIndex(x, y) {
     return (y * spriteEd.w + x) * 4;
@@ -2229,30 +2295,75 @@ function renderSpritePalette() {
     const el = document.getElementById('spr-palette');
     if (!el) return;
     el.innerHTML = '';
-    SPRITE_PALETTE.forEach((c, idx) => {
+    const cur = normalizeSpriteHex(spriteEd.color) || '#ffffff';
+
+    function addSwatch(c) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'spr-swatch' + (c === null ? ' checker' : '');
         if (c) btn.style.background = c;
         const isActive = (c === null && spriteEd.tool === 'eraser') ||
-            (c && spriteEd.color === c && spriteEd.tool !== 'eraser');
+            (c && cur === normalizeSpriteHex(c) && spriteEd.tool !== 'eraser');
         if (isActive) btn.classList.add('active');
         btn.title = c || 'Transparent';
         btn.onclick = () => {
-            if (c === null) {
-                setSpriteTool('eraser');
-            } else {
-                spriteEd.color = c;
-                if (spriteEd.tool === 'eraser' || spriteEd.tool === 'picker') {
-                    setSpriteTool('pencil');
-                } else {
-                    renderSpritePalette();
-                }
-            }
-            renderSpritePalette();
+            if (c === null) setSpriteTool('eraser');
+            else setSpriteColor(c, { remember: false });
         };
         el.appendChild(btn);
+    }
+
+    // Presets
+    SPRITE_PALETTE.forEach(addSwatch);
+
+    // Recent custom colors
+    spriteRecentColors.forEach(c => {
+        if (SPRITE_PALETTE.indexOf(c) >= 0) return;
+        addSwatch(c);
     });
+
+    // Infinite color: native picker + hex + current preview
+    const custom = document.createElement('div');
+    custom.className = 'spr-color-custom';
+
+    const preview = document.createElement('div');
+    preview.className = 'spr-current-preview';
+    preview.style.background = cur;
+    preview.title = 'Current: ' + cur;
+
+    const picker = document.createElement('input');
+    picker.type = 'color';
+    picker.className = 'spr-color-picker';
+    picker.value = cur;
+    picker.title = 'Pick any color';
+    picker.oninput = () => setSpriteColor(picker.value);
+    picker.onchange = () => setSpriteColor(picker.value);
+
+    const hex = document.createElement('input');
+    hex.type = 'text';
+    hex.className = 'spr-hex-input';
+    hex.value = cur;
+    hex.spellcheck = false;
+    hex.maxLength = 7;
+    hex.placeholder = '#rrggbb';
+    hex.title = 'Hex color';
+    hex.onchange = () => {
+        const n = normalizeSpriteHex(hex.value);
+        if (n) setSpriteColor(n);
+        else hex.value = cur;
+    };
+    hex.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            hex.onchange();
+            hex.blur();
+        }
+    };
+
+    custom.appendChild(preview);
+    custom.appendChild(picker);
+    custom.appendChild(hex);
+    el.appendChild(custom);
 }
 
 function setSpriteTool(tool) {
@@ -2326,10 +2437,8 @@ function applySpriteToolAt(clientX, clientY, isDown) {
         if (p[3] < 8) {
             setSpriteTool('eraser');
         } else {
-            spriteEd.color = rgbaToHex(p[0], p[1], p[2], p[3]) || '#ffffff';
-            setSpriteTool('pencil');
+            setSpriteColor(rgbaToHex(p[0], p[1], p[2], p[3]) || '#ffffff');
         }
-        renderSpritePalette();
         return;
     }
     if (spriteEd.tool === 'fill' && isDown) {
