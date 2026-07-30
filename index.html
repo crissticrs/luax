@@ -7,10 +7,12 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/material-ocean.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/hint/show-hint.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/lua/lua.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/selection/active-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/hint/show-hint.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fengari-web@0.1.4/dist/fengari-web.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -442,6 +444,44 @@
             -webkit-user-select: text; user-select: text;
         }
         .CodeMirror-vscrollbar, .CodeMirror-hscrollbar { display: none !important; }
+        /* Autocomplete + hover docs */
+        .CodeMirror-hints {
+            z-index: 4000 !important;
+            background: var(--panel-color) !important;
+            border: 1px solid var(--glass-border) !important;
+            border-radius: 10px !important;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.45) !important;
+            max-height: 240px !important;
+            font-family: 'Menlo', 'Monaco', monospace !important;
+            font-size: 13px !important;
+        }
+        .CodeMirror-hint {
+            color: var(--text-color) !important;
+            padding: 6px 12px !important;
+            border-radius: 6px !important;
+        }
+        .CodeMirror-hint-active {
+            background: color-mix(in srgb, var(--accent-color) 28%, transparent) !important;
+            color: #fff !important;
+        }
+        .cm-luax-hint-detail {
+            float: right; margin-left: 16px; opacity: 0.55; font-size: 11px;
+            color: var(--muted);
+        }
+        .luax-hover-tip {
+            position: fixed; z-index: 5000; max-width: 320px;
+            background: var(--panel-color); color: var(--text-color);
+            border: 1px solid var(--glass-border); border-radius: 10px;
+            padding: 10px 12px; font-size: 12px; line-height: 1.45;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+            pointer-events: none; display: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .luax-hover-tip .tip-sig {
+            font-family: Menlo, Monaco, monospace; font-weight: 700;
+            color: var(--accent-color); margin-bottom: 4px; font-size: 12.5px;
+        }
+        .luax-hover-tip .tip-body { color: var(--muted); }
         .lx-shell, #files-view .list-container, #login-view {
             -webkit-user-select: none; user-select: none;
         }
@@ -2157,12 +2197,104 @@ function handleLuaImport(ev) {
 }
 
 // ============================================================
-// EDITOR
+// EDITOR — autocomplete + hover docs for LuaX API
 // ============================================================
+/** Full engine API reference used by hints and hover tooltips */
+const LUAX_API_DOCS = [
+    // Graphics
+    { name: 'gfx.cls', insert: 'gfx.cls(', detail: 'color?', doc: 'Clear the screen.\ngfx.cls("#000")' },
+    { name: 'gfx.rect', insert: 'gfx.rect(', detail: 'x,y,w,h,c?', doc: 'Draw rectangle outline.\ngfx.rect(10, 10, 40, 20, "#fff")' },
+    { name: 'gfx.rectfill', insert: 'gfx.rectfill(', detail: 'x,y,w,h,c?', doc: 'Draw filled rectangle.\ngfx.rectfill(10, 10, 40, 20, "#0f0")' },
+    { name: 'gfx.circle', insert: 'gfx.circle(', detail: 'x,y,r,c?', doc: 'Draw circle outline.\ngfx.circle(100, 100, 20, "#fff")' },
+    { name: 'gfx.circlefill', insert: 'gfx.circlefill(', detail: 'x,y,r,c?', doc: 'Draw filled circle.\ngfx.circlefill(100, 100, 20, "#f00")' },
+    { name: 'gfx.line', insert: 'gfx.line(', detail: 'x1,y1,x2,y2,c?', doc: 'Draw a line.\ngfx.line(0, 0, 100, 50, "#fff")' },
+    { name: 'gfx.pixel', insert: 'gfx.pixel(', detail: 'x,y,c?', doc: 'Draw a single pixel.\ngfx.pixel(50, 50, "#fff")' },
+    { name: 'gfx.text', insert: 'gfx.text(', detail: 'str,x,y,c?,font?', doc: 'Draw text.\ngfx.text("Hi", 16, 30, "#fff", "16px sans-serif")' },
+    { name: 'gfx.cam', insert: 'gfx.cam(', detail: 'x,y', doc: 'Set 2D camera offset.\ngfx.cam(player.x - 100, 0)' },
+    { name: 'gfx.sprite', insert: 'gfx.sprite(', detail: 'name,x,y,w?,h?', doc: 'Draw an imported PNG asset.\ngfx.sprite("player.png", x, y)\ngfx.sprite("player.png", x, y, 32, 32)' },
+    { name: 'gfx.sprites', insert: 'gfx.sprites()', detail: '→ list', doc: 'Return table of asset filenames in this project.' },
+    { name: 'gfx.raycast', insert: 'gfx.raycast(', detail: 'opts', doc: 'Wolfenstein-style 3D raycast.\ngfx.raycast({\n  map=map, x=px, y=py,\n  angle=yaw, pitch=pitch,\n  fov=math.pi/3, colors=colors,\n  ceil="#111", floor="#222", fog=14\n})' },
+    { name: 'gfx.width', insert: 'gfx.width()', detail: '→ number', doc: 'Logical screen width (CSS pixels).' },
+    { name: 'gfx.height', insert: 'gfx.height()', detail: '→ number', doc: 'Logical screen height (CSS pixels).' },
+    // Input
+    { name: 'btn', insert: 'btn(', detail: 'i → bool', doc: 'Button held.\n0 Up · 1 Down · 2 Left · 3 Right\n4 A · 5 B · 6 X · 7 Y' },
+    { name: 'btnp', insert: 'btnp(', detail: 'i → bool', doc: 'Button pressed this frame (edge).\nSame indices as btn().' },
+    { name: 'btnr', insert: 'btnr(', detail: 'i → bool', doc: 'Button released this frame.\nSame indices as btn().' },
+    { name: 'axis', insert: 'axis(', detail: 'i → number', doc: 'Analog stick: axis(0)=X, axis(1)=Y.\nRange about -1 … 1.' },
+    { name: 'look', insert: 'look()', detail: '→ yaw, pitch', doc: 'Camera look deltas this frame.\nlocal dx, dy = look()\nangle = angle + dx\npitch = pitch - dy' },
+    { name: 'lookx', insert: 'lookx()', detail: '→ number', doc: 'Horizontal look delta (yaw) this frame.' },
+    { name: 'looky', insert: 'looky()', detail: '→ number', doc: 'Vertical look delta (pitch) this frame.' },
+    { name: 'mouse.x', insert: 'mouse.x', detail: 'number', doc: 'Pointer X in canvas coordinates.' },
+    { name: 'mouse.y', insert: 'mouse.y', detail: 'number', doc: 'Pointer Y in canvas coordinates.' },
+    { name: 'mouse.btn', insert: 'mouse.btn', detail: 'bool', doc: 'True while primary pointer is down.' },
+    // Audio / system
+    { name: 'sfx.beep', insert: 'sfx.beep(', detail: 'freq,dur?,type?', doc: 'Play a short beep.\nsfx.beep(440, 0.1)\nsfx.beep(880, 0.05, "square")\nTypes: square, sine, sawtooth, triangle' },
+    { name: 'dt', insert: 'dt', detail: 'number', doc: 'Delta time in seconds for this frame (use in _update).' },
+    { name: 'print', insert: 'print(', detail: '...', doc: 'Log to the in-game console (☰ Log).' },
+    { name: 'require', insert: 'require(', detail: 'mod', doc: 'Load another .lua file in this project.\nlocal p = require("player")' },
+    { name: 'is_mobile', insert: 'is_mobile()', detail: '→ bool', doc: 'True when running on a phone/tablet.' },
+    { name: 'set_controls_visible', insert: 'set_controls_visible(', detail: 'bool', doc: 'Show/hide on-screen gamepad (mobile).' },
+    { name: 'controls_visible', insert: 'controls_visible()', detail: '→ bool', doc: 'Whether on-screen gamepad is visible.' },
+    // Callbacks (snippets)
+    { name: '_update', insert: 'function _update(dt)\n    \nend', detail: 'callback', doc: 'Called every frame with delta time (seconds). Put game logic here.' },
+    { name: '_draw', insert: 'function _draw()\n    \nend', detail: 'callback', doc: 'Called every frame after _update. Put drawing calls here.' },
+];
+
+const LUAX_API_BY_NAME = {};
+LUAX_API_DOCS.forEach(d => { LUAX_API_BY_NAME[d.name] = d; });
+
+function luaxHint(cm) {
+    const cur = cm.getCursor();
+    const token = cm.getTokenAt(cur);
+    let start = token.start;
+    let end = cur.ch;
+    let word = token.string || '';
+
+    // Expand to full identifier including dots: gfx.cls
+    const line = cm.getLine(cur.line) || '';
+    while (start > 0 && /[\w.]/.test(line.charAt(start - 1))) start--;
+    while (end < line.length && /[\w]/.test(line.charAt(end))) end++;
+    word = line.slice(start, end);
+
+    // After "gfx." only suggest gfx.* methods
+    const lower = word.toLowerCase();
+    const list = LUAX_API_DOCS.filter(d => {
+        if (!lower) return true;
+        return d.name.toLowerCase().indexOf(lower) === 0 ||
+            d.name.toLowerCase().indexOf('.' + lower) !== -1;
+    }).map(d => ({
+        text: d.insert,
+        displayText: d.name,
+        className: 'cm-luax-hint',
+        hint: function (cm2, data, completion) {
+            cm2.replaceRange(completion.text, completion.from || data.from, completion.to || data.to, 'complete');
+        },
+        render: function (el) {
+            el.appendChild(document.createTextNode(d.name));
+            const span = document.createElement('span');
+            span.className = 'cm-luax-hint-detail';
+            span.textContent = d.detail || '';
+            el.appendChild(span);
+        },
+        from: CodeMirror.Pos(cur.line, start),
+        to: CodeMirror.Pos(cur.line, end),
+    }));
+
+    return {
+        list: list,
+        from: CodeMirror.Pos(cur.line, start),
+        to: CodeMirror.Pos(cur.line, end),
+    };
+}
+
 const editor = CodeMirror(document.getElementById('editor'), {
     mode: 'lua', theme: 'material-ocean',
     lineNumbers: true, matchBrackets: true, indentUnit: 4,
-    styleActiveLine: true, viewportMargin: Infinity
+    styleActiveLine: true, viewportMargin: Infinity,
+    extraKeys: {
+        'Ctrl-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
+        'Cmd-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
+    },
 });
 
 editor.on('change', () => {
@@ -2171,6 +2303,83 @@ editor.on('change', () => {
     isDirty = (now !== savedContent);
     updateDirtyUI();
 });
+
+// Auto-show hints while typing identifiers / after a dot
+editor.on('inputRead', function (cm, change) {
+    if (change.origin !== '+input') return;
+    const text = (change.text && change.text[0]) || '';
+    if (!/[\w.]/.test(text)) return;
+    // Don't spam inside comments/strings too aggressively
+    const tok = cm.getTokenAt(cm.getCursor());
+    if (tok && (tok.type === 'string' || tok.type === 'comment')) return;
+    CodeMirror.commands.autocomplete(cm, null, { hint: luaxHint, completeSingle: false });
+});
+
+// Hover documentation tooltip
+(function setupLuaxHoverDocs() {
+    const tip = document.createElement('div');
+    tip.className = 'luax-hover-tip';
+    tip.innerHTML = '<div class="tip-sig"></div><div class="tip-body"></div>';
+    document.body.appendChild(tip);
+    let hideTimer = null;
+
+    function hideTip() {
+        tip.style.display = 'none';
+    }
+
+    function wordAt(cm, pos) {
+        const line = cm.getLine(pos.line) || '';
+        let s = pos.ch, e = pos.ch;
+        while (s > 0 && /[\w.]/.test(line.charAt(s - 1))) s--;
+        while (e < line.length && /[\w.]/.test(line.charAt(e))) e++;
+        // Prefer longest matching API name under cursor
+        const full = line.slice(s, e);
+        if (LUAX_API_BY_NAME[full]) return full;
+        // Try trailing part after last dot chain pieces
+        const parts = full.split('.');
+        for (let i = 0; i < parts.length; i++) {
+            const candidate = parts.slice(i).join('.');
+            if (LUAX_API_BY_NAME[candidate]) return candidate;
+        }
+        // Single token match (btn, dt, …)
+        if (parts.length && LUAX_API_BY_NAME[parts[parts.length - 1]]) {
+            return parts[parts.length - 1];
+        }
+        return null;
+    }
+
+    editor.on('cursorActivity', hideTip);
+
+    editor.getWrapperElement().addEventListener('mousemove', function (ev) {
+        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        const pos = editor.coordsChar({ left: ev.clientX, top: ev.clientY }, 'window');
+        const name = wordAt(editor, pos);
+        if (!name || !LUAX_API_BY_NAME[name]) {
+            hideTip();
+            return;
+        }
+        const d = LUAX_API_BY_NAME[name];
+        tip.querySelector('.tip-sig').textContent = d.name + (d.detail ? '  ·  ' + d.detail : '');
+        tip.querySelector('.tip-body').textContent = d.doc || '';
+        tip.style.display = 'block';
+        let x = ev.clientX + 14;
+        let y = ev.clientY + 18;
+        const pad = 8;
+        tip.style.left = '0px';
+        tip.style.top = '0px';
+        // measure then clamp
+        const tw = tip.offsetWidth;
+        const th = tip.offsetHeight;
+        if (x + tw > window.innerWidth - pad) x = window.innerWidth - tw - pad;
+        if (y + th > window.innerHeight - pad) y = ev.clientY - th - 12;
+        tip.style.left = Math.max(pad, x) + 'px';
+        tip.style.top = Math.max(pad, y) + 'px';
+    });
+
+    editor.getWrapperElement().addEventListener('mouseleave', function () {
+        hideTimer = setTimeout(hideTip, 120);
+    });
+})();
 
 // ---------------------------------------------------------------
 // Soft code protection: block copy/cut from the editor; allow paste.
