@@ -991,13 +991,55 @@
         #sprite-editor-view.spr-drawing .spr-body {
             overflow: hidden;
         }
+        /* Fullscreen chrome — always-visible exit bar */
+        .spr-fs-bar {
+            display: none;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--panel-color);
+            border-bottom: 1px solid var(--glass-border);
+            z-index: 20;
+        }
+        #sprite-editor-view.spr-fullscreen .spr-fs-bar { display: flex; }
         #sprite-editor-view.spr-fullscreen .spr-header { display: none; }
-        #sprite-editor-view.spr-fullscreen .spr-top-tools { display: none; }
-        #sprite-editor-view.spr-fullscreen .spr-color-block-card { display: none; }
         #sprite-editor-view.spr-fullscreen .spr-layers-card { display: none; }
-        #sprite-editor-view.spr-fullscreen .spr-footer-meta { display: none; }
-        #sprite-editor-view.spr-fullscreen .spr-main { flex: 1; }
-        #sprite-editor-view.spr-fullscreen .spr-canvas-wrap { min-height: 0; border-radius: 0; }
+        #sprite-editor-view.spr-fullscreen .spr-size-card { display: none; }
+        #sprite-editor-view.spr-fullscreen .spr-bottom-bar { display: none; }
+        #sprite-editor-view.spr-fullscreen .spr-main { flex: 1; min-height: 0; }
+        #sprite-editor-view.spr-fullscreen .spr-canvas-wrap { min-height: 0; border-radius: 0; flex: 1; }
+        /* Collapsed menus: hide size / layers / extra; keep tools + color */
+        #sprite-editor-view.spr-menu-collapsed .spr-size-card { display: none; }
+        #sprite-editor-view.spr-menu-collapsed .spr-layers-card { display: none; }
+        #sprite-editor-view.spr-menu-collapsed .spr-zoom-row { display: none; }
+        #sprite-editor-view.spr-fullscreen.spr-menu-collapsed .spr-tools-card { display: none; }
+        #sprite-editor-view.spr-fullscreen.spr-menu-collapsed .spr-color-block-card { display: none; }
+        .spr-fs-bar button {
+            min-width: 44px; height: 40px; border-radius: 12px;
+            border: 1.5px solid var(--glass-border);
+            background: var(--panel-2, #1a1c23);
+            color: var(--text-color); font-weight: 800; font-size: 1rem;
+            cursor: pointer;
+        }
+        .spr-fs-bar button.danger {
+            background: color-mix(in srgb, #ff5252 20%, transparent);
+            border-color: #ff5252; color: #ff5252;
+        }
+        .spr-fs-bar button.accent {
+            border-color: var(--accent-color); color: var(--accent-color);
+        }
+        .spr-collapse-btn {
+            border: none; background: transparent; color: var(--muted);
+            font-size: 0.85rem; font-weight: 800; cursor: pointer;
+            padding: 4px 8px; margin-left: auto;
+        }
+        .spr-card-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .spr-card-head .spr-card-label { margin-bottom: 0; }
         #sprite-pixel-canvas {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
@@ -1494,44 +1536,59 @@
 
     <!-- Pixel sprite editor (mockup style) -->
     <div id="sprite-editor-view" class="view">
+        <!-- Always visible in fullscreen: Exit · Menu · Zoom -->
+        <div class="spr-fs-bar" id="spr-fs-bar">
+            <button type="button" class="danger" onclick="toggleSpriteFullscreen()" title="Exit fullscreen">✕</button>
+            <button type="button" class="accent" id="spr-fs-menu-btn" onclick="toggleSpriteMenu()" title="Show / hide tools">▲</button>
+            <button type="button" onclick="spriteZoom(1)" title="Zoom in">+</button>
+            <button type="button" onclick="spriteZoom(-1)" title="Zoom out">−</button>
+        </div>
         <div class="spr-header">
             <div class="spr-header-left">
                 <button type="button" class="spr-back" onclick="closeSpriteEditor()">‹ Back</button>
                 <span class="spr-title" id="sprite-editor-title">New Sprite</span>
             </div>
             <div style="display:flex;align-items:center;gap:6px">
-                <button type="button" class="spr-fs-btn" onclick="toggleSpriteFullscreen()">⛶</button>
+                <button type="button" class="spr-fs-btn" id="spr-fs-btn" onclick="toggleSpriteFullscreen()">Fullscreen</button>
                 <button type="button" class="spr-save" onclick="saveSpriteFromEditor()">SAVE</button>
             </div>
         </div>
         <div class="spr-body">
-            <div class="spr-card spr-top-tools">
-                <div class="spr-card-label">Tools · Size</div>
-                <div class="spr-row" id="spr-toolbar">
-                    <button type="button" class="spr-tool active" data-tool="pencil" onclick="setSpriteTool('pencil')" title="Pencil">✎</button>
-                    <button type="button" class="spr-tool" data-tool="eraser" onclick="setSpriteTool('eraser')" title="Eraser">⌫</button>
-                    <button type="button" class="spr-tool" data-tool="fill" onclick="setSpriteTool('fill')" title="Fill">▤</button>
-                    <button type="button" class="spr-tool" data-tool="picker" onclick="setSpriteTool('picker')" title="Eyedropper">◎</button>
-                    <button type="button" class="spr-tool" data-tool="hand" onclick="setSpriteTool('hand')" title="Hand (pan)">✋</button>
-                    <div class="spr-tool-divider"></div>
-                    <button type="button" class="spr-size" data-size="8" onclick="setSpriteSize(8)">8</button>
-                    <button type="button" class="spr-size active" data-size="16" onclick="setSpriteSize(16)">16</button>
-                    <button type="button" class="spr-size" data-size="24" onclick="setSpriteSize(24)">24</button>
-                    <button type="button" class="spr-size" data-size="32" onclick="setSpriteSize(32)">32</button>
-                    <button type="button" class="spr-size" data-size="64" onclick="setSpriteSize(64)">64</button>
+            <div class="spr-row-split">
+                <div class="spr-card spr-tools-card">
+                    <div class="spr-card-head">
+                        <div class="spr-card-label">Tools</div>
+                        <button type="button" class="spr-collapse-btn" id="spr-menu-toggle" onclick="toggleSpriteMenu()" title="Hide extra panels">▲</button>
+                    </div>
+                    <div class="spr-row" id="spr-toolbar">
+                        <button type="button" class="spr-tool active" data-tool="pencil" onclick="setSpriteTool('pencil')" title="Pencil">✎</button>
+                        <button type="button" class="spr-tool" data-tool="eraser" onclick="setSpriteTool('eraser')" title="Eraser">⌫</button>
+                        <button type="button" class="spr-tool" data-tool="fill" onclick="setSpriteTool('fill')" title="Fill">▤</button>
+                        <button type="button" class="spr-tool" data-tool="picker" onclick="setSpriteTool('picker')" title="Eyedropper">◎</button>
+                        <button type="button" class="spr-tool" data-tool="hand" onclick="setSpriteTool('hand')" title="Hand (pan)">✋</button>
+                    </div>
+                    <div class="spr-zoom-row">
+                        <button type="button" class="spr-size" onclick="spriteZoom(-1)" title="Zoom out">−</button>
+                        <button type="button" class="spr-size" id="spr-zoom-label" onclick="spriteZoomReset()" title="Reset zoom">100%</button>
+                        <button type="button" class="spr-size" onclick="spriteZoom(1)" title="Zoom in">+</button>
+                    </div>
                 </div>
-                <div class="spr-size-custom">
-                    <input type="number" id="spr-custom-w" min="1" max="512" value="16" inputmode="numeric" oninput="onSpriteCustomSizeInput('w')">
-                    <span class="spr-size-x">×</span>
-                    <input type="number" id="spr-custom-h" min="1" max="512" value="16" inputmode="numeric" oninput="onSpriteCustomSizeInput('h')">
-                    <button type="button" class="spr-size-lock on" id="spr-size-lock" title="Lock square" onclick="toggleSpriteSizeLock()">🔗</button>
-                    <button type="button" class="spr-size-apply" onclick="applyCustomSpriteSize()">Apply</button>
-                </div>
-                <div class="spr-zoom-row">
-                    <button type="button" class="spr-size" onclick="spriteZoom(-1)" title="Zoom out">−</button>
-                    <button type="button" class="spr-size" onclick="spriteZoom(1)" title="Zoom in">+</button>
-                    <button type="button" class="spr-size" onclick="spriteZoomReset()" title="Reset zoom">100%</button>
-                    <button type="button" class="spr-fs-btn" id="spr-fs-btn" onclick="toggleSpriteFullscreen()">Fullscreen</button>
+                <div class="spr-card spr-size-card">
+                    <div class="spr-card-label">Canvas size</div>
+                    <div class="spr-row" id="spr-sizes">
+                        <button type="button" class="spr-size" data-size="8" onclick="setSpriteSize(8)">8</button>
+                        <button type="button" class="spr-size active" data-size="16" onclick="setSpriteSize(16)">16</button>
+                        <button type="button" class="spr-size" data-size="24" onclick="setSpriteSize(24)">24</button>
+                        <button type="button" class="spr-size" data-size="32" onclick="setSpriteSize(32)">32</button>
+                        <button type="button" class="spr-size" data-size="64" onclick="setSpriteSize(64)">64</button>
+                    </div>
+                    <div class="spr-size-custom">
+                        <input type="number" id="spr-custom-w" min="1" max="512" value="16" inputmode="numeric" oninput="onSpriteCustomSizeInput('w')">
+                        <span class="spr-size-x">×</span>
+                        <input type="number" id="spr-custom-h" min="1" max="512" value="16" inputmode="numeric" oninput="onSpriteCustomSizeInput('h')">
+                        <button type="button" class="spr-size-lock on" id="spr-size-lock" title="Lock square" onclick="toggleSpriteSizeLock()">🔗</button>
+                        <button type="button" class="spr-size-apply" onclick="applyCustomSpriteSize()">Apply</button>
+                    </div>
                 </div>
             </div>
 
@@ -3611,8 +3668,8 @@ function redrawSpriteCanvas() {
     const dispW = Math.max(1, Math.floor((wrap && wrap.clientWidth) || canvas.clientWidth || 256));
     const dispH = Math.max(1, Math.floor((wrap && wrap.clientHeight) || canvas.clientHeight || 256));
     const z = Math.max(0.25, Math.min(8, Number(spriteEd.zoom) || 1));
-    const base = Math.max(1, Math.floor(Math.min(dispW / spriteEd.w, dispH / spriteEd.h)));
-    const scale = Math.max(1, Math.round(base * z));
+    const base = Math.max(1, Math.min(dispW / spriteEd.w, dispH / spriteEd.h));
+    const scale = Math.max(1, base * z);
     const drawW = spriteEd.w * scale;
     const drawH = spriteEd.h * scale;
     canvas.width = dispW;
@@ -3672,31 +3729,63 @@ function redrawSpriteCanvas() {
     }
 }
 
+function updateSpriteZoomLabel() {
+    const z = Math.max(0.25, Math.min(8, Number(spriteEd.zoom) || 1));
+    const lab = document.getElementById('spr-zoom-label');
+    if (lab) lab.textContent = Math.round(z * 100) + '%';
+}
 function spriteZoom(dir) {
-    const steps = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6];
+    const steps = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8];
     let z = Number(spriteEd.zoom) || 1;
     let i = 0;
+    let best = 0;
     for (let s = 0; s < steps.length; s++) {
-        if (Math.abs(steps[s] - z) < 0.01) { i = s; break; }
-        if (steps[s] < z) i = s;
+        if (Math.abs(steps[s] - z) < 0.02) { i = s; best = s; break; }
+        if (steps[s] <= z) best = s;
+        i = best;
     }
     i = Math.max(0, Math.min(steps.length - 1, i + (dir > 0 ? 1 : -1)));
     spriteEd.zoom = steps[i];
+    updateSpriteZoomLabel();
     redrawSpriteCanvas();
 }
 function spriteZoomReset() {
     spriteEd.zoom = 1;
     spriteEd.panX = 0;
     spriteEd.panY = 0;
+    updateSpriteZoomLabel();
     redrawSpriteCanvas();
+}
+function toggleSpriteMenu() {
+    const view = document.getElementById('sprite-editor-view');
+    if (!view) return;
+    const collapsed = view.classList.toggle('spr-menu-collapsed');
+    spriteEd.menuCollapsed = collapsed;
+    const arrow = collapsed ? '▼' : '▲';
+    const a = document.getElementById('spr-menu-toggle');
+    if (a) a.textContent = arrow;
+    const b = document.getElementById('spr-fs-menu-btn');
+    if (b) b.textContent = arrow;
+    setTimeout(() => redrawSpriteCanvas(), 40);
 }
 function toggleSpriteFullscreen() {
     spriteEd.fullscreen = !spriteEd.fullscreen;
     const view = document.getElementById('sprite-editor-view');
-    if (view) view.classList.toggle('spr-fullscreen', spriteEd.fullscreen);
+    if (view) {
+        view.classList.toggle('spr-fullscreen', spriteEd.fullscreen);
+        // entering FS: start with menu visible so user sees tools; can collapse with arrow
+        if (spriteEd.fullscreen) {
+            view.classList.remove('spr-menu-collapsed');
+            spriteEd.menuCollapsed = false;
+            const a = document.getElementById('spr-menu-toggle');
+            if (a) a.textContent = '▲';
+            const b = document.getElementById('spr-fs-menu-btn');
+            if (b) b.textContent = '▲';
+        }
+    }
     const btn = document.getElementById('spr-fs-btn');
     if (btn) btn.textContent = spriteEd.fullscreen ? 'Exit full' : 'Fullscreen';
-    setTimeout(() => redrawSpriteCanvas(), 50);
+    setTimeout(() => redrawSpriteCanvas(), 60);
 }
 
 function renderSpritePalette() {
@@ -4115,6 +4204,12 @@ function loadSpriteFromDataUrl(dataUrl, name) {
 function closeSpriteEditor() {
     if (spriteEd.dirty && !confirm('Discard unsaved sprite changes?')) return;
     spriteEd.dirty = false;
+    spriteEd.fullscreen = false;
+    spriteEd.menuCollapsed = false;
+    const view = document.getElementById('sprite-editor-view');
+    if (view) {
+        view.classList.remove('spr-fullscreen', 'spr-menu-collapsed');
+    }
     switchView('files-view');
     renderFiles();
 }
