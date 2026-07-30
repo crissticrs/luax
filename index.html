@@ -7107,6 +7107,98 @@ function fxDraw() {
     ctx.globalAlpha = 1;
 }
 
+
+// ============================================================
+// GAME SAVE DATA (player progress — not project source)
+// Per-project localStorage. Independent of cloud project sync.
+// ============================================================
+const GAMEDATA_PREFIX = 'luax_gamedata_v1:';
+
+function gameDataStorageKey(projectName) {
+    const proj = projectName || currentProjectName || '_default';
+    let account = '';
+    try {
+        if (typeof currentAccountEmail === 'function') account = currentAccountEmail() || '';
+        else if (typeof googleProfile !== 'undefined' && googleProfile && googleProfile.email)
+            account = String(googleProfile.email).toLowerCase();
+    } catch (_) {}
+    // Scope by account when signed in so devices/users don't collide
+    return GAMEDATA_PREFIX + (account ? account + '::' : '') + proj;
+}
+
+function loadGameDataStore(projectName) {
+    try {
+        const raw = localStorage.getItem(gameDataStorageKey(projectName));
+        if (!raw) return {};
+        const data = JSON.parse(raw);
+        return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    } catch (_) {
+        return {};
+    }
+}
+
+function saveGameDataStore(store, projectName) {
+    try {
+        localStorage.setItem(gameDataStorageKey(projectName), JSON.stringify(store || {}));
+        return true;
+    } catch (e) {
+        console.warn('Game data save failed', e);
+        return false;
+    }
+}
+
+function gameDataSave(key, value) {
+    if (key == null || key === '') return false;
+    const k = String(key);
+    const store = loadGameDataStore();
+    store[k] = value;
+    return saveGameDataStore(store);
+}
+
+function gameDataLoad(key, defaultValue) {
+    if (key == null || key === '') {
+        return defaultValue !== undefined ? defaultValue : null;
+    }
+    const store = loadGameDataStore();
+    const k = String(key);
+    if (!Object.prototype.hasOwnProperty.call(store, k)) {
+        return defaultValue !== undefined ? defaultValue : null;
+    }
+    return store[k];
+}
+
+function gameDataHas(key) {
+    if (key == null || key === '') return false;
+    const store = loadGameDataStore();
+    return Object.prototype.hasOwnProperty.call(store, String(key));
+}
+
+function gameDataRemove(key) {
+    if (key == null || key === '') return false;
+    const store = loadGameDataStore();
+    const k = String(key);
+    if (!Object.prototype.hasOwnProperty.call(store, k)) return false;
+    delete store[k];
+    return saveGameDataStore(store);
+}
+
+function gameDataClear() {
+    try {
+        localStorage.removeItem(gameDataStorageKey());
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+function gameDataKeys() {
+    return Object.keys(loadGameDataStore());
+}
+
+function gameDataAll() {
+    return loadGameDataStore();
+}
+
 window.LuaDeckAPI = {
     gfx: {
         cls(c) {
@@ -7446,6 +7538,18 @@ window.LuaDeckAPI = {
         clear() { fxClear(); },
         count() { return fxParticles.length; },
     },
+    data: {
+        save(key, value) { return gameDataSave(key, value); },
+        load(key, defaultValue) {
+            const v = gameDataLoad(key, defaultValue !== undefined ? defaultValue : null);
+            return v;
+        },
+        has(key) { return gameDataHas(key); },
+        remove(key) { return gameDataRemove(key); },
+        clear() { return gameDataClear(); },
+        keys() { return gameDataKeys(); },
+        all() { return gameDataAll(); },
+    },
     sys: {
         getFileContent(filename) {
             if (!currentProjectName) return null;
@@ -7577,6 +7681,72 @@ fx = {
     end,
     clear = function() api.fx:clear() end,
     count = function() return api.fx:count() end,
+}
+
+-- Persistent player save data (per project, not source code)
+-- data.save("highscore", 500)
+-- local hs = data.load("highscore", 0)
+data = {
+    save = function(key, value)
+        -- tables → plain JS objects/arrays for JSON storage
+        if type(value) == "table" then
+            return api.data:save(tostring(key), tojs(value))
+        end
+        return api.data:save(tostring(key), value)
+    end,
+    load = function(key, defaultValue)
+        local v = api.data:load(tostring(key), nil)
+        if v == nil or v == js.null then
+            return defaultValue
+        end
+        -- Convert JS arrays/objects back to Lua tables
+        local function fromjs(val)
+            if val == nil or val == js.null then return nil end
+            local t = type(val)
+            -- Fengari may expose JS objects with special type
+            if t ~= "userdata" and t ~= "table" and t ~= "object" then
+                return val
+            end
+            -- Try array
+            local ok, len = pcall(function() return tonumber(val.length) end)
+            if ok and len and len >= 0 and val[0] ~= nil then
+                local arr = {}
+                for i = 0, len - 1 do
+                    arr[i + 1] = fromjs(val[i])
+                end
+                return arr
+            end
+            -- Try object keys via JS Object.keys if available
+            local ok2, keys = pcall(function()
+                return js.global.Object:keys(val)
+            end)
+            if ok2 and keys then
+                local n = tonumber(keys.length) or 0
+                if n > 0 then
+                    local obj = {}
+                    for i = 0, n - 1 do
+                        local k = keys[i]
+                        obj[k] = fromjs(val[k])
+                    end
+                    return obj
+                end
+            end
+            return val
+        end
+        return fromjs(v)
+    end,
+    has = function(key) return api.data:has(tostring(key)) end,
+    remove = function(key) return api.data:remove(tostring(key)) end,
+    clear = function() return api.data:clear() end,
+    keys = function()
+        local arr = api.data:keys()
+        local t = {}
+        if arr then
+            local n = tonumber(arr.length) or 0
+            for i = 0, n - 1 do t[#t + 1] = arr[i] end
+        end
+        return t
+    end,
 }
 
 dt = 0.016
