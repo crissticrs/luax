@@ -1896,8 +1896,8 @@
                 <div class="files-menu" id="files-menu-more">
                     <button type="button" onclick="closeFilesMenus(); importLuaFile()">Import .lua</button>
                     <button type="button" onclick="closeFilesMenus(); importSpriteFile()">Import PNG</button>
-                    <button type="button" onclick="closeFilesMenus(); exportProject()">Export JSON</button>
-                    <button type="button" onclick="closeFilesMenus(); exportStandaloneHtml()">Export HTML game</button>
+                    <button type="button" onclick="closeFilesMenus(); exportStandaloneHtml()">⬇ Export playable HTML</button>
+                    <button type="button" onclick="closeFilesMenus(); exportProject()">Export project JSON</button>
                     <button type="button" onclick="closeFilesMenus(); sharePlayLink()">Share link</button>
                 </div>
             </div>
@@ -4942,7 +4942,7 @@ function exportProject() {
 function exportStandaloneHtml() {
     if (!currentProjectName) return;
     if (!projects[currentProjectName] || projects[currentProjectName]['main.lua'] == null) {
-        return alert('Need a main.lua to export a playable game.');
+        return alert('Need a main.lua to export a playable game.\n\nAdd main.lua with _update / _draw, then try again.');
     }
     if (!spendCredits('export')) return;
 
@@ -4952,12 +4952,21 @@ function exportStandaloneHtml() {
             projects[currentProjectName][currentFileName] = editor.getValue();
         }
     } catch (_) {}
+    // Persist latest music / assets maps
+    try { if (typeof saveProjectMusic === 'function') saveProjectMusic(); } catch (_) {}
 
     const name = currentProjectName;
-    const files = projects[name] || {};
-    const assets = (typeof getProjectAssetMap === 'function') ? getProjectAssetMap(name) : {};
-    const music = (typeof getProjectMusicMap === 'function') ? getProjectMusicMap(name) : {};
+    const files = JSON.parse(JSON.stringify(projects[name] || {}));
+    const assets = JSON.parse(JSON.stringify(
+        (typeof getProjectAssetMap === 'function') ? getProjectAssetMap(name) : {}
+    ));
+    const music = JSON.parse(JSON.stringify(
+        (typeof getProjectMusicMap === 'function') ? getProjectMusicMap(name) : {}
+    ));
     const gamepad = (typeof getProjectGamepad === 'function') ? getProjectGamepad(name) !== false : true;
+
+    // Only ship .lua source + keep non-lua text files the game may read via require / getFileContent
+    // (assets are separate as data-URLs)
 
     let html;
     try {
@@ -4969,26 +4978,40 @@ function exportStandaloneHtml() {
             gamepad: gamepad
         });
     } catch (err) {
+        console.error(err);
         alert('Export failed: ' + (err && err.message ? err.message : err));
         return;
     }
 
+    const safeName = String(name).replace(/[^\w.\-]+/g, '_') || 'game';
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = name.replace(/[^\w.\-]+/g, '_') + '.html';
+    a.download = safeName + '.html';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(a.href);
+    setTimeout(() => {
+        try { URL.revokeObjectURL(a.href); a.remove(); } catch (_) {}
+    }, 2000);
 
     setTimeout(() => {
+        const nFiles = Object.keys(files).length;
+        const nAssets = Object.keys(assets).length;
+        const nMusic = Object.keys(music).length;
         alert(
-            'Exported standalone HTML game.\n\n' +
-            '• Open the file in any browser, or upload to itch.io / Netlify / GitHub Pages.\n' +
-            '• Needs internet once for the Lua engine (Fengari CDN), or host fengari yourself.\n\n' +
-            'APK / iOS app:\n' +
-            'Cannot be built inside the browser. Wrap this HTML with Capacitor, Cordova, or a Trusted Web Activity.'
+            '✅ Standalone game exported: ' + safeName + '.html\n\n' +
+            'Includes:\n' +
+            '• ' + nFiles + ' script file(s)\n' +
+            '• ' + nAssets + ' image asset(s)\n' +
+            '• ' + nMusic + ' music pattern(s)\n\n' +
+            'Publish:\n' +
+            '• Open the .html in Chrome / Safari / Firefox\n' +
+            '• Or upload to itch.io, Netlify, GitHub Pages, etc.\n\n' +
+            'Note: first load needs internet for the Lua engine (CDN).\n' +
+            'Player save data (data.save) stays in that browser only.\n\n' +
+            'APK/iOS: wrap this HTML with Capacitor / PWA — cannot build APK inside the browser.'
         );
-    }, 200);
+    }, 250);
 }
 
 function buildStandaloneHtml(pack) {
@@ -5012,8 +5035,6 @@ function buildStandaloneHtml(pack) {
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;background:#000;color:#fff;font-family:system-ui,sans-serif;overflow:hidden;touch-action:none}
-#boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0c0a12;z-index:9;flex-direction:column;gap:12px}
-#boot button{padding:14px 28px;font-size:1.1rem;font-weight:800;border:none;border-radius:14px;background:#8b5cf6;color:#fff;cursor:pointer}
 #wrap{position:fixed;inset:0}
 canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
 #hud{position:absolute;top:max(8px,env(safe-area-inset-top));left:8px;right:8px;display:flex;gap:8px;z-index:5;pointer-events:none}
@@ -5028,7 +5049,6 @@ body.nocontrols #joy,body.nocontrols #acts{display:none!important}
 </style>
 </head>
 <body>
-<div id="boot"><p style="opacity:.7">Tap to start</p><button id="startBtn">▶ Play</button></div>
 <div id="wrap">
   <canvas id="c"></canvas>
   <div id="hud">
@@ -5392,18 +5412,55 @@ function loop(ts){
 }
 
 function boot(){
-  document.getElementById('boot').style.display='none';
-  resize(); ensureAudio();
-  if(typeof fengari==='undefined'){ alert('Lua engine failed to load (need network for CDN).'); return; }
+  if(running) return;
+  resize();
+  ensureAudio();
+  // Unlock audio on first gesture (no menu — any tap/key works)
+  const unlock=()=>{ try{ ensureAudio(); }catch(_){ } };
+  window.addEventListener('pointerdown', unlock, {once:true, passive:true});
+  window.addEventListener('keydown', unlock, {once:true});
+
+  if(typeof fengari==='undefined'){
+    document.getElementById('err').style.display='block';
+    document.getElementById('err').textContent='Lua engine not loaded. Check internet (CDN) and reload.';
+    return;
+  }
   const L=fengari.L;
   let st=fengari.lauxlib.luaL_dostring(L, fengari.to_luastring(LuaShim));
-  if(st!==fengari.lua.LUA_OK){ alert(fengari.to_jsstring(fengari.lua.lua_tostring(L,-1))); return; }
-  const main=files['main.lua']; if(main==null){ alert('No main.lua'); return; }
+  if(st!==fengari.lua.LUA_OK){
+    const e=fengari.to_jsstring(fengari.lua.lua_tostring(L,-1));
+    document.getElementById('err').style.display='block';
+    document.getElementById('err').textContent=e;
+    return;
+  }
+  const main=files['main.lua'];
+  if(main==null){
+    document.getElementById('err').style.display='block';
+    document.getElementById('err').textContent='No main.lua in export';
+    return;
+  }
   st=fengari.lauxlib.luaL_dostring(L, fengari.to_luastring(main));
-  if(st!==fengari.lua.LUA_OK){ alert(fengari.to_jsstring(fengari.lua.lua_tostring(L,-1))); return; }
+  if(st!==fengari.lua.LUA_OK){
+    const e=fengari.to_jsstring(fengari.lua.lua_tostring(L,-1));
+    document.getElementById('err').style.display='block';
+    document.getElementById('err').textContent=e;
+    return;
+  }
   running=true; last=0; requestAnimationFrame(loop);
 }
-document.getElementById('startBtn').onclick=boot;
+
+// Auto-start as soon as Fengari is ready (no Tap to start screen)
+function waitEngine(tries){
+  if(typeof fengari!=='undefined'){ boot(); return; }
+  if(tries<=0){
+    document.getElementById('err').style.display='block';
+    document.getElementById('err').textContent='Lua engine failed to load. Need network for CDN, then reload.';
+    return;
+  }
+  setTimeout(function(){ waitEngine(tries-1); }, 100);
+}
+if(document.readyState==='complete') waitEngine(80);
+else window.addEventListener('load', function(){ waitEngine(80); });
 })();
 <\/script>
 </body>
