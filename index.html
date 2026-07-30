@@ -14,6 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/selection/active-line.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/hint/show-hint.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fengari-web@0.1.4/dist/fengari-web.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <style>
@@ -510,32 +511,9 @@
             font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
             font-size: 14px; line-height: 1.5;
             background: var(--bg-color) !important;
-            -webkit-user-select: text !important; user-select: text !important;
-            touch-action: auto !important;
+            -webkit-user-select: text; user-select: text;
         }
-        .CodeMirror, .CodeMirror * {
-            -webkit-user-select: text !important; user-select: text !important;
-        }
-        #editor-view, #editor-view * {
-            touch-action: manipulation;
-        }
-        #editor-view .CodeMirror {
-            touch-action: auto !important;
-        }
-        .editor-toolbar {
-            display: flex; flex-wrap: wrap; gap: 6px;
-            padding: 6px 10px; flex-shrink: 0;
-            background: var(--panel-color);
-            border-bottom: 1px solid var(--glass-border);
-        }
-        .editor-toolbar .btn {
-            min-height: 32px; padding: 6px 10px; font-size: 0.78rem;
-            border-radius: 8px;
-        }
-        .editor-toolbar .btn-danger-soft {
-            background: transparent; color: #ff8a80;
-            border: 1px solid rgba(255,82,82,0.4);
-        }
+        .CodeMirror-vscrollbar, .CodeMirror-hscrollbar { display: none !important; }
         /* Inline syntax / runtime error markers */
         .luax-error-gutter {
             width: 14px;
@@ -1162,335 +1140,58 @@
         }
         .mus-body {
             flex: 1; min-height: 0; overflow: auto;
-            padding: 8px 10px 12px; display: flex; flex-direction: column; gap: 8px;
+            padding: 12px; display: flex; flex-direction: column; gap: 12px;
         }
-        #music-editor-view .spr-card {
-            padding: 8px 10px; border-radius: 12px;
-        }
-        #music-editor-view .spr-card-label {
-            font-size: 0.65rem; margin-bottom: 6px;
-        }
-        .mus-header {
-            padding: 8px 10px !important;
-        }
-        .mus-header .spr-title { font-size: 0.88rem !important; }
-        .mus-header .spr-save { padding: 8px 14px !important; font-size: 0.78rem !important; }
-        .mus-header .spr-back { padding: 6px 10px !important; font-size: 0.78rem !important; }
         .mus-controls {
-            display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
         }
         .mus-controls label {
-            font-size: 0.68rem; font-weight: 700; color: var(--muted);
-            display: flex; align-items: center; gap: 4px;
+            font-size: 0.75rem; font-weight: 700; color: var(--muted);
+            display: flex; align-items: center; gap: 6px;
         }
         .mus-controls input[type="number"], .mus-controls select {
-            height: 28px; border-radius: 8px; border: 1px solid var(--glass-border);
+            height: 36px; border-radius: 10px; border: 1.5px solid var(--glass-border);
             background: var(--panel-2, #1a1c23); color: var(--text-color);
-            padding: 0 6px; font-weight: 700; font-size: 0.75rem;
-            max-width: 72px;
+            padding: 0 8px; font-weight: 700; font-size: 0.85rem;
         }
-        .mus-controls input[type="number"] { width: 52px; max-width: 52px; }
         .mus-btn {
-            height: 28px; padding: 0 10px; border-radius: 8px; border: none;
-            font-weight: 800; font-size: 0.72rem; cursor: pointer;
+            height: 36px; padding: 0 14px; border-radius: 10px; border: none;
+            font-weight: 800; font-size: 0.85rem; cursor: pointer;
         }
         .mus-btn.play { background: #00e676; color: #000; }
         .mus-btn.stop { background: #2a2c35; color: #fff; border: 1px solid var(--glass-border); }
-        .mus-btn.clear {
-            background: transparent; color: #ff8a80;
-            border: 1.5px solid rgba(255,82,82,0.45);
-        }
-        .mus-btn.clear:active { background: rgba(255,82,82,0.12); }
-        .mus-btn.random {
-            background: color-mix(in srgb, var(--accent-color) 22%, transparent);
-            color: var(--accent-color);
-            border: 1.5px solid var(--accent-color);
-        }
-        .mus-gen-opt {
-            display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px;
-        }
-        .mus-gen-opt button {
-            flex: 1; min-width: 72px;
-            border: 1.5px solid var(--glass-border);
-            background: var(--panel-2, #1a1c23);
-            color: var(--text-color);
-            border-radius: 10px; padding: 10px 8px;
-            font-weight: 700; font-size: 0.8rem; cursor: pointer;
-        }
-        .mus-gen-opt button.selected {
-            border-color: var(--accent-color);
-            background: color-mix(in srgb, var(--accent-color) 18%, transparent);
-            color: var(--accent-color);
-        }
-        .mus-gen-label {
-            font-size: 0.75rem; font-weight: 700; color: var(--muted);
-            margin: 0 0 6px;
-        }
-        .mus-pro-hint {
-            font-size: 0.65rem; color: var(--muted); margin: 2px 0 0;
-        }
-        .mus-pro-hint b { color: var(--accent-color); }
-
-        /* —— Pro / upgrade full page —— */
-        #pro-view {
-            background: var(--bg-color);
-            overflow: hidden;
-        }
-        #pro-view.active { display: flex; flex-direction: column; }
-        .pro-header {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 10px; padding: 12px 16px; flex-shrink: 0;
-            background: var(--panel-color);
-            border-bottom: 1px solid var(--glass-border);
-        }
-        .pro-header h1 {
-            margin: 0; font-size: 1.15rem; font-weight: 800;
-            color: var(--text-color);
-        }
-        .pro-scroll {
-            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-            padding: 20px 16px calc(28px + var(--safe-bottom));
-        }
-        .pro-hero {
-            text-align: center; padding: 8px 8px 20px;
-        }
-        .pro-badge {
-            display: inline-block;
-            font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em;
-            text-transform: uppercase;
-            color: var(--accent-color);
-            background: color-mix(in srgb, var(--accent-color) 16%, transparent);
-            border: 1px solid color-mix(in srgb, var(--accent-color) 40%, transparent);
-            border-radius: 999px; padding: 6px 12px; margin-bottom: 12px;
-        }
-        .pro-price {
-            margin: 0 0 6px; font-size: 2.4rem; font-weight: 800;
-            color: var(--text-color); letter-spacing: -0.03em;
-        }
-        .pro-price span {
-            font-size: 1rem; font-weight: 600; color: var(--muted);
-        }
-        .pro-tagline {
-            margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.4;
-        }
-        .pro-status-card {
-            background: color-mix(in srgb, var(--accent-color) 14%, transparent);
-            border: 1.5px solid var(--accent-color);
-            border-radius: 16px; padding: 16px; margin-bottom: 18px;
-            text-align: center;
-        }
-        .pro-status-card h2 {
-            margin: 0 0 6px; font-size: 1.1rem; color: var(--accent-color);
-        }
-        .pro-status-card p { margin: 0; font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
-        .pro-section-title {
-            margin: 0 0 12px; font-size: 0.8rem; font-weight: 800;
-            color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;
-        }
-        .pro-benefits {
-            display: flex; flex-direction: column; gap: 10px;
-            margin-bottom: 22px;
-        }
-        .pro-benefit {
-            display: flex; gap: 12px; align-items: flex-start;
-            background: var(--panel-color);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px; padding: 14px 14px;
-        }
-        .pro-benefit-ico {
-            flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.15rem;
-            background: color-mix(in srgb, var(--accent-color) 16%, transparent);
-            color: var(--accent-color);
-        }
-        .pro-benefit h3 {
-            margin: 0 0 4px; font-size: 0.95rem; font-weight: 700; color: var(--text-color);
-        }
-        .pro-benefit p {
-            margin: 0; font-size: 0.82rem; color: var(--muted); line-height: 1.4;
-        }
-        .pro-compare {
-            width: 100%; border-collapse: collapse;
-            margin-bottom: 22px; font-size: 0.85rem;
-            background: var(--panel-color);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px; overflow: hidden;
-        }
-        .pro-compare th, .pro-compare td {
-            padding: 12px 14px; text-align: left;
-            border-bottom: 1px solid var(--glass-border);
-        }
-        .pro-compare th {
-            background: var(--panel-2, #1a1c23);
-            color: var(--muted); font-weight: 700; font-size: 0.75rem;
-            text-transform: uppercase; letter-spacing: 0.03em;
-        }
-        .pro-compare td { color: var(--text-color); }
-        .pro-compare tr:last-child td { border-bottom: none; }
-        .pro-compare .yes { color: #00e676; font-weight: 700; }
-        .pro-compare .no { color: var(--muted); }
-        .pro-compare .hl { color: var(--accent-color); font-weight: 800; }
-        .pro-cta {
-            position: sticky; bottom: 0;
-            padding: 14px 0 4px;
-            background: linear-gradient(to top, var(--bg-color) 70%, transparent);
-        }
-        .pro-cta .btn {
-            width: 100%; min-height: 52px; font-size: 1.05rem; font-weight: 800;
-            border-radius: 14px;
-        }
-        .pro-cta-note {
-            text-align: center; margin: 10px 0 0;
-            font-size: 0.75rem; color: var(--muted); line-height: 1.35;
-        }
-        .pro-actions-row {
-            display: flex; flex-direction: column; gap: 8px; margin-top: 8px;
-        }
-        .mus-btn.playing {
-            background: #ff5252; color: #fff;
-            box-shadow: 0 0 12px rgba(255,82,82,0.35);
-        }
-        .mus-grid-wrap {
-            overflow: auto; -webkit-overflow-scrolling: touch;
-            max-height: min(52vh, 420px);
-            border-radius: 10px;
-            border: 1px solid var(--glass-border);
-            background: color-mix(in srgb, var(--panel-color) 80%, transparent);
-            padding: 6px;
-        }
+        .mus-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .mus-grid {
             display: grid;
-            gap: 2px;
+            gap: 3px;
             min-width: max-content;
         }
         .mus-cell {
-            width: 30px; height: 24px; border-radius: 4px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.03); color: var(--text-color);
-            font-size: 0.58rem; font-weight: 800; cursor: pointer;
+            width: 36px; height: 36px; border-radius: 8px;
+            border: 1.5px solid var(--glass-border);
+            background: #1a1c23; color: var(--text-color);
+            font-size: 0.65rem; font-weight: 800; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            padding: 0; line-height: 1;
-            transition: transform 0.05s, background 0.08s;
-            letter-spacing: -0.02em;
+            padding: 0;
         }
-        .mus-cell:active { transform: scale(0.92); }
         .mus-cell.on {
-            color: #fff;
-            border-color: transparent;
-            box-shadow: 0 0 8px color-mix(in srgb, var(--ch-color, var(--accent-color)) 40%, transparent);
-            background: var(--ch-color, var(--accent-color));
+            background: color-mix(in srgb, var(--accent-color) 35%, transparent);
+            border-color: var(--accent-color); color: #fff;
         }
         .mus-cell.playhead {
-            box-shadow: 0 0 0 2px #00e676, 0 0 10px rgba(0,230,118,0.35);
-            z-index: 1;
+            box-shadow: 0 0 0 2px #00e676;
         }
         .mus-row-label {
-            width: 36px; height: 24px; display: flex; align-items: center; justify-content: center;
-            font-size: 0.58rem; font-weight: 800; color: var(--ch-color, var(--muted));
-            border-radius: 4px;
-            background: color-mix(in srgb, var(--ch-color, var(--muted)) 18%, transparent);
-            border: 1px solid color-mix(in srgb, var(--ch-color, var(--muted)) 35%, transparent);
-        }
-        .mus-live-bar {
-            display: flex; flex-direction: column; gap: 6px;
-            min-height: 32px; padding: 8px 10px;
-            background: color-mix(in srgb, var(--accent-color) 10%, transparent);
-            border: 1px solid var(--glass-border);
-            border-radius: 10px;
-        }
-        .mus-live-top {
-            display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-        }
-        .mus-live-label {
+            width: 52px; height: 36px; display: flex; align-items: center;
             font-size: 0.72rem; font-weight: 800; color: var(--muted);
-            text-transform: uppercase; letter-spacing: 0.04em;
-            margin-right: 4px;
-        }
-        .mus-live-step {
-            font-size: 0.78rem; font-weight: 800; color: #00e676;
-            min-width: 52px;
-        }
-        .mus-live-chip {
-            display: inline-flex; align-items: center; justify-content: center;
-            min-width: 28px; height: 22px; padding: 0 6px;
-            border-radius: 6px; font-size: 0.62rem; font-weight: 800;
-            background: color-mix(in srgb, var(--accent-color) 28%, transparent);
-            border: 1px solid var(--accent-color); color: #fff;
-        }
-        .mus-live-empty {
-            font-size: 0.8rem; color: var(--muted); font-weight: 600;
-        }
-        .mus-wave-canvas-wrap {
-            width: 100%; height: 56px; border-radius: 8px; overflow: hidden;
-            background: #0a0c12;
-            border: 1px solid var(--glass-border);
-            position: relative;
-        }
-        #mus-wave-canvas {
-            width: 100%; height: 100%; display: block;
-        }
-        .mus-synth-panel {
-            display: none; flex-direction: column; gap: 6px;
-            margin-top: 2px;
-        }
-        .mus-synth-panel.open { display: flex; }
-        .mus-synth-row {
-            display: grid; grid-template-columns: 52px 1fr 32px;
-            align-items: center; gap: 6px;
-        }
-        .mus-synth-row label {
-            font-size: 0.68rem; font-weight: 800; color: var(--muted);
-            margin: 0;
-        }
-        .mus-synth-row input[type="range"] {
-            width: 100%; height: 22px; margin: 0;
-            -webkit-appearance: none; appearance: none;
-            background: transparent;
-        }
-        .mus-synth-row input[type="range"]::-webkit-slider-runnable-track {
-            height: 8px; border-radius: 6px;
-            background: linear-gradient(to right,
-                color-mix(in srgb, var(--accent-color) 55%, #222),
-                color-mix(in srgb, var(--accent-color) 25%, #1a1c23));
-            border: 1px solid var(--glass-border);
-        }
-        .mus-synth-row input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 18px; height: 18px;
-            border-radius: 50%; background: #fff;
-            border: 2px solid var(--accent-color);
-            margin-top: -6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-        }
-        .mus-synth-row input[type="range"]::-moz-range-track {
-            height: 8px; border-radius: 6px;
-            background: color-mix(in srgb, var(--accent-color) 30%, #1a1c23);
-            border: 1px solid var(--glass-border);
-        }
-        .mus-synth-row input[type="range"]::-moz-range-thumb {
-            width: 16px; height: 16px; border-radius: 50%;
-            background: #fff; border: 2px solid var(--accent-color);
-        }
-        .mus-synth-val {
-            font-size: 0.72rem; font-weight: 800; color: var(--accent-color);
-            text-align: right; font-variant-numeric: tabular-nums;
-        }
-        .mus-synth-preview {
-            align-self: flex-start;
-            height: 34px; padding: 0 12px; border-radius: 10px;
-            border: 1.5px solid var(--glass-border);
-            background: var(--panel-2, #1a1c23);
-            color: var(--text-color); font-weight: 800; font-size: 0.8rem;
-            cursor: pointer;
         }
         .mus-note-bar {
-            display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+            display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
         }
         .mus-note-btn {
-            min-width: 30px; height: 26px; border-radius: 6px;
-            border: 1px solid var(--glass-border); background: transparent;
-            color: var(--muted); font-weight: 800; font-size: 0.62rem; cursor: pointer;
-            padding: 0 4px;
+            min-width: 40px; height: 34px; border-radius: 8px;
+            border: 1.5px solid var(--glass-border); background: transparent;
+            color: var(--muted); font-weight: 800; font-size: 0.72rem; cursor: pointer;
         }
         .mus-note-btn.active {
             border-color: var(--accent-color); color: var(--accent-color);
@@ -1767,18 +1468,6 @@
         </div>
     </div>
 
-    <!-- Pro / upgrade (full page) -->
-    <div id="pro-view" class="view">
-        <div class="pro-header">
-            <button type="button" class="btn btn-back" id="pro-back-btn" onclick="closeProView()">◀ Back</button>
-            <h1 id="pro-page-title">LuaX Pro</h1>
-            <span style="width:44px"></span>
-        </div>
-        <div class="pro-scroll" id="pro-scroll-body">
-            <!-- filled by renderProPage() -->
-        </div>
-    </div>
-
     <!-- Projects -->
     <div id="projects-view" class="view">
         <div class="lx-shell">
@@ -1868,7 +1557,7 @@
             <button class="lx-tab" data-nav="settings" onclick="lxNav('settings')"><i class="lx-ico lx-ico-lg" data-ico="gear"></i>Settings</button>
         </nav>
 
-        <input type="file" id="import-input" accept=".json,application/json" style="display:none" onchange="handleImport(event)">
+        <input type="file" id="import-input" accept=".json,.zip,application/json,application/zip" style="display:none" onchange="handleImport(event)">
     </div>
 
     <!-- Files -->
@@ -1896,8 +1585,7 @@
                 <div class="files-menu" id="files-menu-more">
                     <button type="button" onclick="closeFilesMenus(); importLuaFile()">Import .lua</button>
                     <button type="button" onclick="closeFilesMenus(); importSpriteFile()">Import PNG</button>
-                    <button type="button" onclick="closeFilesMenus(); exportStandaloneHtml()">⬇ Export playable HTML</button>
-                    <button type="button" onclick="closeFilesMenus(); exportProject()">Export project JSON</button>
+                    <button type="button" onclick="closeFilesMenus(); exportProject()">Export</button>
                     <button type="button" onclick="closeFilesMenus(); sharePlayLink()">Share link</button>
                 </div>
             </div>
@@ -2011,89 +1699,24 @@
         </div>
         <div class="mus-body">
             <div class="mus-controls">
-                <label>BPM <input type="number" id="mus-bpm" min="40" max="240" value="120" onchange="syncMusicFromEditorLive()" oninput="syncMusicFromEditorLive()"></label>
-                <label>Channels
-                    <select id="mus-channels" onchange="musicEditorResizeChannels()">
-                        <option value="4">4</option>
-                        <option value="6">6</option>
-                        <option value="8">8</option>
-                        <option value="10" selected>10</option>
-                        <option value="12">12 ★</option>
-                        <option value="16">16 ★</option>
-                    </select>
-                </label>
+                <label>BPM <input type="number" id="mus-bpm" min="40" max="240" value="120"></label>
                 <label>Steps
                     <select id="mus-steps" onchange="musicEditorResizeSteps()">
                         <option value="8">8</option>
                         <option value="16" selected>16</option>
-                        <option value="24">24 ★</option>
-                        <option value="32">32 ★</option>
-                        <option value="48">48 ★</option>
-                        <option value="64">64 ★</option>
+                        <option value="32">32</option>
                     </select>
                 </label>
                 <label>Wave
-                    <select id="mus-wave" onchange="onMusWaveChange()">
+                    <select id="mus-wave">
                         <option value="square">square</option>
                         <option value="sine">sine</option>
                         <option value="triangle">triangle</option>
                         <option value="sawtooth">sawtooth</option>
-                        <option value="custom">custom ▾</option>
                     </select>
                 </label>
-                <button type="button" class="mus-btn play" id="mus-play-btn" onclick="toggleMusicPreview()">▶ Play</button>
-                <button type="button" class="mus-btn random" onclick="openMusicGenerator()">🎲 Random</button>
-                <button type="button" class="mus-btn clear" onclick="clearMusicEditorNotes()">Clear all</button>
-            </div>
-            <p class="mus-pro-hint" id="mus-limit-hint">Free: up to <b>10</b> channels × <b>16</b> steps · Pro unlocks more</p>
-            <div class="spr-card">
-                <div class="spr-card-label">Waveform · now playing</div>
-                <div class="mus-live-bar" id="mus-live-bar">
-                    <div class="mus-live-top">
-                        <span class="mus-live-label">Step</span>
-                        <span class="mus-live-step" id="mus-live-step">—</span>
-                        <span class="mus-live-empty" id="mus-live-notes">Press ▶ Play</span>
-                    </div>
-                    <div class="mus-wave-canvas-wrap">
-                        <canvas id="mus-wave-canvas" width="640" height="88"></canvas>
-                    </div>
-                </div>
-            </div>
-            <div class="spr-card" id="mus-synth-card" style="display:none">
-                <div class="spr-card-label">Custom sound</div>
-                <div class="mus-synth-panel open" id="mus-synth-panel">
-                    <div class="mus-synth-row">
-                        <label>Pitch</label>
-                        <input type="range" id="mus-syn-pitch" min="0" max="100" value="50" oninput="onMusSynthChange()">
-                        <span class="mus-synth-val" id="mus-syn-pitch-v">50</span>
-                    </div>
-                    <div class="mus-synth-row">
-                        <label>Length</label>
-                        <input type="range" id="mus-syn-length" min="0" max="100" value="40" oninput="onMusSynthChange()">
-                        <span class="mus-synth-val" id="mus-syn-length-v">40</span>
-                    </div>
-                    <div class="mus-synth-row">
-                        <label>Volume</label>
-                        <input type="range" id="mus-syn-volume" min="0" max="100" value="55" oninput="onMusSynthChange()">
-                        <span class="mus-synth-val" id="mus-syn-volume-v">55</span>
-                    </div>
-                    <div class="mus-synth-row">
-                        <label>Slide</label>
-                        <input type="range" id="mus-syn-slide" min="0" max="100" value="15" oninput="onMusSynthChange()">
-                        <span class="mus-synth-val" id="mus-syn-slide-v">15</span>
-                    </div>
-                    <div class="mus-synth-row">
-                        <label>Noise</label>
-                        <input type="range" id="mus-syn-noise" min="0" max="100" value="0" oninput="onMusSynthChange()">
-                        <span class="mus-synth-val" id="mus-syn-noise-v">0</span>
-                    </div>
-                    <div class="mus-synth-row">
-                        <label>Echo</label>
-                        <input type="range" id="mus-syn-echo" min="0" max="100" value="10" oninput="onMusSynthChange()">
-                        <span class="mus-synth-val" id="mus-syn-echo-v">10</span>
-                    </div>
-                    <button type="button" class="mus-synth-preview" onclick="previewMusSynth()">▶ Test sound</button>
-                </div>
+                <button type="button" class="mus-btn play" onclick="previewMusicEditor()">▶ Play</button>
+                <button type="button" class="mus-btn stop" onclick="stopMusic()">Stop</button>
             </div>
             <div class="spr-card">
                 <div class="spr-card-label">Paint notes (tap cells)</div>
@@ -2102,7 +1725,7 @@
             <div class="mus-grid-wrap">
                 <div class="mus-grid" id="mus-grid"></div>
             </div>
-            <p class="lx-hint" style="margin:0">Empty = rest. Changes while playing update live. Free max 10×16 · Pro up to 16×64. Saves as <code>name.music</code>. Lua: <code>sfx.music("name")</code>.</p>
+            <p class="lx-hint" style="margin:0">4 channels × steps. Empty = rest. Saves as <code>name.music</code>. Lua: <code>sfx.music("name")</code> or <code>sfx.music("name.music")</code>.</p>
         </div>
     </div>
 
@@ -2173,13 +1796,6 @@
             <div class="header-actions">
                 <button class="btn btn-primary" id="save-btn" onclick="saveCurrentFile()">SAVE</button>
             </div>
-        </div>
-        <div class="editor-toolbar" id="editor-toolbar">
-            <button type="button" class="btn btn-sm" onclick="editorUndo()" title="Undo">↺ Undo</button>
-            <button type="button" class="btn btn-sm" onclick="editorRedo()" title="Redo">↻ Redo</button>
-            <button type="button" class="btn btn-sm" onclick="editorSelectAll()" title="Select all">Select all</button>
-            <button type="button" class="btn btn-sm" onclick="editorPaste()" title="Paste">Paste</button>
-            <button type="button" class="btn btn-sm btn-danger-soft" onclick="editorDeleteAll()" title="Clear file">Delete all</button>
         </div>
         <div class="tabs-bar" id="tabs-bar"></div>
         <div class="editor-container" id="editor"></div>
@@ -4914,587 +4530,256 @@ function deleteFile(e, name) {
 }
 
 // Export / Import
-function exportProject() {
-    if (!currentProjectName) return;
-    if (!spendCredits('export')) return;
-    const data = {
-        name: currentProjectName,
-        files: projects[currentProjectName],
-        gamepad: getProjectGamepad(currentProjectName),
-        assets: getProjectAssetMap(currentProjectName),
-        music: (typeof getProjectMusicMap === 'function') ? getProjectMusicMap(currentProjectName) : {},
-        exportedAt: new Date().toISOString(),
-        engine: 'LuaX'
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = currentProjectName + '.luax.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
+function dataURLToUint8Array(dataURL) {
+    if (!dataURL || typeof dataURL !== 'string') return null;
+    const m = dataURL.match(/^data:([^;]+);base64,(.+)$/i);
+    if (!m) return null;
+    try {
+        const binary = atob(m[2]);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return { mime: m[1], bytes };
+    } catch (_) {
+        return null;
+    }
+}
+
+function safeZipEntryName(name) {
+    return String(name || 'file')
+        .replace(/[\\/:*?"<>|]+/g, '_')
+        .replace(/^\.+/, '')
+        .trim() || 'file';
 }
 
 /**
- * Export a finished game as ONE self-contained HTML file.
- * Playable anywhere (browser / itch.io / static host). No LuaX editor required.
- * APK: not buildable in-browser — use the HTML with Capacitor/PWA (see alert).
+ * Export current project as a ZIP with real files:
+ *   ProjectName/
+ *     main.lua, …
+ *     assets/*.png (decoded from data URLs)
+ *     music/*.music (JSON patterns)
+ *     luax-project.json (metadata + fallback for re-import)
  */
-function exportStandaloneHtml() {
+async function exportProject() {
     if (!currentProjectName) return;
-    if (!projects[currentProjectName] || projects[currentProjectName]['main.lua'] == null) {
-        return alert('Need a main.lua to export a playable game.\n\nAdd main.lua with _update / _draw, then try again.');
-    }
     if (!spendCredits('export')) return;
 
-    // Flush dirty editor into project memory (does not force cloud)
-    try {
-        if (typeof editor !== 'undefined' && editor && currentFileName && isDirty) {
-            projects[currentProjectName][currentFileName] = editor.getValue();
-        }
-    } catch (_) {}
-    // Persist latest music / assets maps
-    try { if (typeof saveProjectMusic === 'function') saveProjectMusic(); } catch (_) {}
-
-    const name = currentProjectName;
-    const files = JSON.parse(JSON.stringify(projects[name] || {}));
-    const assets = JSON.parse(JSON.stringify(
-        (typeof getProjectAssetMap === 'function') ? getProjectAssetMap(name) : {}
-    ));
-    const music = JSON.parse(JSON.stringify(
-        (typeof getProjectMusicMap === 'function') ? getProjectMusicMap(name) : {}
-    ));
-    const gamepad = (typeof getProjectGamepad === 'function') ? getProjectGamepad(name) !== false : true;
-
-    // Only ship .lua source + keep non-lua text files the game may read via require / getFileContent
-    // (assets are separate as data-URLs)
-
-    let html;
-    try {
-        html = buildStandaloneHtml({
-            name: name,
-            files: files,
-            assets: assets,
-            music: music,
-            gamepad: gamepad
-        });
-    } catch (err) {
-        console.error(err);
-        alert('Export failed: ' + (err && err.message ? err.message : err));
+    if (typeof JSZip === 'undefined') {
+        alert('ZIP library failed to load. Check your connection and reload the page.');
         return;
     }
 
-    const safeName = String(name).replace(/[^\w.\-]+/g, '_') || 'game';
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = safeName + '.html';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-        try { URL.revokeObjectURL(a.href); a.remove(); } catch (_) {}
-    }, 2000);
+    const root = safeZipEntryName(currentProjectName);
+    const files = projects[currentProjectName] || {};
+    const assets = getProjectAssetMap(currentProjectName) || {};
+    const musicMap = (typeof getProjectMusicMap === 'function')
+        ? (getProjectMusicMap(currentProjectName) || {})
+        : {};
+    const gamepad = getProjectGamepad(currentProjectName);
 
-    setTimeout(() => {
-        const nFiles = Object.keys(files).length;
-        const nAssets = Object.keys(assets).length;
-        const nMusic = Object.keys(music).length;
-        alert(
-            '✅ Standalone game exported: ' + safeName + '.html\n\n' +
-            'Includes:\n' +
-            '• ' + nFiles + ' script file(s)\n' +
-            '• ' + nAssets + ' image asset(s)\n' +
-            '• ' + nMusic + ' music pattern(s)\n\n' +
-            'Publish:\n' +
-            '• Open the .html in Chrome / Safari / Firefox\n' +
-            '• Or upload to itch.io, Netlify, GitHub Pages, etc.\n\n' +
-            'Note: first load needs internet for the Lua engine (CDN).\n' +
-            'Player save data (data.save) stays in that browser only.\n\n' +
-            'APK/iOS: wrap this HTML with Capacitor / PWA — cannot build APK inside the browser.'
-        );
-    }, 250);
-}
+    const zip = new JSZip();
+    const folder = zip.folder(root);
 
-function buildStandaloneHtml(pack) {
-    const payload = {
-        name: pack.name || 'Game',
-        files: pack.files || {},
-        assets: pack.assets || {},
-        music: pack.music || {},
-        gamepad: pack.gamepad !== false
+    // Lua / text source files at project root
+    Object.keys(files).forEach((fname) => {
+        const content = files[fname];
+        if (typeof content !== 'string') return;
+        folder.file(safeZipEntryName(fname), content);
+    });
+
+    // Image assets as real binary files under assets/
+    const assetsFolder = folder.folder('assets');
+    Object.keys(assets).forEach((aname) => {
+        const parsed = dataURLToUint8Array(assets[aname]);
+        if (parsed && parsed.bytes) {
+            assetsFolder.file(safeZipEntryName(aname), parsed.bytes);
+        } else if (typeof assets[aname] === 'string') {
+            // Non-base64 fallback: store as text
+            assetsFolder.file(safeZipEntryName(aname), assets[aname]);
+        }
+    });
+
+    // Music step-sequencer patterns under music/
+    const musicFolder = folder.folder('music');
+    Object.keys(musicMap).forEach((mname) => {
+        const pat = musicMap[mname];
+        if (!pat || typeof pat !== 'object') return;
+        let outName = safeZipEntryName(mname);
+        if (!/\.music$/i.test(outName)) outName += '.music';
+        musicFolder.file(outName, JSON.stringify(pat, null, 2));
+    });
+
+    // Metadata (also keeps full JSON payload so .zip can be re-imported later)
+    const meta = {
+        name: currentProjectName,
+        files: files,
+        gamepad: gamepad,
+        assets: assets,
+        music: musicMap,
+        exportedAt: new Date().toISOString(),
+        engine: 'LuaX',
+        format: 'luax-zip-v1'
     };
-    // Embed as JSON — escape </script> in strings
-    const json = JSON.stringify(payload).replace(/</g, '\\u003c');
+    folder.file('luax-project.json', JSON.stringify(meta, null, 2));
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>${String(payload.name).replace(/[<>&"]/g, '')}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;background:#000;color:#fff;font-family:system-ui,sans-serif;overflow:hidden;touch-action:none}
-#wrap{position:fixed;inset:0}
-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
-#hud{position:absolute;top:max(8px,env(safe-area-inset-top));left:8px;right:8px;display:flex;gap:8px;z-index:5;pointer-events:none}
-#hud button{pointer-events:auto;padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.45);color:#fff;font-weight:700;backdrop-filter:blur(8px)}
-#joy{position:absolute;bottom:28px;left:24px;width:110px;height:110px;border-radius:50%;border:2px solid rgba(139,92,246,.5);background:rgba(139,92,246,.12);display:none;touch-action:none;z-index:4}
-#stick{position:absolute;width:44px;height:44px;border-radius:50%;background:#8b5cf6;left:50%;top:50%;margin:-22px 0 0 -22px;pointer-events:none}
-#acts{position:absolute;bottom:36px;right:28px;width:120px;height:120px;display:none;z-index:4;pointer-events:none}
-.ab{position:absolute;width:44px;height:44px;border-radius:50%;background:rgba(139,92,246,.35);border:1.5px solid rgba(139,92,246,.65);color:#fff;font-weight:800;pointer-events:auto;display:flex;align-items:center;justify-content:center}
-#err{display:none;position:absolute;top:60px;left:50%;transform:translateX(-50%);background:rgba(200,0,0,.9);padding:12px 16px;border-radius:12px;max-width:90%;z-index:8;font-family:monospace;font-size:12px}
-body.mobile #joy,body.mobile #acts{display:block}
-body.nocontrols #joy,body.nocontrols #acts{display:none!important}
-</style>
-</head>
-<body>
-<div id="wrap">
-  <canvas id="c"></canvas>
-  <div id="hud">
-    <button type="button" id="btnFS">Fullscreen</button>
-    <button type="button" id="btnMute">Mute</button>
-  </div>
-  <div id="joy"><div id="stick"></div></div>
-  <div id="acts">
-    <div class="ab" style="top:0;left:50%;transform:translateX(-50%)" data-b="7">Y</div>
-    <div class="ab" style="top:50%;left:0;transform:translateY(-50%)" data-b="6">X</div>
-    <div class="ab" style="bottom:0;left:50%;transform:translateX(-50%)" data-b="5">B</div>
-    <div class="ab" style="top:50%;right:0;transform:translateY(-50%)" data-b="4">A</div>
-  </div>
-  <div id="err"></div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/fengari-web@0.1.4/dist/fengari-web.js"><\/script>
-<script>
-const PACK = ${json};
-(function(){
-"use strict";
-const files = PACK.files || {};
-const assets = PACK.assets || {};
-const musicPatterns = PACK.music || {};
-const showPad = PACK.gamepad !== false;
-
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let cam = {x:0,y:0};
-let audioCtx = null, muted = false;
-const btnState = [false,false,false,false,false,false,false,false];
-const btnPrev = [false,false,false,false,false,false,false,false];
-const stickAxis = {x:0,y:0};
-const pointer = {x:0,y:0,btn:false};
-let lookDX=0, lookDY=0, keyLook=0;
-const spriteCache = {};
-const fxParts = [];
-const dataStore = {};
-const DATA_KEY = 'luax_standalone_data:' + (PACK.name||'game');
-try { Object.assign(dataStore, JSON.parse(localStorage.getItem(DATA_KEY)||'{}')); } catch(_){}
-
-function isMobile(){
-  return !!(window.matchMedia&&(window.matchMedia('(pointer:coarse)').matches||window.matchMedia('(hover:none)').matches))
-    || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
-}
-if (isMobile() && showPad) document.body.classList.add('mobile');
-if (!showPad) document.body.classList.add('nocontrols');
-
-function resize(){
-  const dpr = window.devicePixelRatio||1;
-  const r = canvas.getBoundingClientRect();
-  canvas.width = Math.floor(r.width*dpr);
-  canvas.height = Math.floor(r.height*dpr);
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-}
-window.addEventListener('resize', resize);
-
-function ensureAudio(){
-  if (!audioCtx) { try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(_){} }
-  if (audioCtx && audioCtx.state==='suspended') audioCtx.resume();
-}
-function playBeep(freq,dur,type,vol){
-  if (muted) return;
-  ensureAudio(); if(!audioCtx) return;
-  try{
-    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-    o.type=type||'square'; o.frequency.value=Math.max(20,+freq||440);
-    const v=Math.min(0.2, vol!=null?+vol:0.08);
-    g.gain.value=v; o.connect(g); g.connect(audioCtx.destination);
-    o.start(); const d=Math.max(0.02,+dur||0.1);
-    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+d);
-    o.stop(audioCtx.currentTime+d+0.02);
-  }catch(_){}
-}
-
-// minimal music
-const musicState={active:false,bpm:120,steps:16,step:0,acc:0,channels:[],wave:'square',loop:true,vol:0.08};
-const NOTE_FREQ={'C3':130.81,'D3':146.83,'E3':164.81,'F3':174.61,'G3':196,'A3':220,'B3':246.94,'C4':261.63,'D4':293.66,'E4':329.63,'F4':349.23,'G4':392,'A4':440,'B4':493.88,'C5':523.25,'D5':587.33,'E5':659.25,'F5':698.46,'G5':783.99};
-function noteToFreq(n){ if(n==null||n===0||n==='')return 0; if(typeof n==='number')return n>0?n:0; const s=String(n).toUpperCase(); return NOTE_FREQ[s]||(+n||0); }
-function startMusic(spec){
-  if(typeof spec==='string'){
-    const p=musicPatterns[spec]||musicPatterns[spec+'.music']||musicPatterns[String(spec).replace(/\\.music$/i,'')];
-    if(!p)return;
-    spec={bpm:p.bpm||120,wave:p.wave||'square',steps:p.steps||16,loop:true,vol:0.08,
-      channels:(p.channels||[]).map(ch=>(ch||[]).map(n=>typeof n==='number'?n:noteToFreq(n)))};
-  }
-  if(!spec||typeof spec!=='object')return;
-  ensureAudio();
-  const steps=Math.max(4,Math.min(64,+spec.steps||16));
-  musicState.bpm=+spec.bpm||120; musicState.steps=steps; musicState.wave=spec.wave||'square';
-  musicState.loop=spec.loop!==false; musicState.vol=spec.vol||0.08; musicState.step=0; musicState.acc=0; musicState.active=true;
-  let rows=spec.channels||[];
-  musicState.channels=[];
-  for(let c=0;c<Math.max(4,rows.length);c++){
-    const row=[]; for(let i=0;i<steps;i++){ const cell=rows[c]&&rows[c][i]; row[i]=typeof cell==='number'?cell:noteToFreq(cell); }
-    musicState.channels[c]=row;
-  }
-  playMusicStep(0); musicState.step=1;
-}
-function playMusicStep(i){
-  if(!audioCtx||muted)return;
-  const stepDur=(60/musicState.bpm)*(4/musicState.steps);
-  for(let c=0;c<musicState.channels.length;c++){
-    const f=musicState.channels[c][i]; if(f>0) playBeep(f,stepDur*0.85,musicState.wave,musicState.vol);
-  }
-}
-function tickMusic(dt){
-  if(!musicState.active)return;
-  const stepDur=(60/musicState.bpm)*(4/musicState.steps);
-  musicState.acc+=dt;
-  while(musicState.acc>=stepDur){
-    musicState.acc-=stepDur; playMusicStep(musicState.step); musicState.step++;
-    if(musicState.step>=musicState.steps){ if(musicState.loop) musicState.step=0; else { musicState.active=false; break; } }
-  }
-}
-function stopMusic(){ musicState.active=false; }
-
-// particles
-function fxSpawn(o){
-  const n=Math.max(1,Math.min(60,+(o.count)||12));
-  for(let i=0;i<n;i++){
-    const a=(o.angle||0)+(Math.random()-0.5)*(o.spread!=null?o.spread:Math.PI*2);
-    const sp=(o.speed||120)*(0.35+Math.random()*0.9);
-    fxParts.push({x:+o.x||0,y:+o.y||0,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
-      life:(o.life||0.5)*(0.6+Math.random()*0.6),max:(o.life||0.5),size:(o.size||3)*(0.5+Math.random()*0.9),
-      color:o.color||'#fff',g:o.gravity!=null?+o.gravity:280,drag:o.drag||0.92,shape:o.shape||'circle'});
-  }
-}
-function fxUpdate(dt){
-  for(let i=fxParts.length-1;i>=0;i--){
-    const p=fxParts[i]; p.life-=dt; if(p.life<=0){fxParts.splice(i,1);continue;}
-    p.vx*=Math.pow(p.drag,dt*60); p.vy*=Math.pow(p.drag,dt*60); p.vy+=p.g*dt; p.x+=p.vx*dt; p.y+=p.vy*dt;
-  }
-}
-function fxDraw(){
-  for(const p of fxParts){
-    const t=Math.max(0,p.life/p.max); ctx.globalAlpha=t*t; ctx.fillStyle=p.color;
-    const s=p.size*(0.6+0.4*t);
-    if(p.shape==='square'){ ctx.fillRect(p.x-s,p.y-s,s*2,s*2); }
-    else { ctx.beginPath(); ctx.arc(p.x,p.y,s,0,Math.PI*2); ctx.fill(); }
-  }
-  ctx.globalAlpha=1;
-}
-
-function loadSprite(name){
-  const src=assets[name]; if(!src) return null;
-  if(!spriteCache[name]){ const img=new Image(); img.src=src; spriteCache[name]=img; }
-  const img=spriteCache[name]; return (img.complete&&img.naturalWidth)?img:null;
-}
-
-window.LuaDeckAPI = {
-  gfx: {
-    cls(c){ const dpr=window.devicePixelRatio||1; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle=c||'#000';
-      ctx.fillRect(0,0,canvas.width,canvas.height); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.translate(-cam.x,-cam.y); },
-    rect(x,y,w,h,c){ ctx.strokeStyle=c||'#fff'; ctx.strokeRect(x,y,w,h); },
-    rectfill(x,y,w,h,c){ ctx.fillStyle=c||'#fff'; ctx.fillRect(x,y,w,h); },
-    circle(x,y,r,c){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.strokeStyle=c||'#fff'; ctx.stroke(); },
-    circlefill(x,y,r,c){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=c||'#fff'; ctx.fill(); },
-    line(x1,y1,x2,y2,c){ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.strokeStyle=c||'#fff'; ctx.stroke(); },
-    pixel(x,y,c){ ctx.fillStyle=c||'#fff'; ctx.fillRect(Math.floor(x),Math.floor(y),1,1); },
-    text(s,x,y,c,f){ ctx.font=f||'16px sans-serif'; ctx.fillStyle=c||'#fff'; ctx.fillText(String(s),x,y); },
-    cam(x,y){ cam.x=x||0; cam.y=y||0; },
-    sprite(name,x,y,w,h){ const img=loadSprite(name); if(!img)return; if(w!=null&&h!=null) ctx.drawImage(img,x,y,w,h); else ctx.drawImage(img,x,y); },
-    anim(name,frame,x,y,fw,fh,dw,dh,cols,rows){
-      const img=loadSprite(name); if(!img)return;
-      let nCols=+cols, nRows=+rows, cellW=+fw, cellH=+fh;
-      if(nCols>0&&nRows>0){ cellW=img.naturalWidth/nCols; cellH=img.naturalHeight/nRows; }
-      else { if(!(cellW>0))cellW=16; if(!(cellH>0))cellH=16; nCols=Math.max(1,Math.floor(img.naturalWidth/cellW)); nRows=Math.max(1,Math.floor(img.naturalHeight/cellH)); cellW=img.naturalWidth/nCols; cellH=img.naturalHeight/nRows; }
-      const total=Math.max(1,nCols*nRows); let fi=((Math.floor(+frame||0)%total)+total)%total;
-      const col=fi%nCols, row=Math.floor(fi/nCols);
-      let outW=+dw, outH=+dh; if(!(outW>0))outW=cellW; if(!(outH>0))outH=cellH;
-      ctx.drawImage(img,col*cellW,row*cellH,cellW,cellH,+x||0,+y||0,outW,outH);
-    },
-    sprites(){ return Object.keys(assets); },
-    width(){ return canvas.width/(window.devicePixelRatio||1); },
-    height(){ return canvas.height/(window.devicePixelRatio||1); },
-    raycast(){}
-  },
-  input: {
-    btn:i=>!!btnState[i|0], btnp:i=>!!(btnState[i|0]&&!btnPrev[i|0]), btnr:i=>!(!btnState[i|0]&&btnPrev[i|0]),
-    axis:i=>(i|0)===0?stickAxis.x:stickAxis.y, lookx:()=>lookDX+keyLook*0.045, looky:()=>lookDY,
-    mouseX:()=>pointer.x, mouseY:()=>pointer.y, mouseBtn:()=>!!pointer.btn
-  },
-  sfx: {
-    beep:(f,d,t)=>playBeep(f,d,t), music(s){startMusic(s);}, stop(){stopMusic();},
-    playing(){return!!musicState.active;}, note(n){return noteToFreq(n);}
-  },
-  fx: {
-    burst(x,y,c,n){fxSpawn({x,y,color:c||'#ff8844',count:n||16,life:0.5,speed:160,size:3.5});},
-    spark(x,y,c,n){fxSpawn({x,y,color:c||'#ffe566',count:n||10,life:0.35,speed:220,size:2.2,shape:'spark'});},
-    dust(x,y,c,n){fxSpawn({x,y,color:c||'#c4b5a0',count:n||8,life:0.7,speed:50,size:4,gravity:-20,angle:-Math.PI/2});},
-    smoke(x,y,c,n){fxSpawn({x,y,color:c||'#8899aa',count:n||6,life:1.1,speed:35,size:5,gravity:-40,angle:-Math.PI/2});},
-    confetti(x,y,c,n){fxSpawn({x,y,color:c||'#8b5cf6',count:n||20,life:0.9,speed:140,size:3.5,shape:'square'});},
-    spawn(o){fxSpawn(o||{});}, clear(){fxParts.length=0;}, count(){return fxParts.length;}
-  },
-  data: {
-    save(k,v){ dataStore[String(k)]=v; try{localStorage.setItem(DATA_KEY,JSON.stringify(dataStore));}catch(_){} return true; },
-    load(k,d){ const key=String(k); return Object.prototype.hasOwnProperty.call(dataStore,key)?dataStore[key]:(d!==undefined?d:null); },
-    has(k){ return Object.prototype.hasOwnProperty.call(dataStore,String(k)); },
-    remove(k){ delete dataStore[String(k)]; try{localStorage.setItem(DATA_KEY,JSON.stringify(dataStore));}catch(_){} return true; },
-    clear(){ for(const k of Object.keys(dataStore)) delete dataStore[k]; try{localStorage.removeItem(DATA_KEY);}catch(_){} return true; },
-    keys(){ return Object.keys(dataStore); }
-  },
-  sys: {
-    getFileContent(fn){ const c=files[fn]; return typeof c==='string'?c:null; },
-    log(m){ console.log(m); },
-    isMobile:()=>isMobile(),
-    setControlsVisible(v){ document.body.classList.toggle('nocontrols',!v); },
-    controlsVisible(){ return !document.body.classList.contains('nocontrols'); }
-  }
-};
-
-const LuaShim = `
-local _orig_require = require
-local js = _orig_require("js")
-local api = js.global.LuaDeckAPI
-local function tojs(val)
-  if type(val) ~= "table" then return val end
-  local is_array, n = true, 0
-  for k,_ in pairs(val) do
-    if type(k)~="number" or k<1 or k~=math.floor(k) then is_array=false break end
-    if k>n then n=k end
-  end
-  if is_array then
-    local arr = js.new(js.global.Array)
-    for i=1,n do arr[i-1]=tojs(val[i]) end
-    return arr
-  else
-    local obj = js.new(js.global.Object)
-    for k,v in pairs(val) do obj[tostring(k)]=tojs(v) end
-    return obj
-  end
-end
-gfx={
-  cls=function(c) api.gfx:cls(c) end,
-  rect=function(x,y,w,h,c) api.gfx:rect(x,y,w,h,c) end,
-  rectfill=function(x,y,w,h,c) api.gfx:rectfill(x,y,w,h,c) end,
-  circle=function(x,y,r,c) api.gfx:circle(x,y,r,c) end,
-  circlefill=function(x,y,r,c) api.gfx:circlefill(x,y,r,c) end,
-  line=function(x1,y1,x2,y2,c) api.gfx:line(x1,y1,x2,y2,c) end,
-  pixel=function(x,y,c) api.gfx:pixel(x,y,c) end,
-  text=function(s,x,y,c,f) api.gfx:text(tostring(s),x,y,c,f) end,
-  cam=function(x,y) api.gfx:cam(x,y) end,
-  sprite=function(name,x,y,w,h) api.gfx:sprite(name,x,y,w,h) end,
-  anim=function(name,frame,x,y,fw,fh,dw,dh,cols,rows) api.gfx:anim(name,frame,x,y,fw,fh,dw,dh,cols,rows) end,
-  sprites=function() local arr=api.gfx:sprites() local t={} if arr then local n=tonumber(arr.length)or 0 for i=0,n-1 do t[#t+1]=arr[i] end end return t end,
-  width=function() return api.gfx:width() end,
-  height=function() return api.gfx:height() end,
-}
-function btn(i) return api.input:btn(i) end
-function btnp(i) return api.input:btnp(i) end
-function btnr(i) return api.input:btnr(i) end
-function axis(i) return api.input:axis(i) end
-function lookx() return api.input:lookx() end
-function looky() return api.input:looky() end
-function look() return api.input:lookx(), api.input:looky() end
-mouse=setmetatable({},{__index=function(_,k) if k=="x" then return api.input:mouseX() elseif k=="y" then return api.input:mouseY() elseif k=="btn" then return api.input:mouseBtn() end end})
-sfx={beep=function(f,d,t) api.sfx:beep(f,d,t) end, music=function(o) if type(o)=="string" then api.sfx:music(o) elseif type(o)=="table" then api.sfx:music(tojs(o)) end end, stop=function() api.sfx:stop() end, playing=function() return api.sfx:playing() end, note=function(n) return api.sfx:note(tostring(n or "")) end}
-fx={burst=function(x,y,c,n) api.fx:burst(x,y,c,n) end, spark=function(x,y,c,n) api.fx:spark(x,y,c,n) end, dust=function(x,y,c,n) api.fx:dust(x,y,c,n) end, smoke=function(x,y,c,n) api.fx:smoke(x,y,c,n) end, confetti=function(x,y,c,n) api.fx:confetti(x,y,c,n) end, spawn=function(o) if type(o)=="table" then api.fx:spawn(tojs(o)) end end, clear=function() api.fx:clear() end, count=function() return api.fx:count() end}
-data={save=function(k,v) if type(v)=="table" then return api.data:save(tostring(k),tojs(v)) end return api.data:save(tostring(k),v) end, load=function(k,d) local v=api.data:load(tostring(k),nil) if v==nil or v==js.null then return d end return v end, has=function(k) return api.data:has(tostring(k)) end, remove=function(k) return api.data:remove(tostring(k)) end, clear=function() return api.data:clear() end, keys=function() local a=api.data:keys() local t={} if a then local n=tonumber(a.length)or 0 for i=0,n-1 do t[#t+1]=a[i] end end return t end}
-dt=0.016
-function print(...) local n=select("#",...) local p={} for i=1,n do p[i]=tostring(select(i,...)) end api.sys:log(table.concat(p,"\\t")) end
-function is_mobile() return api.sys:isMobile() end
-function set_controls_visible(v) api.sys:setControlsVisible(not not v) end
-function controls_visible() return api.sys:controlsVisible() end
-do local keep={js=true,package=true,coroutine=true,string=true,table=true,math=true,io=true,os=true,debug=true,utf8=true,_G=true}
-  for k in pairs(package.loaded) do if not keep[k] then package.loaded[k]=nil end end end
-function require(modname)
-  if modname=="js" then return _orig_require("js") end
-  if package.loaded[modname] then return package.loaded[modname] end
-  local filename=modname
-  if not string.match(filename,"%.lua$") then filename=filename..".lua" end
-  local content=api.sys:getFileContent(filename)
-  if type(content)=="string" then
-    local f,err=load(content,"@"..filename)
-    if f then local res=f() if res==nil then res=true end package.loaded[modname]=res return res
-    else error("Syntax Error in "..filename..": "..tostring(err)) end
-  end
-  error("Module not found: "..modname)
-end
-`;
-
-function setLuaGlobal(name,value){
-  const L=fengari.L;
-  if(typeof value==='number') fengari.lua.lua_pushnumber(L,value);
-  else if(typeof value==='string') fengari.lua.lua_pushstring(L,fengari.to_luastring(value));
-  else if(typeof value==='boolean') fengari.lua.lua_pushboolean(L,value);
-  else return;
-  fengari.lua.lua_setglobal(L,fengari.to_luastring(name));
-}
-function callLua(name,arg){
-  const L=fengari.L;
-  fengari.lua.lua_getglobal(L,fengari.to_luastring(name));
-  if(!fengari.lua.lua_isfunction(L,-1)){ fengari.lua.lua_pop(L,1); return true; }
-  let n=0; if(typeof arg==='number'){ fengari.lua.lua_pushnumber(L,arg); n=1; }
-  if(fengari.lua.lua_pcall(L,n,0,0)!==fengari.lua.LUA_OK){
-    const err=fengari.to_jsstring(fengari.lua.lua_tostring(L,-1));
-    fengari.lua.lua_pop(L,1);
-    const el=document.getElementById('err'); el.style.display='block'; el.textContent=err;
-    console.error(err); return false;
-  }
-  return true;
-}
-
-// input
-const keys={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3,KeyZ:4,KeyX:5,KeyC:6,KeyV:7,KeyA:4,KeyS:5,KeyD:6,KeyF:7,Space:4};
-window.addEventListener('keydown',e=>{
-  if(e.code==='KeyQ'||e.code==='KeyE'){ keyLook=e.code==='KeyQ'?-1:1; }
-  const i=keys[e.code]; if(i!=null){ btnState[i]=true; e.preventDefault(); }
-});
-window.addEventListener('keyup',e=>{
-  if(e.code==='KeyQ'||e.code==='KeyE') keyLook=0;
-  const i=keys[e.code]; if(i!=null) btnState[i]=false;
-});
-canvas.addEventListener('pointerdown',e=>{ pointer.btn=true; pointer.x=e.clientX; pointer.y=e.clientY; });
-canvas.addEventListener('pointerup',()=>{ pointer.btn=false; });
-canvas.addEventListener('pointermove',e=>{
-  if(pointer.btn || document.pointerLockElement===canvas){
-    lookDX += (e.movementX||0)*0.0025; lookDY += (e.movementY||0)*0.0025;
-  }
-  pointer.x=e.clientX; pointer.y=e.clientY;
-});
-// joystick
-(function(){
-  const zone=document.getElementById('joy'), stick=document.getElementById('stick');
-  let pid=null, cx=0, cy=0;
-  function setStick(x,y){
-    const max=40, dx=x-cx, dy=y-cy, len=Math.hypot(dx,dy)||1;
-    const cl=Math.min(max,len), nx=dx/len*cl, ny=dy/len*cl;
-    stick.style.transform='translate('+nx+'px,'+ny+'px)';
-    stickAxis.x=nx/max; stickAxis.y=ny/max;
-    btnState[0]=stickAxis.x<-0.35; btnState[1]=stickAxis.x>0.35;
-    btnState[2]=stickAxis.y<-0.35; btnState[3]=stickAxis.y>0.35;
-  }
-  function reset(){ stick.style.transform=''; stickAxis.x=0; stickAxis.y=0; btnState[0]=btnState[1]=btnState[2]=btnState[3]=false; }
-  zone.addEventListener('pointerdown',e=>{ pid=e.pointerId; zone.setPointerCapture(pid); const r=zone.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; setStick(e.clientX,e.clientY); });
-  zone.addEventListener('pointermove',e=>{ if(pid===e.pointerId) setStick(e.clientX,e.clientY); });
-  zone.addEventListener('pointerup',e=>{ if(pid===e.pointerId){ pid=null; reset(); } });
-  zone.addEventListener('pointercancel',()=>{ pid=null; reset(); });
-})();
-document.querySelectorAll('.ab').forEach(el=>{
-  const i=+el.dataset.b;
-  el.addEventListener('pointerdown',e=>{ btnState[i]=true; e.preventDefault(); });
-  el.addEventListener('pointerup',()=>{ btnState[i]=false; });
-  el.addEventListener('pointercancel',()=>{ btnState[i]=false; });
-});
-
-document.getElementById('btnFS').onclick=()=>{ const el=document.documentElement; if(!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.(); };
-document.getElementById('btnMute').onclick=function(){ muted=!muted; this.textContent=muted?'Unmute':'Mute'; if(muted) stopMusic(); };
-
-let last=0, running=false;
-function loop(ts){
-  if(!running) return;
-  if(!last) last=ts; let dt=(ts-last)/1000; last=ts; if(dt>0.1) dt=0.1;
-  tickMusic(dt); setLuaGlobal('dt',dt); cam.x=cam.y=0;
-  if(!callLua('_update',dt)){ running=false; return; }
-  lookDX=0; lookDY=0; fxUpdate(dt);
-  if(!callLua('_draw')){ running=false; return; }
-  fxDraw();
-  for(let i=0;i<8;i++) btnPrev[i]=btnState[i];
-  requestAnimationFrame(loop);
-}
-
-function boot(){
-  if(running) return;
-  resize();
-  ensureAudio();
-  // Unlock audio on first gesture (no menu — any tap/key works)
-  const unlock=()=>{ try{ ensureAudio(); }catch(_){ } };
-  window.addEventListener('pointerdown', unlock, {once:true, passive:true});
-  window.addEventListener('keydown', unlock, {once:true});
-
-  if(typeof fengari==='undefined'){
-    document.getElementById('err').style.display='block';
-    document.getElementById('err').textContent='Lua engine not loaded. Check internet (CDN) and reload.';
-    return;
-  }
-  const L=fengari.L;
-  let st=fengari.lauxlib.luaL_dostring(L, fengari.to_luastring(LuaShim));
-  if(st!==fengari.lua.LUA_OK){
-    const e=fengari.to_jsstring(fengari.lua.lua_tostring(L,-1));
-    document.getElementById('err').style.display='block';
-    document.getElementById('err').textContent=e;
-    return;
-  }
-  const main=files['main.lua'];
-  if(main==null){
-    document.getElementById('err').style.display='block';
-    document.getElementById('err').textContent='No main.lua in export';
-    return;
-  }
-  st=fengari.lauxlib.luaL_dostring(L, fengari.to_luastring(main));
-  if(st!==fengari.lua.LUA_OK){
-    const e=fengari.to_jsstring(fengari.lua.lua_tostring(L,-1));
-    document.getElementById('err').style.display='block';
-    document.getElementById('err').textContent=e;
-    return;
-  }
-  running=true; last=0; requestAnimationFrame(loop);
-}
-
-// Auto-start as soon as Fengari is ready (no Tap to start screen)
-function waitEngine(tries){
-  if(typeof fengari!=='undefined'){ boot(); return; }
-  if(tries<=0){
-    document.getElementById('err').style.display='block';
-    document.getElementById('err').textContent='Lua engine failed to load. Need network for CDN, then reload.';
-    return;
-  }
-  setTimeout(function(){ waitEngine(tries-1); }, 100);
-}
-if(document.readyState==='complete') waitEngine(80);
-else window.addEventListener('load', function(){ waitEngine(80); });
-})();
-<\/script>
-</body>
-</html>`;
+    try {
+        const blob = await zip.generateAsync({
+            type: 'blob',
+            compression: 'DEFLATE',
+            compressionOptions: { level: 6 }
+        });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = root + '.luax.zip';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    } catch (err) {
+        console.error(err);
+        alert('ZIP export failed: ' + (err && err.message ? err.message : err));
+    }
 }
 
 function importProject() {
     document.getElementById('import-input').click();
 }
 
+function applyImportedProjectData(data, fallbackName) {
+    const files = data.files || data;
+    if (typeof files !== 'object' || Array.isArray(files)) throw new Error('Invalid format');
+    let name = data.name || fallbackName || 'Imported';
+    name = String(name).trim() || 'Imported';
+    if (projects[name]) name = name + '_' + Date.now();
+    projects[name] = files;
+    setProjectGamepad(name, data.gamepad !== false);
+    if (data.assets && typeof data.assets === 'object') {
+        projectAssets[name] = data.assets;
+        saveProjectAssets();
+    }
+    if (data.music && typeof data.music === 'object' && typeof getProjectMusicMap === 'function') {
+        const map = getProjectMusicMap(name);
+        Object.keys(data.music).forEach((k) => { map[k] = data.music[k]; });
+        if (typeof saveProjectMusic === 'function') saveProjectMusic();
+    }
+    if (data.maps && typeof data.maps === 'object' && typeof projectMaps !== 'undefined') {
+        projectMaps[name] = data.maps;
+        if (typeof saveProjectMaps === 'function') saveProjectMaps();
+    }
+    saveState();
+    renderProjects();
+    return name;
+}
+
+function uint8ToDataURL(bytes, mime) {
+    let binary = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return 'data:' + (mime || 'image/png') + ';base64,' + btoa(binary);
+}
+
+async function importProjectFromZip(arrayBuffer, fileName) {
+    if (typeof JSZip === 'undefined') throw new Error('ZIP library not loaded');
+    const zip = await JSZip.loadAsync(arrayBuffer);
+
+    // Prefer embedded luax-project.json (full round-trip)
+    const metaPath = Object.keys(zip.files).find((p) =>
+        /(^|\/)luax-project\.json$/i.test(p) && !zip.files[p].dir
+    );
+    if (metaPath) {
+        const raw = await zip.files[metaPath].async('string');
+        const data = JSON.parse(raw);
+        const fallback = fileName.replace(/\.luax\.zip$/i, '').replace(/\.zip$/i, '') || 'Imported';
+        return applyImportedProjectData(data, data.name || fallback);
+    }
+
+    // Rebuild from loose files
+    const files = {};
+    const assets = {};
+    const music = {};
+    let rootPrefix = '';
+
+    // Detect single top-level folder
+    const paths = Object.keys(zip.files).filter((p) => !zip.files[p].dir);
+    if (paths.length) {
+        const first = paths[0];
+        const slash = first.indexOf('/');
+        if (slash > 0) {
+            const prefix = first.slice(0, slash + 1);
+            if (paths.every((p) => p.startsWith(prefix) || p.indexOf('/') < 0)) {
+                rootPrefix = prefix;
+            }
+        }
+    }
+
+    for (const path of paths) {
+        const rel = rootPrefix && path.startsWith(rootPrefix) ? path.slice(rootPrefix.length) : path;
+        if (!rel || rel === 'luax-project.json') continue;
+        const lower = rel.toLowerCase();
+        if (lower.startsWith('assets/')) {
+            const aname = rel.slice(7);
+            if (!aname) continue;
+            const bytes = await zip.files[path].async('uint8array');
+            const ext = (aname.split('.').pop() || '').toLowerCase();
+            const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+                : ext === 'webp' ? 'image/webp'
+                : ext === 'gif' ? 'image/gif'
+                : 'image/png';
+            assets[aname] = uint8ToDataURL(bytes, mime);
+        } else if (lower.startsWith('music/')) {
+            const mname = rel.slice(6);
+            if (!mname) continue;
+            try {
+                const raw = await zip.files[path].async('string');
+                music[mname] = JSON.parse(raw);
+            } catch (_) {}
+        } else if (/\.lua$/i.test(rel) || /\.txt$/i.test(rel) || /\.md$/i.test(rel)) {
+            files[rel.split('/').pop()] = await zip.files[path].async('string');
+        }
+    }
+
+    if (!Object.keys(files).length && !Object.keys(assets).length) {
+        throw new Error('No Lua files or assets found in ZIP');
+    }
+    const fallback = fileName.replace(/\.luax\.zip$/i, '').replace(/\.zip$/i, '') || 'Imported';
+    return applyImportedProjectData({
+        name: rootPrefix ? rootPrefix.replace(/\/$/, '') : fallback,
+        files: files,
+        assets: assets,
+        music: music,
+        gamepad: true
+    }, fallback);
+}
+
 function handleImport(ev) {
     const file = ev.target.files[0];
     if (!file) return;
+    const isZip = /\.zip$/i.test(file.name) || file.type === 'application/zip' || file.type === 'application/x-zip-compressed';
+
+    if (isZip) {
+        const reader = new FileReader();
+        reader.onload = async () => {
+            try {
+                const name = await importProjectFromZip(reader.result, file.name);
+                alert('Imported as "' + name + '"');
+            } catch (err) {
+                alert('Import failed: ' + (err && err.message ? err.message : err));
+            }
+            ev.target.value = '';
+        };
+        reader.onerror = () => {
+            alert('Could not read ZIP file');
+            ev.target.value = '';
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
         try {
             const data = JSON.parse(reader.result);
-            const files = data.files || data;
-            if (typeof files !== 'object') throw new Error('Invalid format');
-            let name = data.name || file.name.replace(/\.luadeck\.json$/i, '').replace(/\.json$/i, '') || 'Imported';
-            if (projects[name]) name = name + '_' + Date.now();
-            projects[name] = files;
-            // restore gamepad flag if present (default true)
-            setProjectGamepad(name, data.gamepad !== false);
-            if (data.assets && typeof data.assets === 'object') {
-                projectAssets[name] = data.assets;
-                saveProjectAssets();
-            }
-            if (data.maps && typeof data.maps === 'object') {
-                projectMaps[name] = data.maps;
-                saveProjectMaps();
-            }
-            saveState();
-            renderProjects();
+            const fallback = file.name.replace(/\.luadeck\.json$/i, '').replace(/\.luax\.json$/i, '').replace(/\.json$/i, '') || 'Imported';
+            const name = applyImportedProjectData(data, fallback);
             alert('Imported as "' + name + '"');
         } catch (err) {
             alert('Import failed: ' + err.message);
@@ -5642,21 +4927,11 @@ try {
         editor = CodeMirror(document.getElementById('editor'), {
             mode: 'lua', theme: 'material-ocean',
             lineNumbers: true, matchBrackets: true, indentUnit: 4,
-            styleActiveLine: true,
-            viewportMargin: 80,
-            historyEventDelay: 250,
-            undoDepth: 200,
+            styleActiveLine: true, viewportMargin: Infinity,
             gutters: ['CodeMirror-linenumbers', 'luax-error-gutter'],
             extraKeys: {
                 'Ctrl-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
                 'Cmd-Space': function (cm) { cm.showHint({ hint: luaxHint, completeSingle: false }); },
-                'Ctrl-A': function (cm) { cm.execCommand('selectAll'); },
-                'Cmd-A': function (cm) { cm.execCommand('selectAll'); },
-                'Ctrl-Z': function (cm) { cm.undo(); },
-                'Cmd-Z': function (cm) { cm.undo(); },
-                'Ctrl-Y': function (cm) { cm.redo(); },
-                'Cmd-Shift-Z': function (cm) { cm.redo(); },
-                'Ctrl-Shift-Z': function (cm) { cm.redo(); },
             },
         });
     } else {
@@ -5764,79 +5039,28 @@ function applyEditorSyntaxCheck(code, filename) {
 if (editor) {
 editor.on('change', () => {
     if (!currentFileName) return;
-    try {
-        const now = editor.getValue();
-        isDirty = (now !== savedContent);
-        updateDirtyUI();
-        if (editorErrorState.line != null) clearEditorErrors();
-        clearTimeout(editor._luaxLintTimer);
-        // Debounce lint — avoid freezing on select-all + delete
-        editor._luaxLintTimer = setTimeout(() => {
-            if (!currentFileName || !editor) return;
-            try {
-                const code = editor.getValue();
-                if (code.length > 80000) return; // skip lint on huge pastes
-                applyEditorSyntaxCheck(code, currentFileName);
-            } catch (_) {}
-        }, 900);
-    } catch (_) {}
+    const now = editor.getValue();
+    isDirty = (now !== savedContent);
+    updateDirtyUI();
+    // Clear stale markers while typing; re-check shortly after pause
+    if (editorErrorState.line != null) clearEditorErrors();
+    clearTimeout(editor._luaxLintTimer);
+    editor._luaxLintTimer = setTimeout(() => {
+        if (!currentFileName) return;
+        applyEditorSyntaxCheck(editor.getValue(), currentFileName);
+    }, 650);
 });
 
-// Auto-show hints while typing identifiers / after a dot (not on delete/paste floods)
+// Auto-show hints while typing identifiers / after a dot
 editor.on('inputRead', function (cm, change) {
-    try {
-        if (!change || change.origin !== '+input') return;
-        const text = (change.text && change.text[0]) || '';
-        if (!/[\w.]/.test(text)) return;
-        if (text.length > 1) return;
-        const tok = cm.getTokenAt(cm.getCursor());
-        if (tok && (tok.type === 'string' || tok.type === 'comment')) return;
-        CodeMirror.commands.autocomplete(cm, null, { hint: luaxHint, completeSingle: false });
-    } catch (_) {}
+    if (change.origin !== '+input') return;
+    const text = (change.text && change.text[0]) || '';
+    if (!/[\w.]/.test(text)) return;
+    // Don't spam inside comments/strings too aggressively
+    const tok = cm.getTokenAt(cm.getCursor());
+    if (tok && (tok.type === 'string' || tok.type === 'comment')) return;
+    CodeMirror.commands.autocomplete(cm, null, { hint: luaxHint, completeSingle: false });
 });
-}
-
-function editorUndo() {
-    if (!editor) return;
-    editor.focus();
-    editor.undo();
-}
-function editorRedo() {
-    if (!editor) return;
-    editor.focus();
-    editor.redo();
-}
-function editorSelectAll() {
-    if (!editor) return;
-    editor.focus();
-    editor.execCommand('selectAll');
-}
-function editorDeleteAll() {
-    if (!editor) return;
-    if (!confirm('Clear all text in this file? You can Undo.')) return;
-    try {
-        editor.focus();
-        const last = { line: editor.lastLine(), ch: (editor.getLine(editor.lastLine()) || '').length };
-        editor.replaceRange('', { line: 0, ch: 0 }, last, '+delete');
-    } catch (_) {
-        editor.setValue('');
-    }
-}
-async function editorPaste() {
-    if (!editor) return;
-    editor.focus();
-    try {
-        if (navigator.clipboard && navigator.clipboard.readText) {
-            const t = await navigator.clipboard.readText();
-            if (t != null) {
-                editor.replaceSelection(t, 'around');
-                return;
-            }
-        }
-    } catch (_) {}
-    // Fallback: prompt
-    const t = prompt('Paste text here:');
-    if (t != null) editor.replaceSelection(t, 'around');
 }
 
 // Hover documentation tooltip
@@ -5912,49 +5136,63 @@ async function editorPaste() {
 // Screenshots cannot be blocked by a website (OS-level).
 // ---------------------------------------------------------------
 (function setupEditorClipboardGuard() {
-    // Soft copy protection only — do NOT block cut/delete/select (that froze the editor).
     const editorRoot = document.getElementById('editor');
     if (!editorRoot) return;
 
     function inEditorTarget(t) {
         if (!t) return false;
         if (editorRoot.contains(t)) return true;
+        // CodeMirror input textarea is often outside visual layout but tied to editor
         if (t.classList && (t.classList.contains('CodeMirror-code') || t.classList.contains('CodeMirror-line'))) return true;
         return !!(t.closest && t.closest('.CodeMirror'));
     }
 
-    function blockCopyOnly(e) {
-        try {
-            if (!inEditorTarget(e.target)) {
-                const sel = window.getSelection && window.getSelection();
-                if (!(sel && sel.anchorNode && inEditorTarget(sel.anchorNode.parentElement || sel.anchorNode))) {
-                    return;
-                }
+    function blockCopyCut(e) {
+        if (!inEditorTarget(e.target) && e.target !== document.body) {
+            // If selection is inside CodeMirror
+            const sel = window.getSelection && window.getSelection();
+            if (sel && sel.anchorNode && inEditorTarget(sel.anchorNode.parentElement || sel.anchorNode)) {
+                e.preventDefault();
+                return false;
             }
-            e.preventDefault();
-        } catch (_) {}
+            return;
+        }
+        e.preventDefault();
         return false;
     }
 
-    document.addEventListener('copy', blockCopyOnly, true);
-    // cut is allowed so selection + delete works on all devices
+    document.addEventListener('copy', blockCopyCut, true);
+    document.addEventListener('cut', blockCopyCut, true);
 
+    // Allow paste everywhere (including editor)
+    // (no preventDefault on paste)
+
+    // Block right-click menu in editor (stops “Copy”)
+    editorRoot.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        return false;
+    }, true);
+
+    // Block common shortcuts: Ctrl/Cmd+C, Ctrl/Cmd+X, Ctrl+Insert (copy)
+    // Keep Ctrl/Cmd+V (paste), Ctrl/Cmd+A still useful for replace-all paste workflows
     editorRoot.addEventListener('keydown', (e) => {
         const key = (e.key || '').toLowerCase();
         const mod = e.ctrlKey || e.metaKey;
         if (!mod) return;
-        // Block copy only — allow X (cut), A (select all), V (paste), Z (undo)
-        if (key === 'c' || (key === 'insert' && e.ctrlKey && !e.shiftKey)) {
+        if (key === 'c' || key === 'x' || (key === 'insert' && e.ctrlKey && !e.shiftKey)) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
     }, true);
 
+    // Also bind on CodeMirror's input field when ready
     try {
-        const ta = editor && editor.getInputField && editor.getInputField();
+        const ta = editor.getInputField && editor.getInputField();
         if (ta) {
             ta.addEventListener('copy', (e) => { e.preventDefault(); }, true);
+            ta.addEventListener('cut', (e) => { e.preventDefault(); }, true);
+            ta.addEventListener('contextmenu', (e) => { e.preventDefault(); }, true);
         }
     } catch (_) {}
 })();
@@ -5981,14 +5219,8 @@ function renderTabs() {
 function switchTab(fn) {
     if (fn === currentFileName) return;
     if (isDirty) {
-        const stay = !confirm('Unsaved changes in ' + currentFileName + '.\n\nOK = discard and switch\nCancel = stay');
-        if (stay) return;
-        isDirty = false;
-        try {
-            if (savedContent != null && currentFileName && currentProjectName) {
-                projects[currentProjectName][currentFileName] = savedContent;
-            }
-        } catch (_) {}
+        projects[currentProjectName][currentFileName] = editor.getValue();
+        saveState();
     }
     openFile(fn);
 }
@@ -6072,18 +5304,10 @@ function saveCurrentFile() {
 
 function closeEditor() {
     if (isDirty && editor) {
-        const stay = !confirm('You have unsaved changes.\n\nOK = discard and go back\nCancel = keep editing');
-        if (stay) return;
-        // Discard: reload last saved content into projects is already there
+        projects[currentProjectName][currentFileName] = editor.getValue();
+        saveState();
         isDirty = false;
-        try {
-            if (savedContent != null && currentFileName && currentProjectName) {
-                // ensure in-memory project keeps last saved version
-                projects[currentProjectName][currentFileName] = savedContent;
-            }
-        } catch (_) {}
     }
-    try { if (editor) editor.getInputField()?.blur(); } catch (_) {}
     renderFiles();
     switchView('files-view');
 }
@@ -6403,293 +5627,38 @@ function consumeLook() {
 // AUDIO
 // ============================================================
 let audioCtx = null;
-let audioMaster = null;   // GainNode → analyser → destination
-let audioAnalyser = null;
-let audioWaveData = null;
-let musWaveAnimId = null;
-
 function ensureAudio() {
     if (!audioCtx) {
         try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
     }
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    if (audioCtx && !audioMaster) {
-        try {
-            audioMaster = audioCtx.createGain();
-            audioMaster.gain.value = 1;
-            audioAnalyser = audioCtx.createAnalyser();
-            audioAnalyser.fftSize = 2048;
-            audioAnalyser.smoothingTimeConstant = 0.75;
-            audioWaveData = new Uint8Array(audioAnalyser.fftSize);
-            audioMaster.connect(audioAnalyser);
-            audioAnalyser.connect(audioCtx.destination);
-            startMusWaveVisualizer();
-        } catch (_) {
-            audioMaster = null;
-            audioAnalyser = null;
-        }
-    }
 }
-
-function audioOut() {
-    return audioMaster || (audioCtx && audioCtx.destination);
-}
-
-/** Default / custom synth params (0–100 UI scale). */
-const musSynth = {
-    pitch: 50,   // 0 = -1 octave, 50 = unison, 100 = +1 octave
-    length: 40,  // note duration scale
-    volume: 55,
-    slide: 15,   // pitch bend amount
-    noise: 0,
-    echo: 10,
-    baseWave: 'square'
-};
-
-function readMusSynthFromUI() {
-    const ids = ['pitch', 'length', 'volume', 'slide', 'noise', 'echo'];
-    ids.forEach(k => {
-        const el = document.getElementById('mus-syn-' + k);
-        if (el) {
-            musSynth[k] = Math.max(0, Math.min(100, parseInt(el.value, 10) || 0));
-            const lab = document.getElementById('mus-syn-' + k + '-v');
-            if (lab) lab.textContent = String(musSynth[k]);
-        }
-    });
-}
-
-function onMusSynthChange() {
-    readMusSynthFromUI();
-    syncMusicFromEditorLive();
-}
-
-function onMusWaveChange() {
-    const wv = document.getElementById('mus-wave');
-    const wave = (wv && wv.value) || 'square';
-    musSynth.baseWave = wave === 'custom' ? 'square' : wave;
-    const card = document.getElementById('mus-synth-card');
-    if (card) card.style.display = wave === 'custom' ? 'block' : 'none';
-    if (wave === 'custom') readMusSynthFromUI();
-    syncMusicFromEditorLive();
-}
-
-function getActiveSynthParams() {
-    const wv = (document.getElementById('mus-wave') || {}).value || musSynth.baseWave || 'square';
-    if (wv === 'custom') {
-        readMusSynthFromUI();
-        return {
-            wave: musSynth.baseWave || 'square',
-            pitch: musSynth.pitch,
-            length: musSynth.length,
-            volume: musSynth.volume,
-            slide: musSynth.slide,
-            noise: musSynth.noise,
-            echo: musSynth.echo,
-            custom: true
-        };
-    }
-    return {
-        wave: wv,
-        pitch: 50,
-        length: 40,
-        volume: 55,
-        slide: 0,
-        noise: 0,
-        echo: 0,
-        custom: false
-    };
-}
-
-function playBeep(freq, dur, type, vol, opts) {
+function playBeep(freq, dur, type, vol) {
     ensureAudio();
     if (!audioCtx) return;
-    opts = opts || {};
     try {
-        const t0 = audioCtx.currentTime;
-        const baseF = Math.max(20, Number(freq) || 440);
-        // pitch 0–100 → multiply 0.5 … 2.0
-        const pitchAmt = (opts.pitch != null ? opts.pitch : 50) / 100;
-        const fMul = 0.5 + pitchAmt * 1.5; // 0.5 .. 2.0
-        const fStartSlide = opts.slide != null ? opts.slide : 0;
-        // slide: start higher or lower then settle
-        const slideAmt = fStartSlide / 100;
-        const f0 = baseF * fMul * (1 + slideAmt * 0.85);
-        const f1 = baseF * fMul;
-
-        const lenScale = (opts.length != null ? opts.length : 40) / 100;
-        const d = Math.max(0.03, (Number(dur) || 0.1) * (0.35 + lenScale * 1.8));
-
-        const volUI = opts.volume != null ? opts.volume : 55;
-        let v = (vol != null && vol > 0) ? Number(vol) : (0.03 + (volUI / 100) * 0.18);
-        v = Math.min(0.28, Math.max(0.01, v));
-
-        const oscType = type || opts.wave || 'square';
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = (oscType === 'custom') ? 'square' : oscType;
-        osc.frequency.setValueAtTime(f0, t0);
-        if (slideAmt > 0.02) {
-            osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + d * 0.55);
-        } else {
-            osc.frequency.setValueAtTime(f1, t0);
-        }
-        gain.gain.setValueAtTime(v, t0);
-        gain.gain.exponentialRampToValueAtTime(0.001, t0 + d);
-
-        const mix = audioCtx.createGain();
-        mix.gain.value = 1;
+        osc.type = type || 'square';
+        osc.frequency.value = Math.max(20, Number(freq) || 440);
+        const v = (vol != null && vol > 0) ? Math.min(0.25, Number(vol)) : 0.08;
+        gain.gain.value = v;
         osc.connect(gain);
-        gain.connect(mix);
-
-        // Noise mix
-        const noiseAmt = (opts.noise != null ? opts.noise : 0) / 100;
-        if (noiseAmt > 0.02) {
-            const nLen = Math.floor(audioCtx.sampleRate * d);
-            const buf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-            const data = buf.getChannelData(0);
-            for (let i = 0; i < nLen; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = buf;
-            const ng = audioCtx.createGain();
-            ng.gain.setValueAtTime(v * noiseAmt * 0.7, t0);
-            ng.gain.exponentialRampToValueAtTime(0.001, t0 + d);
-            noise.connect(ng);
-            ng.connect(mix);
-            noise.start(t0);
-            noise.stop(t0 + d + 0.02);
-        }
-
-        // Echo (delay)
-        const echoAmt = (opts.echo != null ? opts.echo : 0) / 100;
-        if (echoAmt > 0.02) {
-            const delay = audioCtx.createDelay(1.0);
-            delay.delayTime.value = 0.12 + echoAmt * 0.22;
-            const fb = audioCtx.createGain();
-            fb.gain.value = Math.min(0.55, 0.15 + echoAmt * 0.4);
-            const echoGain = audioCtx.createGain();
-            echoGain.gain.value = echoAmt * 0.7;
-            mix.connect(delay);
-            delay.connect(fb);
-            fb.connect(delay);
-            delay.connect(echoGain);
-            echoGain.connect(audioOut());
-        }
-
-        mix.connect(audioOut());
-        osc.start(t0);
-        osc.stop(t0 + d + 0.05);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        const d = Math.max(0.02, Number(dur) || 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d);
+        osc.stop(audioCtx.currentTime + d + 0.02);
     } catch (_) {}
-}
-
-function previewMusSynth() {
-    const p = getActiveSynthParams();
-    playBeep(440, 0.12, p.wave, null, p);
-}
-
-function startMusWaveVisualizer() {
-    if (musWaveAnimId) return;
-    const draw = () => {
-        musWaveAnimId = requestAnimationFrame(draw);
-        drawMusWaveform();
-    };
-    musWaveAnimId = requestAnimationFrame(draw);
-}
-
-function drawMusWaveform() {
-    const canvas = document.getElementById('mus-wave-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const w = canvas.width;
-    const h = canvas.height;
-    // background
-    ctx.fillStyle = '#0a0c12';
-    ctx.fillRect(0, 0, w, h);
-    // center line
-    ctx.strokeStyle = 'rgba(139,92,246,0.15)';
-    ctx.beginPath();
-    ctx.moveTo(0, h / 2);
-    ctx.lineTo(w, h / 2);
-    ctx.stroke();
-
-    let accent = '#8b5cf6';
-    try {
-        accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || accent;
-    } catch (_) {}
-
-    if (audioAnalyser && audioWaveData) {
-        audioAnalyser.getByteTimeDomainData(audioWaveData);
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = accent;
-        ctx.beginPath();
-        const slice = w / audioWaveData.length;
-        for (let i = 0; i < audioWaveData.length; i++) {
-            const v = audioWaveData[i] / 128.0;
-            const y = (v * h) / 2;
-            const x = i * slice;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-        // soft glow fill
-        ctx.globalAlpha = 0.12;
-        ctx.lineTo(w, h / 2);
-        ctx.lineTo(0, h / 2);
-        ctx.closePath();
-        ctx.fillStyle = accent;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-    } else {
-        // idle sine
-        const t = performance.now() / 1000;
-        ctx.strokeStyle = accent;
-        ctx.globalAlpha = 0.35;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let x = 0; x < w; x++) {
-            const y = h / 2 + Math.sin(x * 0.04 + t * 3) * 8;
-            if (x === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-    }
-}
-
-const MUS_FREE_MAX_CHANNELS = 10;
-const MUS_FREE_MAX_STEPS = 16;
-const MUS_PRO_MAX_CHANNELS = 16;
-const MUS_PRO_MAX_STEPS = 64;
-/** Default / free max; actual row count is musEd.channelCount */
-const MUS_CHANNEL_COUNT = MUS_FREE_MAX_CHANNELS;
-
-function musicMaxChannels() {
-    try { return isPro() ? MUS_PRO_MAX_CHANNELS : MUS_FREE_MAX_CHANNELS; } catch (_) { return MUS_FREE_MAX_CHANNELS; }
-}
-function musicMaxSteps() {
-    try { return isPro() ? MUS_PRO_MAX_STEPS : MUS_FREE_MAX_STEPS; } catch (_) { return MUS_FREE_MAX_STEPS; }
-}
-function clampMusicChannels(n) {
-    n = Math.max(1, Math.min(MUS_PRO_MAX_CHANNELS, parseInt(n, 10) || MUS_CHANNEL_COUNT));
-    const max = musicMaxChannels();
-    if (n > max) return max;
-    return n;
-}
-function clampMusicSteps(n) {
-    n = Math.max(4, Math.min(MUS_PRO_MAX_STEPS, parseInt(n, 10) || 16));
-    const max = musicMaxSteps();
-    if (n > max) return max;
-    return n;
 }
 
 const musicState = {
     active: false, loop: true, bpm: 120, steps: 16, step: 0, acc: 0,
     wave: 'square', vol: 0.08,
-    channels: Array.from({ length: MUS_PRO_MAX_CHANNELS }, () => []),
-    waves: Array.from({ length: MUS_PRO_MAX_CHANNELS }, () => 'square'),
+    channels: [[], [], [], []],
+    waves: ['square', 'square', 'square', 'square'],
     _clockId: null,
     _clockLast: 0,
-    lastPlayedStep: -1,
 };
 
 const NOTE_FREQ = {
@@ -6741,7 +5710,7 @@ function startMusic(spec) {
     let rows = spec.channels || spec.ch || null;
     if (!rows) {
         rows = [];
-        for (let i = 0; i < MUS_CHANNEL_COUNT; i++) {
+        for (let i = 0; i < 4; i++) {
             if (spec[i] != null) rows[i] = spec[i];
             else if (spec[String(i + 1)] != null) rows[i] = spec[String(i + 1)];
             else if (spec['ch' + (i + 1)] != null) rows[i] = spec['ch' + (i + 1)];
@@ -6749,17 +5718,12 @@ function startMusic(spec) {
     }
     const channels = [];
     const waves = [];
-    const nCh = Math.max(MUS_CHANNEL_COUNT, (rows && rows.length) || 0);
-    for (let c = 0; c < nCh; c++) {
+    for (let c = 0; c < 4; c++) {
         channels[c] = normalizeChannel(rows[c], steps);
         let cw = wave;
         if (spec.waves && spec.waves[c]) cw = spec.waves[c];
         if (spec['wave' + (c + 1)]) cw = spec['wave' + (c + 1)];
         waves[c] = cw || 'square';
-    }
-    while (channels.length < MUS_CHANNEL_COUNT) {
-        channels.push(normalizeChannel(null, steps));
-        waves.push(wave || 'square');
     }
     musicState.active = true;
     musicState.loop = loop;
@@ -6772,17 +5736,13 @@ function startMusic(spec) {
     musicState.channels = channels;
     musicState.waves = waves;
     musicState.vol = (vol > 0 ? vol : 0.08);
-    musicState.synth = (spec && spec.synth) ? spec.synth : getActiveSynthParams();
-    musicState.lastPlayedStep = 0;
     playMusicStep(0);
     musicState.step = 1;
     if (musicState.step >= steps) {
         if (loop) musicState.step = 0;
         else musicState.active = false;
     }
-    updateMusicLiveBar(0);
     ensureMusicClock();
-    updateMusicPlayButton();
 }
 
 function playMusicStep(stepIdx) {
@@ -6791,17 +5751,10 @@ function playMusicStep(stepIdx) {
     if (stepIdx < 0 || stepIdx >= steps) return;
     const stepDur = (60 / musicState.bpm) * (4 / steps);
     const noteDur = stepDur * 0.85;
-    const nCh = (musicState.channels && musicState.channels.length) || MUS_CHANNEL_COUNT;
-    const synth = (musicState.synth && typeof musicState.synth === 'object')
-        ? musicState.synth
-        : getActiveSynthParams();
-    for (let c = 0; c < nCh; c++) {
-        const row = musicState.channels[c];
-        if (!row) continue;
-        const cell = row[stepIdx];
+    for (let c = 0; c < 4; c++) {
+        const cell = musicState.channels[c][stepIdx];
         if (!cell) continue;
-        let f = 0, w = (musicState.waves && musicState.waves[c]) || musicState.wave || synth.wave || 'square';
-        let dur = noteDur, v = musicState.vol;
+        let f = 0, w = musicState.waves[c], dur = noteDur, v = musicState.vol;
         if (typeof cell === 'object') {
             f = cell.f || 0;
             if (cell.wave) w = cell.wave;
@@ -6810,14 +5763,8 @@ function playMusicStep(stepIdx) {
         } else {
             f = cell;
         }
-        if (f > 0) {
-            if (w === 'custom') w = synth.wave || 'square';
-            playBeep(f, dur, w, v, synth);
-        }
+        if (f > 0) playBeep(f, dur, w, v);
     }
-    musicState.lastPlayedStep = stepIdx;
-    updateMusicLiveBar(stepIdx);
-    updateMusicPlayhead(stepIdx);
 }
 
 function tickMusic(dt) {
@@ -6832,14 +5779,7 @@ function tickMusic(dt) {
         musicState.step++;
         if (musicState.step >= steps) {
             if (musicState.loop) musicState.step = 0;
-            else {
-                musicState.active = false;
-                musicState.acc = 0;
-                updateMusicPlayButton();
-                updateMusicLiveBar(-1);
-                updateMusicPlayhead(-1);
-                break;
-            }
+            else { musicState.active = false; musicState.acc = 0; break; }
         }
     }
 }
@@ -6848,221 +5788,11 @@ function stopMusic() {
     musicState.active = false;
     musicState.acc = 0;
     musicState.step = 0;
-    musicState.lastPlayedStep = -1;
     if (musicState._clockId) {
         cancelAnimationFrame(musicState._clockId);
         musicState._clockId = null;
     }
     musicState._clockLast = 0;
-    updateMusicLiveBar(-1);
-    updateMusicPlayhead(-1);
-    updateMusicPlayButton();
-}
-
-function updateMusicPlayButton() {
-    const btn = document.getElementById('mus-play-btn');
-    if (!btn) return;
-    if (musicState.active) {
-        btn.textContent = '■ Stop';
-        btn.classList.add('playing');
-        btn.classList.remove('play');
-        btn.classList.add('stop');
-    } else {
-        btn.textContent = '▶ Play';
-        btn.classList.remove('playing');
-        btn.classList.remove('stop');
-        btn.classList.add('play');
-    }
-}
-
-function toggleMusicPreview() {
-    if (musicState.active) {
-        stopMusic();
-    } else {
-        previewMusicEditor();
-    }
-}
-
-function clearMusicEditorNotes() {
-    if (!musEd.channels) return;
-    const steps = musEd.steps || 16;
-    const nCh = musEd.channelCount || musEd.channels.length || 10;
-    const hasAny = musEd.channels.some(ch => ch && ch.some(n => n));
-    if (hasAny && !confirm('Clear all notes on all channels?')) return;
-    musEd.channels = musicEmptyGrid(steps, nCh);
-    renderMusicGrid();
-    syncMusicFromEditorLive();
-    if (musicState.active && musicState.lastPlayedStep >= 0) {
-        updateMusicLiveBar(musicState.lastPlayedStep);
-    }
-}
-
-// ============================================================
-// RANDOM MUSIC GENERATOR
-// ============================================================
-const MUS_GEN_LOW = ['C3','D3','E3','F3','G3','A3','B3','C4'];
-const MUS_GEN_MID = ['C4','D4','E4','F4','G4','A4','B4','C5'];
-const MUS_GEN_HIGH = ['G4','A4','B4','C5','D5','E5','F5','G5'];
-// D5+ need to be in NOTE_FREQ - we already have up to C6
-
-let musGenPitch = 'mid';
-let musGenStyle = 'melody';
-
-function openMusicGenerator() {
-    musGenPitch = 'mid';
-    musGenStyle = 'melody';
-    openModal(
-        'Random music',
-        `<div style="font-size:0.9rem;color:var(--text-color)">
-          <p class="mus-gen-label">Pitch range</p>
-          <div class="mus-gen-opt" id="mus-gen-pitch">
-            <button type="button" data-v="low" onclick="musGenSelect('pitch', this)">Low · bass</button>
-            <button type="button" data-v="mid" class="selected" onclick="musGenSelect('pitch', this)">Mid</button>
-            <button type="button" data-v="high" onclick="musGenSelect('pitch', this)">High · lead</button>
-            <button type="button" data-v="mixed" onclick="musGenSelect('pitch', this)">Mixed</button>
-          </div>
-          <p class="mus-gen-label">Style</p>
-          <div class="mus-gen-opt" id="mus-gen-style">
-            <button type="button" data-v="melody" class="selected" onclick="musGenSelect('style', this)">Melody</button>
-            <button type="button" data-v="basslead" onclick="musGenSelect('style', this)">Bass + lead</button>
-            <button type="button" data-v="chords" onclick="musGenSelect('style', this)">Chords</button>
-            <button type="button" data-v="sparse" onclick="musGenSelect('style', this)">Sparse</button>
-            <button type="button" data-v="dense" onclick="musGenSelect('style', this)">Dense</button>
-            <button type="button" data-v="arpeggio" onclick="musGenSelect('style', this)">Arpeggio</button>
-          </div>
-          <p style="margin:0;font-size:0.78rem;color:var(--muted)">Fills the current grid (${musEd.channelCount || 10} ch × ${musEd.steps || 16} steps). You can edit after.</p>
-        </div>`,
-        'Generate',
-        () => { generateRandomMusic(musGenPitch, musGenStyle); }
-    );
-}
-
-function musGenSelect(kind, btn) {
-    const v = btn.getAttribute('data-v');
-    if (kind === 'pitch') {
-        musGenPitch = v;
-        document.querySelectorAll('#mus-gen-pitch button').forEach(b => b.classList.toggle('selected', b === btn));
-    } else {
-        musGenStyle = v;
-        document.querySelectorAll('#mus-gen-style button').forEach(b => b.classList.toggle('selected', b === btn));
-    }
-}
-
-function musGenPool(pitch) {
-    if (pitch === 'low') return MUS_GEN_LOW.slice();
-    if (pitch === 'high') return MUS_GEN_HIGH.slice();
-    if (pitch === 'mixed') return MUS_GEN_LOW.concat(MUS_GEN_MID, MUS_GEN_HIGH);
-    return MUS_GEN_MID.slice();
-}
-
-function musGenPick(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function generateRandomMusic(pitch, style) {
-    const steps = musEd.steps || 16;
-    const nCh = musEd.channelCount || 10;
-    const grid = musicEmptyGrid(steps, nCh);
-    const mid = musGenPool(pitch === 'mixed' ? 'mid' : pitch);
-    const low = pitch === 'high' ? mid : MUS_GEN_LOW;
-    const high = pitch === 'low' ? mid : MUS_GEN_HIGH;
-    const scale = musGenPool(pitch);
-
-    const density = style === 'dense' ? 0.7 : style === 'sparse' ? 0.22 : style === 'chords' ? 0.45 : 0.4;
-
-    if (style === 'basslead') {
-        // Ch1 bass root pattern
-        const roots = low.filter((_, i) => i % 2 === 0);
-        for (let s = 0; s < steps; s++) {
-            if (s % 4 === 0 || Math.random() < 0.35) grid[0][s] = musGenPick(roots.length ? roots : low);
-        }
-        // Ch2 melody
-        let note = musGenPick(high);
-        for (let s = 0; s < steps; s++) {
-            if (Math.random() < 0.55) {
-                const idx = Math.max(0, scale.indexOf(note));
-                const next = scale[Math.min(scale.length - 1, Math.max(0, idx + (Math.random() < 0.5 ? -1 : 1) * (1 + (Math.random() * 2 | 0))))] || musGenPick(scale);
-                note = next;
-                grid[1][s] = note;
-            }
-        }
-        // remaining channels light fills
-        for (let c = 2; c < nCh; c++) {
-            for (let s = 0; s < steps; s++) {
-                if (Math.random() < density * 0.35) grid[c][s] = musGenPick(scale);
-            }
-        }
-    } else if (style === 'chords') {
-        // stack 3-note chords on first channels every 2–4 steps
-        const chordTones = [0, 2, 4]; // scale degrees
-        for (let s = 0; s < steps; s++) {
-            if (s % 2 !== 0 && Math.random() > 0.25) continue;
-            const rootIdx = Math.floor(Math.random() * Math.max(1, scale.length - 4));
-            for (let t = 0; t < chordTones.length && t < nCh; t++) {
-                const ni = Math.min(scale.length - 1, rootIdx + chordTones[t]);
-                grid[t][s] = scale[ni];
-            }
-            // optional higher sparkle
-            if (nCh > 3 && Math.random() < 0.4) grid[3][s] = musGenPick(high);
-        }
-    } else if (style === 'arpeggio') {
-        const arp = scale.slice(0, Math.min(6, scale.length));
-        for (let s = 0; s < steps; s++) {
-            const note = arp[s % arp.length];
-            grid[0][s] = note;
-            if (nCh > 1 && s % 2 === 0) grid[1][s] = arp[(s + 2) % arp.length];
-            if (nCh > 2 && Math.random() < 0.3) grid[2][s] = musGenPick(low);
-        }
-        for (let c = 3; c < nCh; c++) {
-            for (let s = 0; s < steps; s++) {
-                if (Math.random() < 0.15) grid[c][s] = musGenPick(scale);
-            }
-        }
-    } else if (style === 'melody') {
-        let note = musGenPick(scale);
-        for (let s = 0; s < steps; s++) {
-            if (Math.random() < 0.65) {
-                const idx = scale.indexOf(note);
-                const step = (Math.random() < 0.7 ? 1 : 2) * (Math.random() < 0.5 ? -1 : 1);
-                const ni = Math.min(scale.length - 1, Math.max(0, (idx < 0 ? 0 : idx) + step));
-                note = scale[ni];
-                grid[0][s] = note;
-            }
-        }
-        // soft harmony / rhythm on other channels
-        for (let c = 1; c < nCh; c++) {
-            for (let s = 0; s < steps; s++) {
-                if (c === 1 && s % 4 === 0) grid[c][s] = musGenPick(low);
-                else if (Math.random() < density * 0.25) grid[c][s] = musGenPick(scale);
-            }
-        }
-    } else {
-        // sparse / dense generic
-        for (let c = 0; c < nCh; c++) {
-            const pool = c === 0 ? low : (c === 1 ? mid : scale);
-            for (let s = 0; s < steps; s++) {
-                if (Math.random() < density) grid[c][s] = musGenPick(pool);
-            }
-        }
-    }
-
-    musEd.channels = grid;
-    // mild BPM variety
-    const bpmEl = document.getElementById('mus-bpm');
-    if (bpmEl && Math.random() < 0.5) {
-        const bpms = [90, 100, 110, 120, 128, 140, 150];
-        const b = musGenPick(bpms);
-        bpmEl.value = b;
-        musEd.bpm = b;
-    }
-    renderMusicGrid();
-    syncMusicFromEditorLive();
-    if (!musicState.active) {
-        // auto-preview so user hears it
-        try { previewMusicEditor(); } catch (_) {}
-    } else if (musicState.lastPlayedStep >= 0) {
-        updateMusicLiveBar(musicState.lastPlayedStep);
-    }
 }
 
 function isMusicPlaying() {
@@ -7112,128 +5842,15 @@ const musEd = {
     name: '',
     bpm: 120,
     steps: 16,
-    channelCount: 10,
     wave: 'square',
-    channels: null, // channelCount x steps of note strings or ''
+    channels: null, // 4 x steps of note strings or ''
     paintNote: 'C4',
 };
 
 const MUS_NOTES = ['', 'C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'];
 
-function musicEmptyGrid(steps, chCount) {
-    const n = chCount != null ? chCount : (musEd.channelCount || MUS_CHANNEL_COUNT);
-    return Array.from({ length: n }, () => Array(steps).fill(''));
-}
-
-function refreshMusicLimitUI() {
-    const maxCh = musicMaxChannels();
-    const maxSt = musicMaxSteps();
-    const chSel = document.getElementById('mus-channels');
-    const stSel = document.getElementById('mus-steps');
-    if (chSel) {
-        Array.from(chSel.options).forEach(opt => {
-            const v = parseInt(opt.value, 10);
-            const locked = v > maxCh;
-            opt.disabled = locked;
-            // keep star label for pro tiers
-        });
-        if (parseInt(chSel.value, 10) > maxCh) chSel.value = String(maxCh);
-    }
-    if (stSel) {
-        Array.from(stSel.options).forEach(opt => {
-            const v = parseInt(opt.value, 10);
-            opt.disabled = v > maxSt;
-        });
-        if (parseInt(stSel.value, 10) > maxSt) stSel.value = String(maxSt);
-    }
-    const hint = document.getElementById('mus-limit-hint');
-    if (hint) {
-        if (typeof isPro === 'function' && isPro()) {
-            hint.innerHTML = '<b>Pro</b>: up to ' + MUS_PRO_MAX_CHANNELS + ' channels × ' + MUS_PRO_MAX_STEPS + ' steps';
-        } else {
-            hint.innerHTML = 'Free: up to <b>' + MUS_FREE_MAX_CHANNELS + '</b> channels × <b>' + MUS_FREE_MAX_STEPS + '</b> steps · <span style="color:var(--accent-color);cursor:pointer;font-weight:700" onclick="openSubscriptionInfo()">Pro unlocks more</span>';
-        }
-    }
-}
-
-function requireMusicProFor(nChannels, nSteps) {
-    const needPro = (nChannels > MUS_FREE_MAX_CHANNELS) || (nSteps > MUS_FREE_MAX_STEPS);
-    if (!needPro) return true;
-    if (typeof isPro === 'function' && isPro()) return true;
-    openSubscriptionInfo();
-    return false;
-}
-
-/** Hot-reload playing pattern from the editor without restarting the step clock. */
-function syncMusicFromEditorLive() {
-    if (!musicState.active) return;
-    if (!document.getElementById('music-editor-view')?.classList.contains('active')) return;
-    const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || musEd.bpm;
-    const wave = (document.getElementById('mus-wave') || {}).value || musEd.wave;
-    const steps = musEd.steps;
-    const nCh = musEd.channelCount || (musEd.channels && musEd.channels.length) || MUS_CHANNEL_COUNT;
-    const channels = [];
-    const waves = [];
-    for (let c = 0; c < nCh; c++) {
-        const row = (musEd.channels && musEd.channels[c]) || [];
-        channels[c] = normalizeChannel(
-            row.map(n => (n ? noteToFreq(n) : 0)),
-            steps
-        );
-        waves[c] = wave || 'square';
-    }
-    musicState.bpm = Math.max(40, Math.min(240, bpm));
-    musicState.wave = wave === 'custom' ? 'square' : wave;
-    musicState.waves = waves.map(() => (wave === 'custom' ? (musSynth.baseWave || 'square') : wave));
-    musicState.synth = getActiveSynthParams();
-    if (musicState.steps !== steps) {
-        musicState.steps = steps;
-        if (musicState.step >= steps) musicState.step = 0;
-    }
-    musicState.channels = channels;
-}
-
-function updateMusicLiveBar(stepIdx) {
-    const stepEl = document.getElementById('mus-live-step');
-    const notesEl = document.getElementById('mus-live-notes');
-    if (!stepEl || !notesEl) return;
-    if (!musicState.active || stepIdx == null || stepIdx < 0) {
-        stepEl.textContent = '—';
-        notesEl.innerHTML = '<span class="mus-live-empty">Press ▶ Play to hear notes live</span>';
-        return;
-    }
-    stepEl.textContent = (stepIdx + 1) + ' / ' + musicState.steps;
-    const chips = [];
-    const nCh = (musicState.channels && musicState.channels.length) || 0;
-    const ed = (document.getElementById('music-editor-view')?.classList.contains('active') && musEd.channels)
-        ? musEd.channels : null;
-    for (let c = 0; c < nCh; c++) {
-        let label = '';
-        if (ed && ed[c]) {
-            label = ed[c][stepIdx] || '';
-        } else {
-            const cell = musicState.channels[c] && musicState.channels[c][stepIdx];
-            if (typeof cell === 'object' && cell && cell.f) label = Math.round(cell.f) + 'Hz';
-            else if (typeof cell === 'number' && cell > 0) label = Math.round(cell) + 'Hz';
-        }
-        if (label) {
-            const col = (typeof musChannelColor === 'function') ? musChannelColor(c) : 'var(--accent-color)';
-            chips.push('<span class="mus-live-chip" title="Ch' + (c + 1) + '" style="background:' + col + ';border-color:' + col + '">Ch' + (c + 1) + ' ' + label + '</span>');
-        }
-    }
-    notesEl.innerHTML = chips.length
-        ? chips.join('')
-        : '<span class="mus-live-empty">Rest (no notes this step)</span>';
-}
-
-function updateMusicPlayhead(stepIdx) {
-    const grid = document.getElementById('mus-grid');
-    if (!grid) return;
-    grid.querySelectorAll('.mus-cell.playhead').forEach(el => el.classList.remove('playhead'));
-    if (stepIdx == null || stepIdx < 0 || !musicState.active) return;
-    grid.querySelectorAll('.mus-cell[data-step="' + stepIdx + '"]').forEach(el => {
-        el.classList.add('playhead');
-    });
+function musicEmptyGrid(steps) {
+    return [0,1,2,3].map(() => Array(steps).fill(''));
 }
 
 function openMusicEditor(existingName) {
@@ -7242,89 +5859,30 @@ function openMusicEditor(existingName) {
     const map = getProjectMusicMap(currentProjectName);
     if (existingName && map[existingName]) {
         const p = map[existingName];
-        let steps = p.steps || 16;
-        let loaded = (p.channels || []).map(ch => {
-            const row = Array(steps).fill('');
-            for (let i = 0; i < steps; i++) row[i] = (ch && ch[i]) || '';
+        musEd.bpm = p.bpm || 120;
+        musEd.steps = p.steps || 16;
+        musEd.wave = p.wave || 'square';
+        musEd.channels = (p.channels || musicEmptyGrid(musEd.steps)).map(ch => {
+            const row = Array(musEd.steps).fill('');
+            for (let i = 0; i < musEd.steps; i++) row[i] = (ch && ch[i]) || '';
             return row;
         });
-        if (!loaded.length) loaded = musicEmptyGrid(steps, 10);
-        let chCount = loaded.length;
-        // Clamp to plan limits (still allow opening, but trim for free)
-        if (!isPro()) {
-            if (chCount > MUS_FREE_MAX_CHANNELS) {
-                loaded = loaded.slice(0, MUS_FREE_MAX_CHANNELS);
-                chCount = MUS_FREE_MAX_CHANNELS;
-            }
-            if (steps > MUS_FREE_MAX_STEPS) {
-                steps = MUS_FREE_MAX_STEPS;
-                loaded = loaded.map(ch => ch.slice(0, steps));
-            }
-        } else {
-            chCount = Math.min(chCount, MUS_PRO_MAX_CHANNELS);
-            steps = Math.min(steps, MUS_PRO_MAX_STEPS);
-        }
-        musEd.bpm = p.bpm || 120;
-        musEd.steps = steps;
-        musEd.wave = p.wave || 'square';
-        musEd.synth = p.synth || null;
-        if (p.synth && p.synth.custom) musEd.wave = 'custom';
-        musEd.channelCount = chCount;
-        musEd.channels = loaded;
     } else {
         musEd.bpm = 120;
         musEd.steps = 16;
-        musEd.channelCount = 10;
         musEd.wave = 'square';
-        musEd.channels = musicEmptyGrid(16, 10);
+        musEd.channels = musicEmptyGrid(16);
     }
     const title = document.getElementById('music-editor-title');
     if (title) title.textContent = musEd.name || 'New pattern';
     const bpm = document.getElementById('mus-bpm');
     if (bpm) bpm.value = musEd.bpm;
-    refreshMusicLimitUI();
     const st = document.getElementById('mus-steps');
-    if (st) {
-        // ensure option exists for current steps
-        if (![...st.options].some(o => o.value === String(musEd.steps))) {
-            const o = document.createElement('option');
-            o.value = String(musEd.steps);
-            o.textContent = String(musEd.steps);
-            st.appendChild(o);
-        }
-        st.value = String(musEd.steps);
-    }
-    const ch = document.getElementById('mus-channels');
-    if (ch) {
-        if (![...ch.options].some(o => o.value === String(musEd.channelCount))) {
-            const o = document.createElement('option');
-            o.value = String(musEd.channelCount);
-            o.textContent = String(musEd.channelCount);
-            ch.appendChild(o);
-        }
-        ch.value = String(musEd.channelCount);
-    }
+    if (st) st.value = String(musEd.steps);
     const wv = document.getElementById('mus-wave');
-    if (wv) {
-        const w = musEd.wave || 'square';
-        if (w === 'custom' || (musEd.synth && musEd.synth.custom)) wv.value = 'custom';
-        else wv.value = w;
-    }
-    if (musEd.synth) {
-        ['pitch','length','volume','slide','noise','echo'].forEach(k => {
-            if (musEd.synth[k] == null) return;
-            const el = document.getElementById('mus-syn-' + k);
-            if (el) el.value = musEd.synth[k];
-            const lab = document.getElementById('mus-syn-' + k + '-v');
-            if (lab) lab.textContent = String(musEd.synth[k]);
-            musSynth[k] = musEd.synth[k];
-        });
-    }
-    onMusWaveChange();
+    if (wv) wv.value = musEd.wave;
     renderMusicNoteBar();
     renderMusicGrid();
-    ensureAudio();
-    startMusWaveVisualizer();
     switchView('music-editor-view');
 }
 
@@ -7335,46 +5893,15 @@ function closeMusicEditor() {
 
 function musicEditorResizeSteps() {
     const st = document.getElementById('mus-steps');
-    let n = parseInt(st && st.value, 10) || 16;
-    if (!requireMusicProFor(musEd.channelCount || 10, n)) {
-        if (st) st.value = String(musEd.steps);
-        refreshMusicLimitUI();
-        return;
-    }
-    n = clampMusicSteps(n);
-    if (st) st.value = String(n);
+    const n = Math.max(4, Math.min(32, parseInt(st && st.value, 10) || 16));
     const old = musEd.channels || musicEmptyGrid(n);
-    const chCount = musEd.channelCount || old.length || 10;
     musEd.steps = n;
-    musEd.channels = Array.from({ length: chCount }, (_, c) => {
+    musEd.channels = [0,1,2,3].map(c => {
         const row = Array(n).fill('');
         for (let i = 0; i < n; i++) row[i] = (old[c] && old[c][i]) || '';
         return row;
     });
     renderMusicGrid();
-    syncMusicFromEditorLive();
-}
-
-function musicEditorResizeChannels() {
-    const chSel = document.getElementById('mus-channels');
-    let n = parseInt(chSel && chSel.value, 10) || 10;
-    if (!requireMusicProFor(n, musEd.steps || 16)) {
-        if (chSel) chSel.value = String(musEd.channelCount || 10);
-        refreshMusicLimitUI();
-        return;
-    }
-    n = clampMusicChannels(n);
-    if (chSel) chSel.value = String(n);
-    const steps = musEd.steps || 16;
-    const old = musEd.channels || musicEmptyGrid(steps, n);
-    musEd.channelCount = n;
-    musEd.channels = Array.from({ length: n }, (_, c) => {
-        const row = Array(steps).fill('');
-        for (let i = 0; i < steps; i++) row[i] = (old[c] && old[c][i]) || '';
-        return row;
-    });
-    renderMusicGrid();
-    syncMusicFromEditorLive();
 }
 
 function renderMusicNoteBar() {
@@ -7395,53 +5922,23 @@ function renderMusicNoteBar() {
     });
 }
 
-const MUS_CHANNEL_COLORS = [
-    '#8b5cf6', '#22c55e', '#3b82f6', '#f59e0b', '#f43f5e',
-    '#14b8a6', '#e879f9', '#84cc16', '#38bdf8', '#fb923c',
-    '#a78bfa', '#4ade80', '#60a5fa', '#fbbf24', '#fb7185', '#2dd4bf'
-];
-
-function musChannelColor(c) {
-    return MUS_CHANNEL_COLORS[c % MUS_CHANNEL_COLORS.length];
-}
-
 function renderMusicGrid() {
     const grid = document.getElementById('mus-grid');
     if (!grid || !musEd.channels) return;
     const steps = musEd.steps;
-    const nCh = musEd.channelCount || musEd.channels.length || 10;
-    musEd.channelCount = nCh;
-    while (musEd.channels.length < nCh) {
-        musEd.channels.push(Array(steps).fill(''));
-    }
-    if (musEd.channels.length > nCh) musEd.channels = musEd.channels.slice(0, nCh);
-    // Compact cells: label 36px + 26px steps
-    grid.style.gridTemplateColumns = '36px repeat(' + steps + ', 30px)';
+    grid.style.gridTemplateColumns = '52px repeat(' + steps + ', 36px)';
     grid.innerHTML = '';
-    const playStep = (musicState.active && musicState.lastPlayedStep >= 0)
-        ? musicState.lastPlayedStep : -1;
-    for (let c = 0; c < nCh; c++) {
-        if (!musEd.channels[c]) musEd.channels[c] = Array(steps).fill('');
-        const color = musChannelColor(c);
+    for (let c = 0; c < 4; c++) {
         const lab = document.createElement('div');
         lab.className = 'mus-row-label';
-        lab.textContent = String(c + 1);
-        lab.title = 'Channel ' + (c + 1);
-        lab.style.setProperty('--ch-color', color);
-        lab.style.color = color;
+        lab.textContent = 'Ch' + (c + 1);
         grid.appendChild(lab);
         for (let s = 0; s < steps; s++) {
             const cell = document.createElement('button');
             cell.type = 'button';
             const val = musEd.channels[c][s] || '';
-            cell.className = 'mus-cell' + (val ? ' on' : '') + (s === playStep ? ' playhead' : '');
-            // Full note name (C3, D4…) so octaves stay distinct
+            cell.className = 'mus-cell' + (val ? ' on' : '');
             cell.textContent = val || '';
-            cell.title = val ? ('Ch' + (c + 1) + ' · ' + val) : ('Ch' + (c + 1) + ' · step ' + (s + 1));
-            cell.style.setProperty('--ch-color', color);
-            if (!val) {
-                cell.style.borderColor = color + '33';
-            }
             cell.dataset.ch = c;
             cell.dataset.step = s;
             cell.onclick = () => {
@@ -7454,10 +5951,6 @@ function renderMusicGrid() {
                     musEd.channels[c][s] = musEd.paintNote;
                 }
                 renderMusicGrid();
-                syncMusicFromEditorLive();
-                if (musicState.active && musicState.lastPlayedStep >= 0) {
-                    updateMusicLiveBar(musicState.lastPlayedStep);
-                }
             };
             grid.appendChild(cell);
         }
@@ -7466,14 +5959,12 @@ function renderMusicGrid() {
 
 function musicEditorSpec() {
     const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || musEd.bpm;
-    let wave = (document.getElementById('mus-wave') || {}).value || musEd.wave;
+    const wave = (document.getElementById('mus-wave') || {}).value || musEd.wave;
     const steps = musEd.steps;
     const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch =>
         ch.map(n => n ? noteToFreq(n) : 0)
     );
-    const synth = getActiveSynthParams();
-    if (wave === 'custom') wave = synth.wave || 'square';
-    return { bpm, wave, steps, loop: true, channels, synth };
+    return { bpm, wave, steps, loop: true, channels };
 }
 
 function normalizeMusicName(name) {
@@ -7501,7 +5992,6 @@ function previewMusicEditor() {
     const spec = musicEditorSpec();
     spec.vol = 0.1;
     startMusic(spec);
-    updateMusicPlayButton();
 }
 
 function saveMusicFromEditor() {
@@ -7514,15 +6004,11 @@ function saveMusicFromEditor() {
     name = normalizeMusicName(name);
     if (!name) return;
     const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || 120;
-    let wave = (document.getElementById('mus-wave') || {}).value || 'square';
+    const wave = (document.getElementById('mus-wave') || {}).value || 'square';
     const steps = musEd.steps;
     const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch => ch.slice());
-    const synth = getActiveSynthParams();
-    if (wave === 'custom') {
-        musEd.synth = synth;
-    }
     const map = getProjectMusicMap(currentProjectName);
-    map[name] = { bpm, wave, steps, channels, synth: wave === 'custom' ? synth : undefined };
+    map[name] = { bpm, wave, steps, channels };
     saveProjectMusic();
     musEd.name = name;
     const title = document.getElementById('music-editor-title');
@@ -7553,8 +6039,7 @@ startMusic = function(spec) {
             steps: p.steps || 16,
             loop: true,
             vol: 0.08,
-            channels: channels,
-            synth: p.synth || null
+            channels: channels
         };
     }
     if (_startMusicRaw) return _startMusicRaw(spec);
@@ -7590,241 +6075,6 @@ function clearConsole() {
 // ============================================================
 // LUA BINDINGS
 // ============================================================
-
-// ============================================================
-// PARTICLE FX (auto-managed — no user arrays needed)
-// ============================================================
-const fxParticles = [];
-const FX_MAX = 400;
-
-function fxClear() {
-    fxParticles.length = 0;
-}
-
-function fxSpawn(opts) {
-    if (!opts) return;
-    const n = Math.max(1, Math.min(80, Math.floor(Number(opts.count) || 12)));
-    const x = Number(opts.x) || 0;
-    const y = Number(opts.y) || 0;
-    const color = opts.color || '#fff';
-    const life = Math.max(0.05, Number(opts.life) || 0.55);
-    const speed = Math.max(0, Number(opts.speed) || 120);
-    const size = Math.max(0.5, Number(opts.size) || 3);
-    const gravity = opts.gravity != null ? Number(opts.gravity) : 280;
-    const spread = opts.spread != null ? Number(opts.spread) : Math.PI * 2;
-    const angle = opts.angle != null ? Number(opts.angle) : 0;
-    const drag = opts.drag != null ? Number(opts.drag) : 0.92;
-    const shape = opts.shape || 'circle';
-    for (let i = 0; i < n; i++) {
-        if (fxParticles.length >= FX_MAX) fxParticles.shift();
-        const a = angle + (Math.random() - 0.5) * spread;
-        const sp = speed * (0.35 + Math.random() * 0.9);
-        fxParticles.push({
-            x: x, y: y,
-            vx: Math.cos(a) * sp,
-            vy: Math.sin(a) * sp,
-            life: life * (0.6 + Math.random() * 0.6),
-            maxLife: life,
-            size: size * (0.5 + Math.random() * 0.9),
-            color: color,
-            gravity: gravity,
-            drag: drag,
-            shape: shape,
-            rot: Math.random() * Math.PI * 2,
-            spin: (Math.random() - 0.5) * 10
-        });
-    }
-}
-
-function fxBurst(x, y, color, count) {
-    fxSpawn({
-        x: x, y: y, color: color || '#ff8844',
-        count: count != null ? count : 16,
-        life: 0.5, speed: 160, size: 3.5, gravity: 220,
-        spread: Math.PI * 2, shape: 'circle'
-    });
-}
-
-function fxSpark(x, y, color, count) {
-    fxSpawn({
-        x: x, y: y, color: color || '#ffe566',
-        count: count != null ? count : 10,
-        life: 0.35, speed: 220, size: 2.2, gravity: 120,
-        spread: Math.PI * 2, shape: 'spark'
-    });
-}
-
-function fxDust(x, y, color, count) {
-    fxSpawn({
-        x: x, y: y, color: color || '#c4b5a0',
-        count: count != null ? count : 8,
-        life: 0.7, speed: 50, size: 4, gravity: -20,
-        spread: Math.PI * 1.2, angle: -Math.PI / 2, drag: 0.88, shape: 'circle'
-    });
-}
-
-function fxSmoke(x, y, color, count) {
-    fxSpawn({
-        x: x, y: y, color: color || '#8899aa',
-        count: count != null ? count : 6,
-        life: 1.1, speed: 35, size: 5, gravity: -40,
-        spread: 0.9, angle: -Math.PI / 2, drag: 0.95, shape: 'circle'
-    });
-}
-
-function fxConfetti(x, y, color, count) {
-    const colors = Array.isArray(color) ? color : null;
-    const n = count != null ? count : 20;
-    for (let i = 0; i < n; i++) {
-        fxSpawn({
-            x: x, y: y,
-            color: colors ? colors[i % colors.length] : (color || '#8b5cf6'),
-            count: 1, life: 0.9, speed: 140, size: 3.5, gravity: 320,
-            spread: Math.PI * 2, shape: 'square'
-        });
-    }
-}
-
-function fxUpdate(dt) {
-    if (!fxParticles.length) return;
-    for (let i = fxParticles.length - 1; i >= 0; i--) {
-        const p = fxParticles[i];
-        p.life -= dt;
-        if (p.life <= 0) {
-            fxParticles.splice(i, 1);
-            continue;
-        }
-        p.vx *= Math.pow(p.drag, dt * 60);
-        p.vy *= Math.pow(p.drag, dt * 60);
-        p.vy += p.gravity * dt;
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.rot += p.spin * dt;
-    }
-}
-
-function fxDraw() {
-    if (!fxParticles.length || typeof ctx === 'undefined' || !ctx) return;
-    for (let i = 0; i < fxParticles.length; i++) {
-        const p = fxParticles[i];
-        const t = Math.max(0, p.life / p.maxLife);
-        const alpha = t * t;
-        const s = p.size * (0.6 + 0.4 * t);
-        ctx.globalAlpha = Math.min(1, alpha);
-        ctx.fillStyle = p.color;
-        if (p.shape === 'square') {
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.rotate(p.rot);
-            ctx.fillRect(-s, -s, s * 2, s * 2);
-            ctx.restore();
-        } else if (p.shape === 'spark') {
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.rotate(Math.atan2(p.vy, p.vx) || 0);
-            ctx.fillRect(-s * 1.8, -s * 0.35, s * 3.6, s * 0.7);
-            ctx.restore();
-        } else {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, s, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-    ctx.globalAlpha = 1;
-}
-
-
-// ============================================================
-// GAME SAVE DATA (player progress — not project source)
-// Per-project localStorage. Independent of cloud project sync.
-// ============================================================
-const GAMEDATA_PREFIX = 'luax_gamedata_v1:';
-
-function gameDataStorageKey(projectName) {
-    const proj = projectName || currentProjectName || '_default';
-    let account = '';
-    try {
-        if (typeof currentAccountEmail === 'function') account = currentAccountEmail() || '';
-        else if (typeof googleProfile !== 'undefined' && googleProfile && googleProfile.email)
-            account = String(googleProfile.email).toLowerCase();
-    } catch (_) {}
-    // Scope by account when signed in so devices/users don't collide
-    return GAMEDATA_PREFIX + (account ? account + '::' : '') + proj;
-}
-
-function loadGameDataStore(projectName) {
-    try {
-        const raw = localStorage.getItem(gameDataStorageKey(projectName));
-        if (!raw) return {};
-        const data = JSON.parse(raw);
-        return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
-    } catch (_) {
-        return {};
-    }
-}
-
-function saveGameDataStore(store, projectName) {
-    try {
-        localStorage.setItem(gameDataStorageKey(projectName), JSON.stringify(store || {}));
-        return true;
-    } catch (e) {
-        console.warn('Game data save failed', e);
-        return false;
-    }
-}
-
-function gameDataSave(key, value) {
-    if (key == null || key === '') return false;
-    const k = String(key);
-    const store = loadGameDataStore();
-    store[k] = value;
-    return saveGameDataStore(store);
-}
-
-function gameDataLoad(key, defaultValue) {
-    if (key == null || key === '') {
-        return defaultValue !== undefined ? defaultValue : null;
-    }
-    const store = loadGameDataStore();
-    const k = String(key);
-    if (!Object.prototype.hasOwnProperty.call(store, k)) {
-        return defaultValue !== undefined ? defaultValue : null;
-    }
-    return store[k];
-}
-
-function gameDataHas(key) {
-    if (key == null || key === '') return false;
-    const store = loadGameDataStore();
-    return Object.prototype.hasOwnProperty.call(store, String(key));
-}
-
-function gameDataRemove(key) {
-    if (key == null || key === '') return false;
-    const store = loadGameDataStore();
-    const k = String(key);
-    if (!Object.prototype.hasOwnProperty.call(store, k)) return false;
-    delete store[k];
-    return saveGameDataStore(store);
-}
-
-function gameDataClear() {
-    try {
-        localStorage.removeItem(gameDataStorageKey());
-        return true;
-    } catch (_) {
-        return false;
-    }
-}
-
-function gameDataKeys() {
-    return Object.keys(loadGameDataStore());
-}
-
-function gameDataAll() {
-    return loadGameDataStore();
-}
-
 window.LuaDeckAPI = {
     gfx: {
         cls(c) {
@@ -8154,28 +6404,6 @@ window.LuaDeckAPI = {
         playing() { return isMusicPlaying(); },
         note(name) { return noteToFreq(name); },
     },
-    fx: {
-        burst(x, y, color, count) { fxBurst(x, y, color, count); },
-        spark(x, y, color, count) { fxSpark(x, y, color, count); },
-        dust(x, y, color, count) { fxDust(x, y, color, count); },
-        smoke(x, y, color, count) { fxSmoke(x, y, color, count); },
-        confetti(x, y, color, count) { fxConfetti(x, y, color, count); },
-        spawn(opts) { fxSpawn(opts); },
-        clear() { fxClear(); },
-        count() { return fxParticles.length; },
-    },
-    data: {
-        save(key, value) { return gameDataSave(key, value); },
-        load(key, defaultValue) {
-            const v = gameDataLoad(key, defaultValue !== undefined ? defaultValue : null);
-            return v;
-        },
-        has(key) { return gameDataHas(key); },
-        remove(key) { return gameDataRemove(key); },
-        clear() { return gameDataClear(); },
-        keys() { return gameDataKeys(); },
-        all() { return gameDataAll(); },
-    },
     sys: {
         getFileContent(filename) {
             if (!currentProjectName) return null;
@@ -8279,100 +6507,13 @@ mouse = setmetatable({}, {
 
 sfx = {
     beep = function(freq, dur, typ) api.sfx:beep(freq, dur, typ) end,
-    -- string = saved pattern name ("theme" / "theme.music")
-    -- table  = inline { bpm, wave, steps, channels / [1]=row, ... }
     music = function(opts)
-        if type(opts) == "string" then
-            api.sfx:music(opts)
-            return
-        end
         if type(opts) ~= "table" then return end
         api.sfx:music(tojs(opts))
     end,
     stop = function() api.sfx:stop() end,
     playing = function() return api.sfx:playing() end,
     note = function(name) return api.sfx:note(tostring(name or "")) end,
-}
-
--- Particle effects (auto update + draw — no arrays needed)
-fx = {
-    burst = function(x, y, color, count) api.fx:burst(x, y, color, count) end,
-    spark = function(x, y, color, count) api.fx:spark(x, y, color, count) end,
-    dust  = function(x, y, color, count) api.fx:dust(x, y, color, count) end,
-    smoke = function(x, y, color, count) api.fx:smoke(x, y, color, count) end,
-    confetti = function(x, y, color, count) api.fx:confetti(x, y, color, count) end,
-    spawn = function(opts)
-        if type(opts) ~= "table" then return end
-        api.fx:spawn(tojs(opts))
-    end,
-    clear = function() api.fx:clear() end,
-    count = function() return api.fx:count() end,
-}
-
--- Persistent player save data (per project, not source code)
--- data.save("highscore", 500)
--- local hs = data.load("highscore", 0)
-data = {
-    save = function(key, value)
-        -- tables → plain JS objects/arrays for JSON storage
-        if type(value) == "table" then
-            return api.data:save(tostring(key), tojs(value))
-        end
-        return api.data:save(tostring(key), value)
-    end,
-    load = function(key, defaultValue)
-        local v = api.data:load(tostring(key), nil)
-        if v == nil or v == js.null then
-            return defaultValue
-        end
-        -- Convert JS arrays/objects back to Lua tables
-        local function fromjs(val)
-            if val == nil or val == js.null then return nil end
-            local t = type(val)
-            -- Fengari may expose JS objects with special type
-            if t ~= "userdata" and t ~= "table" and t ~= "object" then
-                return val
-            end
-            -- Try array
-            local ok, len = pcall(function() return tonumber(val.length) end)
-            if ok and len and len >= 0 and val[0] ~= nil then
-                local arr = {}
-                for i = 0, len - 1 do
-                    arr[i + 1] = fromjs(val[i])
-                end
-                return arr
-            end
-            -- Try object keys via JS Object.keys if available
-            local ok2, keys = pcall(function()
-                return js.global.Object:keys(val)
-            end)
-            if ok2 and keys then
-                local n = tonumber(keys.length) or 0
-                if n > 0 then
-                    local obj = {}
-                    for i = 0, n - 1 do
-                        local k = keys[i]
-                        obj[k] = fromjs(val[k])
-                    end
-                    return obj
-                end
-            end
-            return val
-        end
-        return fromjs(v)
-    end,
-    has = function(key) return api.data:has(tostring(key)) end,
-    remove = function(key) return api.data:remove(tostring(key)) end,
-    clear = function() return api.data:clear() end,
-    keys = function()
-        local arr = api.data:keys()
-        local t = {}
-        if arr then
-            local n = tonumber(arr.length) or 0
-            for i = 0, n - 1 do t[#t + 1] = arr[i] end
-        end
-        return t
-    end,
 }
 
 dt = 0.016
@@ -8521,9 +6662,7 @@ function gameLoop(timestamp) {
     // clear look deltas after Lua has read them
     lookDeltaX = 0;
     lookDeltaY = 0;
-    try { fxUpdate(dt); } catch (_) {}
     if (!callLua('_draw')) return;
-    try { fxDraw(); } catch (_) {}
 
     for (let i = 0; i < 8; i++) btnPrevState[i] = btnState[i];
     loopId = requestAnimationFrame(gameLoop);
@@ -8567,7 +6706,6 @@ async function startPlayMode() {
     document.getElementById('console-panel').classList.remove('open');
 
     ensureAudio();
-    try { fxClear(); } catch (_) {}
 
     try {
         if (typeof fengari === 'undefined') throw new Error('Fengari not loaded');
@@ -8646,7 +6784,6 @@ function stopPlayMode() {
     isPlaying = false;
     isPaused = false;
     try { stopMusic(); } catch (_) {}
-    try { fxClear(); } catch (_) {}
     if (loopId) { cancelAnimationFrame(loopId); loopId = null; }
     btnState.fill(false);
     resetStick();
@@ -9137,213 +7274,43 @@ function spendCredits(action, opts) {
 
 function openSubscriptionInfo() {
     closeAccountMenu();
-    try { closeModal(); } catch (_) {}
-    // Remember where to return
-    const active = document.querySelector('.view.active');
-    window._proReturnView = (active && active.id && active.id !== 'pro-view')
-        ? active.id
-        : 'projects-view';
-    renderProPage();
-    switchView('pro-view');
-    try {
-        const sc = document.getElementById('pro-scroll-body');
-        if (sc) sc.scrollTop = 0;
-    } catch (_) {}
-}
-
-function closeProView() {
-    const back = window._proReturnView || 'projects-view';
-    window._proReturnView = null;
-    // Prefer files/music if still in a project context
-    if (back === 'pro-view' || !document.getElementById(back)) {
-        switchView('projects-view');
-    } else {
-        switchView(back);
-    }
-}
-
-function renderProPage() {
-    const body = document.getElementById('pro-scroll-body');
-    const title = document.getElementById('pro-page-title');
-    if (!body) return;
     const pro = isPro();
     const stripeReady = !!STRIPE_PAYMENT_LINK;
-    if (title) title.textContent = pro ? 'Your Pro plan' : 'Upgrade to Pro';
-
-    const cloudCost = (typeof CREDIT_COSTS !== 'undefined' && CREDIT_COSTS.cloud_save) || 2;
-    const exportCost = (typeof CREDIT_COSTS !== 'undefined' && CREDIT_COSTS.export) || 2;
-    const freeCred = (typeof CREDIT_WEEKLY_FREE !== 'undefined') ? CREDIT_WEEKLY_FREE : 25;
-    const proCred = (typeof CREDIT_WEEKLY_PRO !== 'undefined') ? CREDIT_WEEKLY_PRO : 250;
-    const freeCh = (typeof MUS_FREE_MAX_CHANNELS !== 'undefined') ? MUS_FREE_MAX_CHANNELS : 10;
-    const freeSt = (typeof MUS_FREE_MAX_STEPS !== 'undefined') ? MUS_FREE_MAX_STEPS : 16;
-    const proCh = (typeof MUS_PRO_MAX_CHANNELS !== 'undefined') ? MUS_PRO_MAX_CHANNELS : 16;
-    const proSt = (typeof MUS_PRO_MAX_STEPS !== 'undefined') ? MUS_PRO_MAX_STEPS : 64;
 
     if (pro) {
-        const st = loadProStatus() || {};
-        const email = currentAccountEmail() || st.email || '';
-        const since = st.since ? new Date(st.since).toLocaleDateString() : '';
-        const until = st.activeUntil ? new Date(st.activeUntil).toLocaleDateString() : '';
-        body.innerHTML = `
-            <div class="pro-status-card">
-                <h2>✓ LuaX Pro is active</h2>
-                <p>${email ? email + '<br>' : ''}${since ? 'Since ' + since : ''}${until ? ' · Renews / ends around ' + until : ''}</p>
-            </div>
-            <p class="pro-section-title">Your Pro benefits</p>
-            <div class="pro-benefits">
-                <div class="pro-benefit">
-                    <div class="pro-benefit-ico">⚡</div>
-                    <div>
-                        <h3>${proCred} credits every week</h3>
-                        <p>10× the free plan (${freeCred}/week). Cloud backup (${cloudCost}/hour) and export (${exportCost}) last much longer.</p>
-                    </div>
-                </div>
-                <div class="pro-benefit">
-                    <div class="pro-benefit-ico">🎵</div>
-                    <div>
-                        <h3>Bigger music grids</h3>
-                        <p>Up to <b>${proCh} channels</b> and <b>${proSt} steps</b> (free is ${freeCh}×${freeSt}). Build richer sequences.</p>
-                    </div>
-                </div>
-                <div class="pro-benefit">
-                    <div class="pro-benefit-ico">☁️</div>
-                    <div>
-                        <h3>Faster cloud sync</h3>
-                        <p>Saves push to Drive sooner so projects stay in sync across devices.</p>
-                    </div>
-                </div>
-                <div class="pro-benefit">
-                    <div class="pro-benefit-ico">📦</div>
-                    <div>
-                        <h3>Export without stress</h3>
-                        <p>Higher weekly allowance for project exports — share and back up more often.</p>
-                    </div>
-                </div>
-                <div class="pro-benefit">
-                    <div class="pro-benefit-ico">🎮</div>
-                    <div>
-                        <h3>Everything else stays free</h3>
-                        <p>Editor, play mode, sprite tools, and the engine itself never lock behind Pro.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="pro-actions-row">
-                <button type="button" class="btn btn-primary" onclick="openBillingManage()">Manage billing</button>
-                <button type="button" class="btn btn-danger-outline" onclick="cancelSubscription()">Cancel subscription</button>
-            </div>
-            <p class="pro-cta-note">Billing is handled securely by Stripe. You can also open this from Settings → Billing.</p>
-        `;
+        openModal(
+            'LuaX Pro',
+            `<div style="font-size:0.9rem;line-height:1.45;color:var(--text-color)">
+              <p style="margin:0 0 8px;color:var(--accent-color);font-weight:600">Pro is active on this account.</p>
+              <p style="margin:0 0 12px;color:var(--muted);font-size:0.85rem">${CREDIT_WEEKLY_PRO} credits / week · cloud + export limits raised.</p>
+              <button type="button" class="btn btn-sm btn-block" style="margin-bottom:8px" onclick="closeModal(); openBillingManage();">Manage billing</button>
+              <button type="button" class="btn btn-sm btn-block btn-danger-outline" onclick="closeModal(); cancelSubscription();">Cancel subscription</button>
+              <p style="margin:10px 0 0;font-size:0.75rem;color:var(--muted)">Full billing is also under Settings → Billing.</p>
+            </div>`,
+            'Close',
+            () => {}
+        );
         return;
     }
 
-    body.innerHTML = `
-        <div class="pro-hero">
-            <div class="pro-badge">LuaX Pro</div>
-            <p class="pro-price">€5 <span>/ month</span></p>
-            <p class="pro-tagline">Unlock higher limits. The editor and play engine stay free forever.</p>
-        </div>
-
-        <p class="pro-section-title">Everything you get</p>
-        <div class="pro-benefits">
-            <div class="pro-benefit">
-                <div class="pro-benefit-ico">⚡</div>
-                <div>
-                    <h3>${proCred} credits / week</h3>
-                    <p>Free accounts get ${freeCred}. Pro gives you <b>${proCred}</b> — enough for heavy cloud backup and many exports.</p>
-                </div>
-            </div>
-            <div class="pro-benefit">
-                <div class="pro-benefit-ico">🎵</div>
-                <div>
-                    <h3>Music: ${proCh} channels × ${proSt} steps</h3>
-                    <p>Free tops out at ${freeCh} channels and ${freeSt} steps. Pro unlocks wider grids for complex tracks, random generator patterns, and long loops.</p>
-                </div>
-            </div>
-            <div class="pro-benefit">
-                <div class="pro-benefit-ico">☁️</div>
-                <div>
-                    <h3>Priority cloud backup</h3>
-                    <p>Projects sync to your private Google Drive app folder more often (${cloudCost} credits/hour). Great if you switch devices.</p>
-                </div>
-            </div>
-            <div class="pro-benefit">
-                <div class="pro-benefit-ico">📤</div>
-                <div>
-                    <h3>More project exports</h3>
-                    <p>Each export costs ${exportCost} credits. With ${proCred}/week you can ship builds and backups without running dry mid-week.</p>
-                </div>
-            </div>
-            <div class="pro-benefit">
-                <div class="pro-benefit-ico">🎲</div>
-                <div>
-                    <h3>Full music toolkit</h3>
-                    <p>Random generator, live playhead, 10+ channels, and long step counts — all available under the higher Pro grid limits.</p>
-                </div>
-            </div>
-            <div class="pro-benefit">
-                <div class="pro-benefit-ico">💳</div>
-                <div>
-                    <h3>Simple billing</h3>
-                    <p>Pay with card, Apple Pay, or Google Pay via Stripe. Cancel anytime in the customer portal.</p>
-                </div>
-            </div>
-        </div>
-
-        <p class="pro-section-title">Free vs Pro</p>
-        <table class="pro-compare">
-            <thead>
-                <tr><th>Feature</th><th>Free</th><th>Pro</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Weekly credits</td>
-                    <td>${freeCred}</td>
-                    <td class="hl">${proCred}</td>
-                </tr>
-                <tr>
-                    <td>Music channels</td>
-                    <td>up to ${freeCh}</td>
-                    <td class="hl">up to ${proCh}</td>
-                </tr>
-                <tr>
-                    <td>Music steps</td>
-                    <td>up to ${freeSt}</td>
-                    <td class="hl">up to ${proSt}</td>
-                </tr>
-                <tr>
-                    <td>Cloud backup</td>
-                    <td class="yes">Yes</td>
-                    <td class="yes">Yes · faster</td>
-                </tr>
-                <tr>
-                    <td>Export projects</td>
-                    <td class="yes">Yes</td>
-                    <td class="yes">Yes · more room</td>
-                </tr>
-                <tr>
-                    <td>Code editor &amp; PLAY</td>
-                    <td class="yes">Free</td>
-                    <td class="yes">Free</td>
-                </tr>
-                <tr>
-                    <td>Sprite &amp; music editors</td>
-                    <td class="yes">Free</td>
-                    <td class="yes">Free</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <div class="pro-cta">
-            <button type="button" class="btn btn-primary" id="pro-subscribe-btn"
-                onclick="${stripeReady ? 'startStripeCheckout()' : 'alert(\'Stripe is not configured yet.\')'}">
-                ${stripeReady ? 'Subscribe — €5/mo' : 'Stripe not configured'}
-            </button>
-            <p class="pro-cta-note">
-                Secure checkout opens in Stripe. Apple Pay &amp; Google Pay appear when available.<br>
-                Pro unlocks after payment redirects back to this site.
-            </p>
-        </div>
-    `;
+    openModal(
+        'Upgrade to LuaX Pro',
+        `<div style="font-size:0.9rem;line-height:1.45;color:var(--text-color)">
+          <p style="margin:0 0 10px"><b>€5 / month</b> — engine stays free. Pro raises weekly credits.</p>
+          <p style="margin:0 0 8px;color:var(--muted)">Credits are used for:</p>
+          <ul style="margin:0 0 12px;padding-left:18px;color:var(--muted)">
+            <li>Cloud backup — ${CREDIT_COSTS.cloud_save} credits / hour</li>
+            <li>Export project — ${CREDIT_COSTS.export} credits</li>
+          </ul>
+          <p style="margin:0 0 8px"><b>Free:</b> ${CREDIT_WEEKLY_FREE} / week · <b>Pro:</b> ${CREDIT_WEEKLY_PRO} / week</p>
+          <p style="margin:0;color:var(--muted);font-size:0.8rem">Pay with card, Apple Pay, or Google Pay (via Stripe).</p>
+          ${stripeReady
+            ? '<p style="margin:12px 0 0;font-size:0.8rem;color:var(--muted)">Opens secure Stripe Checkout. Pro unlocks after payment redirects back to this site.</p>'
+            : '<p style="margin:12px 0 0;font-size:0.8rem;color:#ff8a80">Stripe Payment Link not set yet.</p>'}
+        </div>`,
+        stripeReady ? 'Subscribe — €5/mo' : 'Close',
+        () => { if (stripeReady) startStripeCheckout(); }
+    );
 }
 
 const GOOGLE_CLIENT_ID = '996784289780-lrl7mub599dn6eti14h3nvfre2ov6027.apps.googleusercontent.com';
