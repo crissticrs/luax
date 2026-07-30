@@ -6497,5 +6497,17 @@ window.startPlayMode = startPlayMode;
     };
 })();
 </script>
+
+(function(){
+ const b=document.getElementById('btn-run-game');
+ if(b){
+   b.onclick=function(e){
+     if(e){e.preventDefault();e.stopPropagation();}
+     startPlayMode();
+     return false;
+   };
+ }
+})();
+
 </body>
 </html>
