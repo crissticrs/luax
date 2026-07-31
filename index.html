@@ -4209,10 +4209,21 @@ function setupSpriteCanvasInput() {
 
     // pinch: two fingers = zoom + pan (no hand tool needed)
     let pinch = null;
+    // mouse: right-click or middle-click drag = pan
+    let mousePan = null;
 
     const endPinch = () => {
         pinch = null;
+        if (!mousePan) {
+            document.getElementById('spr-canvas-wrap')?.classList.remove('dragging', 'panning');
+        }
+    };
+
+    const endMousePan = () => {
+        mousePan = null;
+        spriteEd._panning = false;
         document.getElementById('spr-canvas-wrap')?.classList.remove('dragging', 'panning');
+        document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
     };
 
     const down = (e) => {
@@ -4234,8 +4245,26 @@ function setupSpriteCanvasInput() {
             return;
         }
 
+        // Right-click (2) or middle-click (1) → pan the canvas on PC
+        if (e.button === 2 || e.button === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            spriteEd.drawing = false;
+            const p = ptrPos(e);
+            mousePan = {
+                startX: p.x,
+                startY: p.y,
+                startPanX: spriteEd.panX || 0,
+                startPanY: spriteEd.panY || 0
+            };
+            spriteEd._panning = true;
+            document.getElementById('sprite-editor-view')?.classList.add('spr-drawing');
+            document.getElementById('spr-canvas-wrap')?.classList.add('dragging', 'panning');
+            return;
+        }
+
         if (e.button != null && e.button !== 0) return;
-        if (pinch) return;
+        if (pinch || mousePan) return;
         e.preventDefault();
         e.stopPropagation();
         const p = ptrPos(e);
@@ -4274,6 +4303,16 @@ function setupSpriteCanvasInput() {
             return;
         }
 
+        // Right / middle mouse pan
+        if (mousePan) {
+            e.preventDefault();
+            const p = ptrPos(e);
+            spriteEd.panX = mousePan.startPanX + (p.x - mousePan.startX);
+            spriteEd.panY = mousePan.startPanY + (p.y - mousePan.startY);
+            redrawSpriteCanvas();
+            return;
+        }
+
         if (pinch) return; // ignore leftover single finger during pinch release
         if (!spriteEd.drawing) return;
         e.preventDefault();
@@ -4285,6 +4324,10 @@ function setupSpriteCanvasInput() {
     const up = (e) => {
         if (e) e.preventDefault();
         if (e && e.touches && e.touches.length >= 2) return;
+        if (mousePan) {
+            endMousePan();
+            return;
+        }
         if (pinch) {
             endPinch();
             document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
