@@ -998,9 +998,11 @@
             grid-template-columns: repeat(10, minmax(18px, 1fr));
             gap: 5px;
             width: 100%;
+            max-width: 420px;
         }
         .spr-swatch {
             width: 100%; min-width: 18px; min-height: 18px;
+            max-width: 36px; max-height: 36px;
             aspect-ratio: 1; border-radius: 8px;
             border: 1.5px solid rgba(255,255,255,0.12);
             cursor: pointer; padding: 0;
@@ -1147,6 +1149,151 @@
             color: var(--accent-color); font-weight: 700; font-size: 0.8rem;
             cursor: pointer; margin-right: 6px;
         }
+
+        /* —— Desktop / wide layout for sprite + music editors —— */
+        @media (min-width: 900px) {
+            #sprite-editor-view .spr-body {
+                padding: 12px 18px 14px;
+                gap: 12px;
+                overflow: hidden;
+            }
+            #sprite-editor-view .spr-row-split {
+                flex-wrap: nowrap;
+                flex-shrink: 0;
+            }
+            #sprite-editor-view .spr-row-split > .spr-card {
+                flex: 0 1 auto;
+            }
+            #sprite-editor-view .spr-tools-card {
+                flex: 1 1 auto;
+                min-width: 280px;
+            }
+            #sprite-editor-view .spr-size-card {
+                flex: 0 0 auto;
+                min-width: 260px;
+            }
+            #sprite-editor-view .spr-color-block-card {
+                flex-shrink: 0;
+            }
+            #sprite-editor-view .spr-paint-grid {
+                grid-template-columns: repeat(10, 28px);
+                gap: 6px;
+                max-width: none;
+                width: auto;
+            }
+            #sprite-editor-view .spr-swatch {
+                width: 28px; height: 28px;
+                min-width: 28px; min-height: 28px;
+                max-width: 28px; max-height: 28px;
+            }
+            #sprite-editor-view .spr-main {
+                flex: 1 1 auto;
+                min-height: 0;
+                gap: 14px;
+            }
+            #sprite-editor-view .spr-canvas-wrap {
+                min-height: 280px;
+                flex: 1 1 auto;
+            }
+            #sprite-editor-view .spr-layers-card {
+                width: 160px;
+            }
+            #sprite-editor-view .spr-bottom-bar {
+                flex-shrink: 0;
+            }
+
+            /* Music editor — larger grid & usable height on PC */
+            #music-editor-view .mus-body {
+                padding: 12px 20px 16px;
+                gap: 12px;
+                max-width: 1100px;
+                margin: 0 auto;
+                width: 100%;
+            }
+            #music-editor-view .mus-header {
+                padding: 12px 20px !important;
+            }
+            #music-editor-view .mus-header .spr-title {
+                font-size: 1.05rem !important;
+            }
+            #music-editor-view .mus-controls {
+                gap: 10px;
+            }
+            #music-editor-view .mus-controls label {
+                font-size: 0.8rem;
+            }
+            #music-editor-view .mus-controls input[type="number"],
+            #music-editor-view .mus-controls select {
+                height: 34px;
+                font-size: 0.85rem;
+                max-width: 90px;
+                padding: 0 8px;
+            }
+            #music-editor-view .mus-controls input[type="number"] {
+                width: 64px; max-width: 64px;
+            }
+            #music-editor-view .mus-btn {
+                height: 34px;
+                padding: 0 14px;
+                font-size: 0.82rem;
+                border-radius: 10px;
+            }
+            #music-editor-view .mus-grid-wrap {
+                max-height: none;
+                flex: 1 1 auto;
+                min-height: 320px;
+                height: min(62vh, 560px);
+                padding: 10px;
+            }
+            #music-editor-view .mus-grid {
+                gap: 3px;
+            }
+            #music-editor-view .mus-cell {
+                width: 42px;
+                height: 34px;
+                border-radius: 6px;
+                font-size: 0.72rem;
+            }
+            #music-editor-view .mus-row-label {
+                width: 48px;
+                height: 34px;
+                font-size: 0.72rem;
+                border-radius: 6px;
+            }
+            #music-editor-view .mus-note-btn {
+                min-width: 36px;
+                height: 32px;
+                font-size: 0.75rem;
+                border-radius: 8px;
+            }
+            #music-editor-view .mus-wave-canvas-wrap {
+                height: 72px;
+            }
+            #music-editor-view .mus-pro-hint {
+                font-size: 0.78rem;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            #sprite-editor-view .spr-body {
+                max-width: 1400px;
+                margin: 0 auto;
+                width: 100%;
+            }
+            #music-editor-view .mus-body {
+                max-width: 1280px;
+            }
+            #music-editor-view .mus-cell {
+                width: 48px;
+                height: 38px;
+                font-size: 0.78rem;
+            }
+            #music-editor-view .mus-row-label {
+                width: 52px;
+                height: 38px;
+            }
+        }
+
         /* Music editor */
         #music-editor-view {
             background: var(--bg-color);
@@ -1354,6 +1501,8 @@
         .mus-grid-wrap {
             overflow: auto; -webkit-overflow-scrolling: touch;
             max-height: min(52vh, 420px);
+            flex: 1 1 auto;
+            min-height: 160px;
             border-radius: 10px;
             border: 1px solid var(--glass-border);
             background: color-mix(in srgb, var(--panel-color) 80%, transparent);
@@ -4483,10 +4632,18 @@ function setupSpriteCanvasInput() {
 
     // pinch: two fingers = zoom + pan (no hand tool needed)
     let pinch = null;
+    // mouse pan: right-click or middle-click drag (desktop)
+    let mousePan = null;
 
     const endPinch = () => {
         pinch = null;
         document.getElementById('spr-canvas-wrap')?.classList.remove('dragging', 'panning');
+    };
+
+    const endMousePan = () => {
+        mousePan = null;
+        document.getElementById('spr-canvas-wrap')?.classList.remove('dragging', 'panning');
+        document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
     };
 
     const down = (e) => {
@@ -4508,8 +4665,25 @@ function setupSpriteCanvasInput() {
             return;
         }
 
+        // Right-click (2) or middle-click (1) → pan on desktop
+        if (e.button === 1 || e.button === 2) {
+            e.preventDefault();
+            e.stopPropagation();
+            spriteEd.drawing = false;
+            const p = ptrPos(e);
+            mousePan = {
+                startX: p.x,
+                startY: p.y,
+                startPanX: spriteEd.panX || 0,
+                startPanY: spriteEd.panY || 0
+            };
+            document.getElementById('sprite-editor-view')?.classList.add('spr-drawing');
+            document.getElementById('spr-canvas-wrap')?.classList.add('dragging', 'panning');
+            return;
+        }
+
         if (e.button != null && e.button !== 0) return;
-        if (pinch) return;
+        if (pinch || mousePan) return;
         e.preventDefault();
         e.stopPropagation();
         const p = ptrPos(e);
@@ -4548,6 +4722,16 @@ function setupSpriteCanvasInput() {
             return;
         }
 
+        // Mouse right/middle drag pan
+        if (mousePan) {
+            e.preventDefault();
+            const p = ptrPos(e);
+            spriteEd.panX = mousePan.startPanX + (p.x - mousePan.startX);
+            spriteEd.panY = mousePan.startPanY + (p.y - mousePan.startY);
+            redrawSpriteCanvas();
+            return;
+        }
+
         if (pinch) return; // ignore leftover single finger during pinch release
         if (!spriteEd.drawing) return;
         e.preventDefault();
@@ -4559,6 +4743,10 @@ function setupSpriteCanvasInput() {
     const up = (e) => {
         if (e) e.preventDefault();
         if (e && e.touches && e.touches.length >= 2) return;
+        if (mousePan) {
+            endMousePan();
+            return;
+        }
         if (pinch) {
             endPinch();
             document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
