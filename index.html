@@ -897,6 +897,16 @@
             display: flex; flex-direction: column; gap: 10px;
             min-height: 0;
         }
+        .spr-workspace {
+            display: flex; flex-direction: column; gap: 10px;
+            min-width: 0; min-height: 0; flex: 1 1 auto;
+        }
+        .spr-sidebar {
+            display: flex; flex-direction: column; gap: 10px;
+            flex-shrink: 0;
+        }
+        /* Mobile: tools/sidebar first visually */
+        .spr-sidebar { order: -1; }
         .spr-card {
             background: color-mix(in srgb, var(--panel-color) 92%, transparent);
             border: 1px solid var(--glass-border);
@@ -1152,61 +1162,66 @@
 
         /* —— Desktop / wide layout for sprite + music editors —— */
         @media (min-width: 900px) {
+            /* Sprite: canvas LEFT · tools/size/palette RIGHT */
             #sprite-editor-view .spr-body {
-                padding: 12px 18px 14px;
-                gap: 12px;
+                flex-direction: row;
+                align-items: stretch;
+                padding: 12px 16px 14px;
+                gap: 14px;
                 overflow: hidden;
             }
-            #sprite-editor-view .spr-row-split {
-                flex-wrap: nowrap;
-                flex-shrink: 0;
+            #sprite-editor-view .spr-sidebar {
+                order: 0;
+                width: 280px;
+                flex: 0 0 280px;
+                overflow-y: auto;
+                max-height: 100%;
             }
-            #sprite-editor-view .spr-row-split > .spr-card {
-                flex: 0 1 auto;
-            }
-            #sprite-editor-view .spr-tools-card {
+            #sprite-editor-view .spr-workspace {
+                order: 0;
                 flex: 1 1 auto;
-                min-width: 280px;
+                min-width: 0;
+                min-height: 0;
             }
-            #sprite-editor-view .spr-size-card {
-                flex: 0 0 auto;
-                min-width: 260px;
+            #sprite-editor-view .spr-main {
+                flex: 1 1 auto;
+                min-height: 0;
+                gap: 12px;
             }
-            #sprite-editor-view .spr-color-block-card {
+            #sprite-editor-view .spr-canvas-wrap {
+                min-height: 0;
+                flex: 1 1 auto;
+            }
+            #sprite-editor-view .spr-layers-card {
+                width: 150px;
+            }
+            #sprite-editor-view .spr-bottom-bar {
                 flex-shrink: 0;
+            }
+            #sprite-editor-view .spr-color-block {
+                flex-direction: column;
+                align-items: flex-start;
             }
             #sprite-editor-view .spr-paint-grid {
-                grid-template-columns: repeat(10, 28px);
+                grid-template-columns: repeat(5, 36px);
                 gap: 6px;
                 max-width: none;
                 width: auto;
             }
             #sprite-editor-view .spr-swatch {
-                width: 28px; height: 28px;
-                min-width: 28px; min-height: 28px;
-                max-width: 28px; max-height: 28px;
+                width: 36px; height: 36px;
+                min-width: 36px; min-height: 36px;
+                max-width: 36px; max-height: 36px;
             }
-            #sprite-editor-view .spr-main {
-                flex: 1 1 auto;
-                min-height: 0;
-                gap: 14px;
-            }
-            #sprite-editor-view .spr-canvas-wrap {
-                min-height: 280px;
-                flex: 1 1 auto;
-            }
-            #sprite-editor-view .spr-layers-card {
-                width: 160px;
-            }
-            #sprite-editor-view .spr-bottom-bar {
-                flex-shrink: 0;
+            #sprite-editor-view .spr-paint-active {
+                width: 44px; height: 44px;
             }
 
-            /* Music editor — larger grid & usable height on PC */
+            /* Music editor */
             #music-editor-view .mus-body {
                 padding: 12px 20px 16px;
                 gap: 12px;
-                max-width: 1100px;
+                max-width: 1200px;
                 margin: 0 auto;
                 width: 100%;
             }
@@ -1246,17 +1261,13 @@
                 padding: 10px;
             }
             #music-editor-view .mus-grid {
-                gap: 3px;
+                gap: 4px;
             }
             #music-editor-view .mus-cell {
-                width: 42px;
-                height: 34px;
-                border-radius: 6px;
                 font-size: 0.72rem;
+                border-radius: 6px;
             }
             #music-editor-view .mus-row-label {
-                width: 48px;
-                height: 34px;
                 font-size: 0.72rem;
                 border-radius: 6px;
             }
@@ -1275,22 +1286,18 @@
         }
 
         @media (min-width: 1200px) {
-            #sprite-editor-view .spr-body {
-                max-width: 1400px;
-                margin: 0 auto;
-                width: 100%;
+            #sprite-editor-view .spr-sidebar {
+                width: 300px;
+                flex-basis: 300px;
             }
             #music-editor-view .mus-body {
-                max-width: 1280px;
+                max-width: 1400px;
             }
             #music-editor-view .mus-cell {
-                width: 48px;
-                height: 38px;
                 font-size: 0.78rem;
             }
             #music-editor-view .mus-row-label {
-                width: 52px;
-                height: 38px;
+                font-size: 0.78rem;
             }
         }
 
@@ -1514,7 +1521,10 @@
             min-width: max-content;
         }
         .mus-cell {
-            width: 30px; height: 24px; border-radius: 4px;
+            width: 100%; height: 100%;
+            min-width: 0; min-height: 0;
+            box-sizing: border-box;
+            border-radius: 4px;
             border: 1px solid rgba(255,255,255,0.08);
             background: rgba(255,255,255,0.03); color: var(--text-color);
             font-size: 0.58rem; font-weight: 800; cursor: pointer;
@@ -1522,6 +1532,8 @@
             padding: 0; line-height: 1;
             transition: transform 0.05s, background 0.08s;
             letter-spacing: -0.02em;
+            overflow: hidden;
+            white-space: nowrap;
         }
         .mus-cell:active { transform: scale(0.92); }
         .mus-cell.on {
@@ -1535,7 +1547,9 @@
             z-index: 1;
         }
         .mus-row-label {
-            width: 36px; height: 24px; display: flex; align-items: center; justify-content: center;
+            width: 100%; height: 100%;
+            min-width: 0; box-sizing: border-box;
+            display: flex; align-items: center; justify-content: center;
             font-size: 0.58rem; font-weight: 800; color: var(--ch-color, var(--muted));
             border-radius: 4px;
             background: color-mix(in srgb, var(--ch-color, var(--muted)) 18%, transparent);
@@ -2075,7 +2089,31 @@
             </div>
         </div>
         <div class="spr-body">
-            <div class="spr-row-split">
+            <!-- Left: canvas + layers + actions -->
+            <div class="spr-workspace">
+                <div class="spr-main">
+                    <div class="spr-canvas-wrap" id="spr-canvas-wrap">
+                        <canvas id="sprite-pixel-canvas" width="256" height="256"></canvas>
+                    </div>
+                    <div class="spr-layers-card">
+                        <div class="spr-layers-title" id="spr-layers-title">Layers (1)</div>
+                        <div class="spr-layers-list" id="spr-layers-list"></div>
+                        <button type="button" class="spr-add-layer" onclick="addSpriteLayer()">+ Add Layer</button>
+                    </div>
+                </div>
+                <div class="spr-bottom-bar">
+                    <div class="spr-actions">
+                        <button type="button" class="spr-action" onclick="spriteUndo()">↺ Undo</button>
+                        <button type="button" class="spr-action" onclick="spriteRedo()">↻ Redo</button>
+                        <button type="button" class="spr-action" onclick="setSpriteTool('fill')">▤ Fill</button>
+                        <button type="button" class="spr-action" onclick="clearSpriteCanvas()">🗑 Clear</button>
+                    </div>
+                    <div class="spr-footer-meta" id="spr-footer-meta">PNG · 16×16 · Transparent background</div>
+                </div>
+            </div>
+
+            <!-- Right (desktop) / top (mobile): tools · size · palette -->
+            <div class="spr-sidebar">
                 <div class="spr-card spr-tools-card">
                     <div class="spr-card-head">
                         <div class="spr-card-label">Tools</div>
@@ -2112,37 +2150,15 @@
                         <button type="button" class="spr-size-apply" onclick="applyCustomSpriteSize()">Apply</button>
                     </div>
                 </div>
-            </div>
-
-            <div class="spr-card spr-color-block-card">
-                <div class="spr-card-label">Color · Palette</div>
-                <div class="spr-color-block">
-                    <button type="button" class="spr-paint-active" id="spr-color-btn" title="Pick color" onclick="openSpriteSpectrum()"></button>
-                    <div class="spr-palette-inline">
-                        <div class="spr-paint-grid" id="spr-palette"></div>
+                <div class="spr-card spr-color-block-card">
+                    <div class="spr-card-label">Color · Palette</div>
+                    <div class="spr-color-block">
+                        <button type="button" class="spr-paint-active" id="spr-color-btn" title="Pick color" onclick="openSpriteSpectrum()"></button>
+                        <div class="spr-palette-inline">
+                            <div class="spr-paint-grid" id="spr-palette"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="spr-main">
-                <div class="spr-canvas-wrap" id="spr-canvas-wrap">
-                    <canvas id="sprite-pixel-canvas" width="256" height="256"></canvas>
-                </div>
-                <div class="spr-layers-card">
-                    <div class="spr-layers-title" id="spr-layers-title">Layers (1)</div>
-                    <div class="spr-layers-list" id="spr-layers-list"></div>
-                    <button type="button" class="spr-add-layer" onclick="addSpriteLayer()">+ Add Layer</button>
-                </div>
-            </div>
-
-            <div class="spr-bottom-bar">
-                <div class="spr-actions">
-                    <button type="button" class="spr-action" onclick="spriteUndo()">↺ Undo</button>
-                    <button type="button" class="spr-action" onclick="spriteRedo()">↻ Redo</button>
-                    <button type="button" class="spr-action" onclick="setSpriteTool('fill')">▤ Fill</button>
-                    <button type="button" class="spr-action" onclick="clearSpriteCanvas()">🗑 Clear</button>
-                </div>
-                <div class="spr-footer-meta" id="spr-footer-meta">PNG · 16×16 · Transparent background</div>
             </div>
         </div>
     </div>
@@ -7068,8 +7084,13 @@ function renderMusicGrid() {
         musEd.channels.push(Array(steps).fill(''));
     }
     if (musEd.channels.length > nCh) musEd.channels = musEd.channels.slice(0, nCh);
-    // Compact cells: label 36px + 26px steps
-    grid.style.gridTemplateColumns = '36px repeat(' + steps + ', 30px)';
+    // Column sizes: keep cells in their tracks (no overflow / overlap)
+    const wide = (typeof window !== 'undefined' && window.innerWidth >= 900);
+    const labelW = wide ? 48 : 36;
+    const cellW = wide ? (window.innerWidth >= 1200 ? 48 : 42) : 30;
+    const rowH = wide ? (window.innerWidth >= 1200 ? 38 : 34) : 24;
+    grid.style.gridTemplateColumns = labelW + 'px repeat(' + steps + ', ' + cellW + 'px)';
+    grid.style.gridAutoRows = rowH + 'px';
     grid.innerHTML = '';
     const playStep = (musicState.active && musicState.lastPlayedStep >= 0)
         ? musicState.lastPlayedStep : -1;
