@@ -1254,10 +1254,12 @@
                 border-radius: 10px;
             }
             #music-editor-view .mus-grid-wrap {
-                max-height: none;
-                flex: 1 1 auto;
-                min-height: 320px;
-                height: min(62vh, 560px);
+                max-height: min(62vh, 560px);
+                flex: 0 1 auto;
+                height: auto;
+                min-height: 0;
+                width: fit-content;
+                max-width: 100%;
                 padding: 10px;
             }
             #music-editor-view .mus-grid {
@@ -1508,12 +1510,16 @@
         .mus-grid-wrap {
             overflow: auto; -webkit-overflow-scrolling: touch;
             max-height: min(52vh, 420px);
-            flex: 1 1 auto;
-            min-height: 160px;
+            flex: 0 1 auto;
+            height: auto;
+            min-height: 0;
+            width: fit-content;
+            max-width: 100%;
             border-radius: 10px;
             border: 1px solid var(--glass-border);
             background: color-mix(in srgb, var(--panel-color) 80%, transparent);
             padding: 6px;
+            transition: min-height 0.15s ease;
         }
         .mus-grid {
             display: grid;
@@ -7091,6 +7097,15 @@ function renderMusicGrid() {
     const rowH = wide ? (window.innerWidth >= 1200 ? 38 : 34) : 24;
     grid.style.gridTemplateColumns = labelW + 'px repeat(' + steps + ', ' + cellW + 'px)';
     grid.style.gridAutoRows = rowH + 'px';
+    // Size wrapper to the actual channel rows (shrinks when channels drop e.g. 10 → 4)
+    const wrap = document.getElementById('mus-grid-wrap');
+    if (wrap) {
+        const gap = wide ? 4 : 2;
+        const pad = wide ? 20 : 12; // padding top+bottom
+        const contentH = nCh * rowH + Math.max(0, nCh - 1) * gap + pad;
+        wrap.style.height = contentH + 'px';
+        wrap.style.minHeight = contentH + 'px';
+    }
     grid.innerHTML = '';
     const playStep = (musicState.active && musicState.lastPlayedStep >= 0)
         ? musicState.lastPlayedStep : -1;
