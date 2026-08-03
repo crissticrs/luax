@@ -8827,9 +8827,10 @@ function tryFinishPendingProActivation() {
 /**
  * Handle return from Stripe Checkout.
  *
- * Security: ?pro=success alone does NOT unlock Pro.
- * Unlock only if this browser started Checkout (luax_stripe_pending set in startStripeCheckout).
- * Random visitors who type /?pro=success get nothing.
+ * luax_stripe_pending is only a UX filter (reduces noise from bare /?pro=success).
+ * It is NOT a security gate — anyone can set that flag in devtools.
+ * Real security is verifySubscriptionOnAccess() → worker /status (Stripe webhook → KV).
+ * A forged local Pro is cleared on the next load when the worker has no sub for that email.
  */
 function handleStripeReturn() {
     try {
@@ -8847,9 +8848,8 @@ function handleStripeReturn() {
         if (success) {
             cleanStripeParamsFromUrl();
 
-            // Must have clicked Subscribe in this browser first
+            // UX filter only (not security — see comment above)
             if (!hadStripeCheckoutPending()) {
-                // Ignore bare /?pro=success — not a real checkout return
                 return false;
             }
 
