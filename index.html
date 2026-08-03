@@ -198,6 +198,19 @@
         }
         .billing-actions { display: flex; flex-direction: column; gap: 8px; }
         .billing-actions .btn { width: 100%; }
+        .pro-email-warn,
+        .billing-email-warn {
+            color: #ff4d4f;
+            font-size: 0.82rem;
+            font-weight: 600;
+            line-height: 1.35;
+            margin: 12px 0 8px;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 77, 79, 0.45);
+            border-radius: 10px;
+            background: rgba(255, 77, 79, 0.08);
+        }
+
         .btn-danger-outline {
             background: transparent;
             color: #ff5252;
@@ -8739,6 +8752,7 @@ function renderBillingPanel() {
         el.innerHTML = `
             <p class="billing-status free">Free plan</p>
             <p class="billing-meta">${CREDIT_WEEKLY_FREE} credits / week · upgrade anytime for ${CREDIT_WEEKLY_PRO}/week</p>
+            <p class="billing-email-warn" role="alert">Billing email must match your account email${email ? ' (' + escapeHtml(email) + ')' : ''}. Apple Pay can use a different address — keep Stripe’s email the same as this account or Pro will not activate.</p>
             <div class="billing-actions">
               <button type="button" class="btn btn-primary btn-sm" onclick="openSubscriptionInfo()">Upgrade to Pro — €5/mo</button>
               ${STRIPE_PORTAL_LINK ? '<button type="button" class="btn btn-sm" onclick="openBillingManage()">Open billing portal</button>' : ''}
@@ -9107,9 +9121,15 @@ function renderProPage() {
                 onclick="${stripeReady ? 'startStripeCheckout()' : 'alert(\'Stripe is not configured yet.\')'}">
                 ${stripeReady ? 'Subscribe — €5/mo' : 'Stripe not configured'}
             </button>
+            <p class="pro-email-warn" role="alert">
+                Important: the billing email must match your LuaX account email
+                (<b>${currentAccountEmail() || 'your signed-in Google email'}</b>).
+                If you use Apple Pay / Google Pay, do not change the email on Stripe’s form —
+                otherwise Pro will not unlock on this account.
+            </p>
             <p class="pro-cta-note">
                 Secure checkout opens in Stripe. Apple Pay &amp; Google Pay appear when available.<br>
-                Pro unlocks after payment redirects back to this site.
+                Pro unlocks after payment redirects back to this site for the matching signed-in account.
             </p>
         </div>
     `;
