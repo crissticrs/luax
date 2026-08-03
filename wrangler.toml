@@ -1,0 +1,17 @@
+# LuaX Stripe verification worker
+# Docs: https://developers.cloudflare.com/workers/
+
+name = "luax-stripe"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# After: wrangler kv:namespace create LUAX_SUBS
+# paste the id below (replace REPLACE_ME)
+[[kv_namespaces]]
+binding = "LUAX_SUBS"
+id = "REPLACE_ME"
+
+# Secrets (set via CLI, never commit real values):
+#   wrangler secret put STRIPE_WEBHOOK_SECRET
+#   wrangler secret put STRIPE_SECRET_KEY
+#   wrangler secret put STATUS_SHARED_SECRET   # optional
