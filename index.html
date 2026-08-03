@@ -897,6 +897,16 @@
             display: flex; flex-direction: column; gap: 10px;
             min-height: 0;
         }
+        .spr-workspace {
+            display: flex; flex-direction: column; gap: 10px;
+            min-width: 0; min-height: 0; flex: 1 1 auto;
+        }
+        .spr-sidebar {
+            display: flex; flex-direction: column; gap: 10px;
+            flex-shrink: 0;
+        }
+        /* Mobile: tools/sidebar first visually */
+        .spr-sidebar { order: -1; }
         .spr-card {
             background: color-mix(in srgb, var(--panel-color) 92%, transparent);
             border: 1px solid var(--glass-border);
@@ -1152,61 +1162,66 @@
 
         /* —— Desktop / wide layout for sprite + music editors —— */
         @media (min-width: 900px) {
+            /* Sprite: canvas LEFT · tools/size/palette RIGHT */
             #sprite-editor-view .spr-body {
-                padding: 12px 18px 14px;
-                gap: 12px;
+                flex-direction: row;
+                align-items: stretch;
+                padding: 12px 16px 14px;
+                gap: 14px;
                 overflow: hidden;
             }
-            #sprite-editor-view .spr-row-split {
-                flex-wrap: nowrap;
-                flex-shrink: 0;
+            #sprite-editor-view .spr-sidebar {
+                order: 0;
+                width: 280px;
+                flex: 0 0 280px;
+                overflow-y: auto;
+                max-height: 100%;
             }
-            #sprite-editor-view .spr-row-split > .spr-card {
-                flex: 0 1 auto;
-            }
-            #sprite-editor-view .spr-tools-card {
+            #sprite-editor-view .spr-workspace {
+                order: 0;
                 flex: 1 1 auto;
-                min-width: 280px;
+                min-width: 0;
+                min-height: 0;
             }
-            #sprite-editor-view .spr-size-card {
-                flex: 0 0 auto;
-                min-width: 260px;
+            #sprite-editor-view .spr-main {
+                flex: 1 1 auto;
+                min-height: 0;
+                gap: 12px;
             }
-            #sprite-editor-view .spr-color-block-card {
+            #sprite-editor-view .spr-canvas-wrap {
+                min-height: 0;
+                flex: 1 1 auto;
+            }
+            #sprite-editor-view .spr-layers-card {
+                width: 150px;
+            }
+            #sprite-editor-view .spr-bottom-bar {
                 flex-shrink: 0;
+            }
+            #sprite-editor-view .spr-color-block {
+                flex-direction: column;
+                align-items: flex-start;
             }
             #sprite-editor-view .spr-paint-grid {
-                grid-template-columns: repeat(10, 28px);
+                grid-template-columns: repeat(5, 36px);
                 gap: 6px;
                 max-width: none;
                 width: auto;
             }
             #sprite-editor-view .spr-swatch {
-                width: 28px; height: 28px;
-                min-width: 28px; min-height: 28px;
-                max-width: 28px; max-height: 28px;
+                width: 36px; height: 36px;
+                min-width: 36px; min-height: 36px;
+                max-width: 36px; max-height: 36px;
             }
-            #sprite-editor-view .spr-main {
-                flex: 1 1 auto;
-                min-height: 0;
-                gap: 14px;
-            }
-            #sprite-editor-view .spr-canvas-wrap {
-                min-height: 280px;
-                flex: 1 1 auto;
-            }
-            #sprite-editor-view .spr-layers-card {
-                width: 160px;
-            }
-            #sprite-editor-view .spr-bottom-bar {
-                flex-shrink: 0;
+            #sprite-editor-view .spr-paint-active {
+                width: 44px; height: 44px;
             }
 
-            /* Music editor — larger grid & usable height on PC */
+            /* Music editor */
             #music-editor-view .mus-body {
                 padding: 12px 20px 16px;
                 gap: 12px;
-                max-width: 1100px;
+                max-width: 1200px;
                 margin: 0 auto;
                 width: 100%;
             }
@@ -1239,24 +1254,22 @@
                 border-radius: 10px;
             }
             #music-editor-view .mus-grid-wrap {
-                max-height: none;
-                flex: 1 1 auto;
-                min-height: 320px;
-                height: min(62vh, 560px);
+                max-height: min(62vh, 560px);
+                flex: 0 1 auto;
+                height: auto;
+                min-height: 0;
+                width: fit-content;
+                max-width: 100%;
                 padding: 10px;
             }
             #music-editor-view .mus-grid {
-                gap: 3px;
+                gap: 4px;
             }
             #music-editor-view .mus-cell {
-                width: 42px;
-                height: 34px;
-                border-radius: 6px;
                 font-size: 0.72rem;
+                border-radius: 6px;
             }
             #music-editor-view .mus-row-label {
-                width: 48px;
-                height: 34px;
                 font-size: 0.72rem;
                 border-radius: 6px;
             }
@@ -1275,22 +1288,18 @@
         }
 
         @media (min-width: 1200px) {
-            #sprite-editor-view .spr-body {
-                max-width: 1400px;
-                margin: 0 auto;
-                width: 100%;
+            #sprite-editor-view .spr-sidebar {
+                width: 300px;
+                flex-basis: 300px;
             }
             #music-editor-view .mus-body {
-                max-width: 1280px;
+                max-width: 1400px;
             }
             #music-editor-view .mus-cell {
-                width: 48px;
-                height: 38px;
                 font-size: 0.78rem;
             }
             #music-editor-view .mus-row-label {
-                width: 52px;
-                height: 38px;
+                font-size: 0.78rem;
             }
         }
 
@@ -1501,12 +1510,16 @@
         .mus-grid-wrap {
             overflow: auto; -webkit-overflow-scrolling: touch;
             max-height: min(52vh, 420px);
-            flex: 1 1 auto;
-            min-height: 160px;
+            flex: 0 1 auto;
+            height: auto;
+            min-height: 0;
+            width: fit-content;
+            max-width: 100%;
             border-radius: 10px;
             border: 1px solid var(--glass-border);
             background: color-mix(in srgb, var(--panel-color) 80%, transparent);
             padding: 6px;
+            transition: min-height 0.15s ease;
         }
         .mus-grid {
             display: grid;
@@ -1514,7 +1527,10 @@
             min-width: max-content;
         }
         .mus-cell {
-            width: 30px; height: 24px; border-radius: 4px;
+            width: 100%; height: 100%;
+            min-width: 0; min-height: 0;
+            box-sizing: border-box;
+            border-radius: 4px;
             border: 1px solid rgba(255,255,255,0.08);
             background: rgba(255,255,255,0.03); color: var(--text-color);
             font-size: 0.58rem; font-weight: 800; cursor: pointer;
@@ -1522,6 +1538,8 @@
             padding: 0; line-height: 1;
             transition: transform 0.05s, background 0.08s;
             letter-spacing: -0.02em;
+            overflow: hidden;
+            white-space: nowrap;
         }
         .mus-cell:active { transform: scale(0.92); }
         .mus-cell.on {
@@ -1535,7 +1553,9 @@
             z-index: 1;
         }
         .mus-row-label {
-            width: 36px; height: 24px; display: flex; align-items: center; justify-content: center;
+            width: 100%; height: 100%;
+            min-width: 0; box-sizing: border-box;
+            display: flex; align-items: center; justify-content: center;
             font-size: 0.58rem; font-weight: 800; color: var(--ch-color, var(--muted));
             border-radius: 4px;
             background: color-mix(in srgb, var(--ch-color, var(--muted)) 18%, transparent);
@@ -1940,7 +1960,7 @@
                     <button class="lx-side-item" data-nav="settings" onclick="lxNav('settings')"><i class="lx-ico" data-ico="gear"></i> Settings</button>
                 </nav>
                 <div class="lx-side-footer">
-                    <button type="button" class="profile-circle" id="profile-chip-side" onclick="toggleAccountMenu(event)" title="Account">
+                    <button type="button" class="profile-circle" id="profile-chip-side" onclick="toggleAccountMenu(event)" title="Account" aria-label="Account menu">
                         <img class="profile-avatar" id="profile-avatar-side" alt="" src="" style="display:none">
                         <span class="profile-avatar placeholder" id="profile-avatar-ph-side"><i class="lx-ico" data-ico="user"></i></span>
                     </button>
@@ -1952,7 +1972,7 @@
                 <div class="header header-projects">
                     <div class="brand-block">
                         <div class="brand-row">
-                            <button type="button" class="profile-circle mobile-only" id="profile-chip" onclick="toggleAccountMenu(event)" title="Account">
+                            <button type="button" class="profile-circle mobile-only" id="profile-chip" onclick="toggleAccountMenu(event)" title="Account" aria-label="Account menu">
                                 <img class="profile-avatar" id="profile-avatar" alt="" src="" style="display:none">
                                 <span class="profile-avatar placeholder" id="profile-avatar-ph"><i class="lx-ico" data-ico="user"></i></span>
                             </button>
@@ -2075,7 +2095,31 @@
             </div>
         </div>
         <div class="spr-body">
-            <div class="spr-row-split">
+            <!-- Left: canvas + layers + actions -->
+            <div class="spr-workspace">
+                <div class="spr-main">
+                    <div class="spr-canvas-wrap" id="spr-canvas-wrap">
+                        <canvas id="sprite-pixel-canvas" width="256" height="256"></canvas>
+                    </div>
+                    <div class="spr-layers-card">
+                        <div class="spr-layers-title" id="spr-layers-title">Layers (1)</div>
+                        <div class="spr-layers-list" id="spr-layers-list"></div>
+                        <button type="button" class="spr-add-layer" onclick="addSpriteLayer()">+ Add Layer</button>
+                    </div>
+                </div>
+                <div class="spr-bottom-bar">
+                    <div class="spr-actions">
+                        <button type="button" class="spr-action" onclick="spriteUndo()">↺ Undo</button>
+                        <button type="button" class="spr-action" onclick="spriteRedo()">↻ Redo</button>
+                        <button type="button" class="spr-action" onclick="setSpriteTool('fill')">▤ Fill</button>
+                        <button type="button" class="spr-action" onclick="clearSpriteCanvas()">🗑 Clear</button>
+                    </div>
+                    <div class="spr-footer-meta" id="spr-footer-meta">PNG · 16×16 · Transparent background</div>
+                </div>
+            </div>
+
+            <!-- Right (desktop) / top (mobile): tools · size · palette -->
+            <div class="spr-sidebar">
                 <div class="spr-card spr-tools-card">
                     <div class="spr-card-head">
                         <div class="spr-card-label">Tools</div>
@@ -2112,37 +2156,15 @@
                         <button type="button" class="spr-size-apply" onclick="applyCustomSpriteSize()">Apply</button>
                     </div>
                 </div>
-            </div>
-
-            <div class="spr-card spr-color-block-card">
-                <div class="spr-card-label">Color · Palette</div>
-                <div class="spr-color-block">
-                    <button type="button" class="spr-paint-active" id="spr-color-btn" title="Pick color" onclick="openSpriteSpectrum()"></button>
-                    <div class="spr-palette-inline">
-                        <div class="spr-paint-grid" id="spr-palette"></div>
+                <div class="spr-card spr-color-block-card">
+                    <div class="spr-card-label">Color · Palette</div>
+                    <div class="spr-color-block">
+                        <button type="button" class="spr-paint-active" id="spr-color-btn" title="Pick color" onclick="openSpriteSpectrum()"></button>
+                        <div class="spr-palette-inline">
+                            <div class="spr-paint-grid" id="spr-palette"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="spr-main">
-                <div class="spr-canvas-wrap" id="spr-canvas-wrap">
-                    <canvas id="sprite-pixel-canvas" width="256" height="256"></canvas>
-                </div>
-                <div class="spr-layers-card">
-                    <div class="spr-layers-title" id="spr-layers-title">Layers (1)</div>
-                    <div class="spr-layers-list" id="spr-layers-list"></div>
-                    <button type="button" class="spr-add-layer" onclick="addSpriteLayer()">+ Add Layer</button>
-                </div>
-            </div>
-
-            <div class="spr-bottom-bar">
-                <div class="spr-actions">
-                    <button type="button" class="spr-action" onclick="spriteUndo()">↺ Undo</button>
-                    <button type="button" class="spr-action" onclick="spriteRedo()">↻ Redo</button>
-                    <button type="button" class="spr-action" onclick="setSpriteTool('fill')">▤ Fill</button>
-                    <button type="button" class="spr-action" onclick="clearSpriteCanvas()">🗑 Clear</button>
-                </div>
-                <div class="spr-footer-meta" id="spr-footer-meta">PNG · 16×16 · Transparent background</div>
             </div>
         </div>
     </div>
@@ -2937,6 +2959,59 @@ const STORAGE_KEY = 'luadeck_projects';
 const STORAGE_META = 'luadeck_meta';
 const SETTINGS_KEY = 'luadeck_project_settings';
 const ASSETS_KEY = 'luadeck_project_assets';
+// Per-project sync metadata: { [name]: { updatedAt, deletedAt } }
+// updatedAt = last local edit time. deletedAt = tombstone so a delete on this
+// device isn't silently overwritten by an older cloud copy from another device.
+const PROJECT_META_KEY = 'luax_project_meta';
+
+function loadProjectMeta() {
+    try {
+        const raw = localStorage.getItem(PROJECT_META_KEY);
+        if (!raw) return {};
+        const data = JSON.parse(raw);
+        return (data && typeof data === 'object') ? data : {};
+    } catch (_) {
+        return {};
+    }
+}
+
+function saveProjectMeta() {
+    try { localStorage.setItem(PROJECT_META_KEY, JSON.stringify(projectMeta)); } catch (_) {}
+}
+
+/**
+ * Called on every saveState(). Diffs `projects` against the last-known
+ * per-project snapshot so we can stamp only the projects that actually
+ * changed (create/edit) or disappeared (delete → tombstone), without having
+ * to touch every single call site that mutates a project.
+ */
+let _lastProjectsSnapshotStr = null;
+function touchProjectMeta() {
+    const now = Date.now();
+    const prevSnapshot = _lastProjectsSnapshotStr || {};
+    const currentNames = Object.keys(projects || {});
+    currentNames.forEach(name => {
+        let str;
+        try { str = JSON.stringify(projects[name]); } catch (_) { str = ''; }
+        if (prevSnapshot[name] !== str) {
+            projectMeta[name] = projectMeta[name] || {};
+            projectMeta[name].updatedAt = now;
+            delete projectMeta[name].deletedAt;
+        }
+    });
+    Object.keys(prevSnapshot).forEach(name => {
+        if (!(name in (projects || {}))) {
+            projectMeta[name] = projectMeta[name] || {};
+            projectMeta[name].deletedAt = now;
+        }
+    });
+    const nextSnapshot = {};
+    currentNames.forEach(name => {
+        try { nextSnapshot[name] = JSON.stringify(projects[name]); } catch (_) { nextSnapshot[name] = ''; }
+    });
+    _lastProjectsSnapshotStr = nextSnapshot;
+    saveProjectMeta();
+}
 
 function loadProjectsFromStorage() {
     // Try localStorage, then sessionStorage fallback
@@ -2966,6 +3041,16 @@ function loadProjectSettings() {
 
 // Start empty — user creates their first project (no DemoGame seed)
 let projects = loadProjectsFromStorage() || {};
+
+/** Per-project sync metadata — see PROJECT_META_KEY above */
+let projectMeta = loadProjectMeta() || {};
+(function seedProjectsSnapshot() {
+    const snap = {};
+    Object.keys(projects).forEach(name => {
+        try { snap[name] = JSON.stringify(projects[name]); } catch (_) { snap[name] = ''; }
+    });
+    _lastProjectsSnapshotStr = snap;
+})();
 
 /** Per-project settings: { [name]: { gamepad: boolean } } — gamepad default true */
 let projectSettings = loadProjectSettings();
@@ -3268,6 +3353,7 @@ let lastSaveAt = null;
 function saveState() {
     const json = JSON.stringify(projects);
     let ok = false;
+    touchProjectMeta();
     try {
         localStorage.setItem(STORAGE_KEY, json);
         localStorage.setItem(STORAGE_META, JSON.stringify({ savedAt: Date.now() }));
@@ -3375,16 +3461,16 @@ function renderProjects() {
         div.innerHTML = `
             <div class="item-title" onclick="openProject('${esc(name)}')">
                 <span class="item-icon-svg">${LX_SVG.folder}</span>
-                <span>${name}</span>
+                <span>${escapeHtml(name)}</span>
                 <span class="item-badge">Lua</span>
             </div>
             <div class="item-actions">
-                <button type="button" class="btn-gamepad-emoji${gpOn ? '' : ' off'}" title="${gpOn ? 'Gamepad ON' : 'Gamepad OFF'}"
+                <button type="button" class="btn-gamepad-emoji${gpOn ? '' : ' off'}" title="${gpOn ? 'Gamepad ON' : 'Gamepad OFF'}" aria-label="${gpOn ? 'Gamepad ON' : 'Gamepad OFF'}, ${escapeHtml(name)}"
                     onclick="event.stopPropagation();toggleProjectGamepadFor('${esc(name)}')">🎮</button>
-                <button class="btn-icon-sm" title="Rename" onclick="event.stopPropagation();promptRenameProject('${esc(name)}')">✎</button>
-                <button class="btn-icon-sm" title="Duplicate" onclick="event.stopPropagation();duplicateProject('${esc(name)}')">⧉</button>
-                <span class="item-chevron" onclick="openProject('${esc(name)}')">${LX_SVG.chevron}</span>
-                <button class="btn btn-delete" onclick="deleteProject(event,'${esc(name)}')">${LX_SVG.trash}</button>
+                <button class="btn-icon-sm" title="Rename" aria-label="Rename ${escapeHtml(name)}" onclick="event.stopPropagation();promptRenameProject('${esc(name)}')">✎</button>
+                <button class="btn-icon-sm" title="Duplicate" aria-label="Duplicate ${escapeHtml(name)}" onclick="event.stopPropagation();duplicateProject('${esc(name)}')">⧉</button>
+                <span class="item-chevron" aria-hidden="true" onclick="openProject('${esc(name)}')">${LX_SVG.chevron}</span>
+                <button class="btn btn-delete" aria-label="Delete ${escapeHtml(name)}" onclick="deleteProject(event,'${esc(name)}')">${LX_SVG.trash}</button>
             </div>`;
         list.appendChild(div);
     });
@@ -3392,7 +3478,7 @@ function renderProjects() {
 
 function promptRenameProject(oldName) {
     openModal('Rename project',
-        `<input type="text" id="modal-input" value="${String(oldName).replace(/"/g, '&quot;')}" autocomplete="off">`,
+        `<input type="text" id="modal-input" value="${escapeHtml(oldName)}" autocomplete="off">`,
         'Rename',
         () => {
             const name = (document.getElementById('modal-input').value || '').trim();
@@ -3582,11 +3668,11 @@ function renderFiles() {
         div.innerHTML = `
             <div class="item-title" onclick="openFile('${esc(fn)}')">
                 <span class="item-icon-svg">${LX_SVG.file}</span>
-                <span>${fn}</span>
+                <span>${escapeHtml(fn)}</span>
             </div>
             <div class="item-actions">
-                <button class="btn-icon-sm" title="Rename" onclick="event.stopPropagation();promptRenameFile('${esc(fn)}')">✎</button>
-                ${fn !== 'main.lua' ? `<button class="btn btn-delete" onclick="deleteFile(event,'${esc(fn)}')">${LX_SVG.trash}</button>` : ''}
+                <button class="btn-icon-sm" title="Rename" aria-label="Rename ${escapeHtml(fn)}" onclick="event.stopPropagation();promptRenameFile('${esc(fn)}')">✎</button>
+                ${fn !== 'main.lua' ? `<button class="btn btn-delete" aria-label="Delete ${escapeHtml(fn)}" onclick="deleteFile(event,'${esc(fn)}')">${LX_SVG.trash}</button>` : ''}
             </div>`;
         list.appendChild(div);
     });
@@ -3598,12 +3684,12 @@ function renderFiles() {
         div.innerHTML = `
             <div class="item-title" onclick="openSpriteEditor('${esc(fn)}')" title="Edit sprite">
                 <img src="${assets[fn]}" alt="" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;border-radius:4px;background:#111">
-                <span>${fn}</span>
+                <span>${escapeHtml(fn)}</span>
                 <span class="item-badge">IMG</span>
             </div>
             <div class="item-actions">
-                <button class="btn-icon-sm" title="Edit" onclick="event.stopPropagation();openSpriteEditor('${esc(fn)}')">✎</button>
-                <button class="btn btn-delete" onclick="deleteAsset(event,'${esc(fn)}')">${LX_SVG.trash}</button>
+                <button class="btn-icon-sm" title="Edit" aria-label="Edit sprite ${escapeHtml(fn)}" onclick="event.stopPropagation();openSpriteEditor('${esc(fn)}')">✎</button>
+                <button class="btn btn-delete" aria-label="Delete sprite ${escapeHtml(fn)}" onclick="deleteAsset(event,'${esc(fn)}')">${LX_SVG.trash}</button>
             </div>`;
         list.appendChild(div);
     });
@@ -3615,12 +3701,12 @@ function renderFiles() {
         div.innerHTML = `
             <div class="item-title" onclick="openMusicEditor('${esc(fn)}')" title="Edit music">
                 <span style="font-size:1.1rem">♪</span>
-                <span>${fn}</span>
+                <span>${escapeHtml(fn)}</span>
                 <span class="item-badge">MUSIC</span>
             </div>
             <div class="item-actions">
-                <button class="btn-icon-sm" title="Edit" onclick="event.stopPropagation();openMusicEditor('${esc(fn)}')">✎</button>
-                <button class="btn btn-delete" onclick="deleteMusicPattern(event,'${esc(fn)}')">${LX_SVG.trash}</button>
+                <button class="btn-icon-sm" title="Edit" aria-label="Edit music pattern ${escapeHtml(fn)}" onclick="event.stopPropagation();openMusicEditor('${esc(fn)}')">✎</button>
+                <button class="btn btn-delete" aria-label="Delete music pattern ${escapeHtml(fn)}" onclick="deleteMusicPattern(event,'${esc(fn)}')">${LX_SVG.trash}</button>
             </div>`;
         list.appendChild(div);
     });
@@ -3638,7 +3724,7 @@ function deleteMusicPattern(e, name) {
 
 function promptRenameFile(oldName) {
     openModal('Rename file',
-        `<input type="text" id="modal-input" value="${String(oldName).replace(/"/g, '&quot;')}" autocomplete="off">`,
+        `<input type="text" id="modal-input" value="${escapeHtml(oldName)}" autocomplete="off">`,
         'Rename',
         () => {
             let name = (document.getElementById('modal-input').value || '').trim();
@@ -3901,6 +3987,8 @@ function renderSpriteLayersUI() {
         eye.className = 'spr-layer-eye';
         eye.textContent = L.visible ? '👁' : '👁‍🗨';
         eye.title = L.visible ? 'Hide' : 'Show';
+        eye.setAttribute('role', 'button');
+        eye.setAttribute('aria-label', (L.visible ? 'Hide' : 'Show') + ' layer ' + L.name);
         eye.onclick = (e) => toggleSpriteLayerVisible(i, e);
         const name = document.createElement('span');
         name.className = 'spr-layer-name';
@@ -5627,7 +5715,7 @@ function renderTabs() {
     bar.innerHTML = files.map(fn => {
         const active = fn === currentFileName ? ' active' : '';
         const dirty = (fn === currentFileName && isDirty) ? '<span class="dirty-dot">•</span>' : '';
-        return `<div class="tab${active}" onclick="switchTab('${esc(fn)}')">${dirty}${fn}</div>`;
+        return `<div class="tab${active}" onclick="switchTab('${esc(fn)}')">${dirty}${escapeHtml(fn)}</div>`;
     }).join('');
 }
 
@@ -7068,8 +7156,22 @@ function renderMusicGrid() {
         musEd.channels.push(Array(steps).fill(''));
     }
     if (musEd.channels.length > nCh) musEd.channels = musEd.channels.slice(0, nCh);
-    // Compact cells: label 36px + 26px steps
-    grid.style.gridTemplateColumns = '36px repeat(' + steps + ', 30px)';
+    // Column sizes: keep cells in their tracks (no overflow / overlap)
+    const wide = (typeof window !== 'undefined' && window.innerWidth >= 900);
+    const labelW = wide ? 48 : 36;
+    const cellW = wide ? (window.innerWidth >= 1200 ? 48 : 42) : 30;
+    const rowH = wide ? (window.innerWidth >= 1200 ? 38 : 34) : 24;
+    grid.style.gridTemplateColumns = labelW + 'px repeat(' + steps + ', ' + cellW + 'px)';
+    grid.style.gridAutoRows = rowH + 'px';
+    // Size wrapper to the actual channel rows (shrinks when channels drop e.g. 10 → 4)
+    const wrap = document.getElementById('mus-grid-wrap');
+    if (wrap) {
+        const gap = wide ? 4 : 2;
+        const pad = wide ? 20 : 12; // padding top+bottom
+        const contentH = nCh * rowH + Math.max(0, nCh - 1) * gap + pad;
+        wrap.style.height = contentH + 'px';
+        wrap.style.minHeight = contentH + 'px';
+    }
     grid.innerHTML = '';
     const playStep = (musicState.active && musicState.lastPlayedStep >= 0)
         ? musicState.lastPlayedStep : -1;
@@ -7229,7 +7331,8 @@ function renderConsole() {
     panel.scrollTop = panel.scrollHeight;
 }
 function escapeHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function toggleConsole() {
     consoleOpen = !consoleOpen;
@@ -8390,7 +8493,12 @@ const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/fZu7sKgHmckY0W5fiY3Je00';
 const STRIPE_PORTAL_LINK = 'https://billing.stripe.com/p/login/fZu7sKgHmckY0W5fiY3Je00';
 // Optional: your backend that returns { "active": true/false, "activeUntil": "ISO" }
 // Leave empty to use local Pro status (email match + activeUntil window).
+// See /luax-stripe-worker in this project for a ready-to-deploy
+// Cloudflare Worker implementing this endpoint from real Stripe webhooks.
 const STRIPE_STATUS_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/status';
+// Optional: shared secret matching STATUS_SHARED_SECRET on the worker, sent
+// as an X-LuaX-Key header. Leave empty if you didn't set that secret.
+const STRIPE_STATUS_KEY = '';
 
 function weekId() {
     const d = new Date();
@@ -8468,14 +8576,51 @@ function setPro(on, meta) {
  * - Optional STRIPE_STATUS_ENDPOINT can confirm live Stripe status
  */
 async function verifySubscriptionOnAccess() {
-    const st = loadProStatus();
+    const st = loadProStatus() || null;
+    const email = currentAccountEmail() || (st && st.email) || '';
+
+    // Always ask Stripe worker when configured — can GRANT Pro after re-login.
+    // (Bug before: only checked server when local Pro was already on, so a
+    // logout during checkout left paid users stuck on Free.)
+    if (typeof STRIPE_STATUS_ENDPOINT === 'string' && STRIPE_STATUS_ENDPOINT && email) {
+        try {
+            const res = await fetch(
+                STRIPE_STATUS_ENDPOINT + (STRIPE_STATUS_ENDPOINT.includes('?') ? '&' : '?') +
+                'email=' + encodeURIComponent(email),
+                {
+                    method: 'GET',
+                    credentials: 'omit',
+                    headers: STRIPE_STATUS_KEY ? { 'X-LuaX-Key': STRIPE_STATUS_KEY } : {}
+                }
+            );
+            if (res.ok) {
+                const data = await res.json().catch(() => ({}));
+                if (data && data.active === true) {
+                    setPro(true, {
+                        email: email,
+                        source: 'stripe_verify',
+                        since: (st && st.since) || new Date().toISOString(),
+                        activeUntil: data.activeUntil || (st && st.activeUntil) || null
+                    });
+                    try { renderBillingPanel(); } catch (_) {}
+                    return { active: true, reason: 'stripe_ok' };
+                }
+                if (data && data.active === false) {
+                    if (st && st.active) setPro(false);
+                    try { renderBillingPanel(); } catch (_) {}
+                    return { active: false, reason: 'stripe_inactive' };
+                }
+            }
+        } catch (_) {
+            // Network error: fall through to local status
+        }
+    }
+
     if (!st || !st.active) {
         try { renderBillingPanel(); } catch (_) {}
         return { active: false, reason: 'none' };
     }
 
-    const email = currentAccountEmail();
-    // Signed in as a different Google account than the one that paid
     if (email && st.email && st.email !== email) {
         setPro(false);
         return { active: false, reason: 'email_mismatch' };
@@ -8489,40 +8634,6 @@ async function verifySubscriptionOnAccess() {
         }
     }
 
-    // Optional server endpoint: GET ?email= → { active: true/false, activeUntil?: ISO }
-    // Example Netlify/Cloudflare function that checks Stripe subscriptions by customer email.
-    if (typeof STRIPE_STATUS_ENDPOINT === 'string' && STRIPE_STATUS_ENDPOINT) {
-        try {
-            const q = email || st.email || '';
-            if (q) {
-                const res = await fetch(
-                    STRIPE_STATUS_ENDPOINT + (STRIPE_STATUS_ENDPOINT.includes('?') ? '&' : '?') +
-                    'email=' + encodeURIComponent(q),
-                    { method: 'GET', credentials: 'omit' }
-                );
-                if (res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    if (data && data.active === false) {
-                        setPro(false);
-                        return { active: false, reason: 'stripe_inactive' };
-                    }
-                    if (data && data.active === true) {
-                        setPro(true, {
-                            email: q,
-                            source: 'stripe_verify',
-                            since: st.since,
-                            activeUntil: data.activeUntil || st.activeUntil
-                        });
-                        return { active: true, reason: 'stripe_ok' };
-                    }
-                }
-            }
-        } catch (_) {
-            // Network / endpoint errors: keep current local status
-        }
-    }
-
-    // Mark last check time without changing plan
     try {
         const next = { ...st, lastVerified: new Date().toISOString() };
         localStorage.setItem(PRO_KEY, JSON.stringify(next));
@@ -8540,6 +8651,8 @@ function startStripeCheckout() {
         return;
     }
     try { sessionStorage.setItem('luax_stripe_pending', '1'); } catch (_) {}
+    try { localStorage.setItem('luax_stripe_pending', '1'); } catch (_) {}
+    try { const em = currentAccountEmail(); if (em) localStorage.setItem('luax_stripe_pending_email', em); } catch (_) {}
     let url = STRIPE_PAYMENT_LINK;
     const email = currentAccountEmail();
     // Prefill email on Checkout when possible
@@ -8613,7 +8726,7 @@ function renderBillingPanel() {
         el.innerHTML = `
             <p class="billing-status pro">LuaX Pro · active</p>
             <p class="billing-meta">
-              ${email ? 'Account: ' + email + '<br>' : ''}
+              ${email ? 'Account: ' + escapeHtml(email) + '<br>' : ''}
               ${since ? 'Since: ' + since + '<br>' : ''}
               ${CREDIT_WEEKLY_PRO} credits / week · €5 / month
             </p>
@@ -8671,7 +8784,9 @@ function cleanStripeParamsFromUrl() {
 function hadStripeCheckoutPending() {
     try {
         return sessionStorage.getItem('luax_stripe_pending') === '1' ||
-            sessionStorage.getItem('luax_stripe_activate') === '1';
+            sessionStorage.getItem('luax_stripe_activate') === '1' ||
+            localStorage.getItem('luax_stripe_pending') === '1' ||
+            localStorage.getItem('luax_stripe_activate') === '1';
     } catch (_) {
         return false;
     }
@@ -8725,6 +8840,7 @@ function handleStripeReturn() {
             }
 
             try { sessionStorage.setItem('luax_stripe_activate', '1'); } catch (_) {}
+            try { localStorage.setItem('luax_stripe_activate', '1'); } catch (_) {}
 
             if (activateProAfterPayment('stripe_return')) {
                 setTimeout(() => {
@@ -9059,21 +9175,27 @@ function updateProfileUI() {
     const creditsEl = document.getElementById('account-credits-line');
     const subBtn = document.getElementById('account-sub-btn');
 
-    const picture = (googleToken && googleProfile && googleProfile.picture) ? googleProfile.picture : '';
+    const signedIn = !!(googleToken && isGoogleTokenValid());
+    const picture = (signedIn && googleProfile && googleProfile.picture) ? googleProfile.picture : '';
     setAvatarEls(picture);
 
     let label = 'Not signed in';
     let side = 'Guest';
-    if (googleToken && googleProfile) {
+    if (signedIn && googleProfile) {
         label = (googleProfile.name || 'Account') + (googleProfile.email ? '\n' + googleProfile.email : '');
         side = googleProfile.name || googleProfile.email || 'Signed in';
-    } else if (googleToken) {
+    } else if (signedIn) {
         label = 'Signed in';
         side = 'Signed in';
+    } else if (authRefreshing && hasRememberedProfile()) {
+        label = 'Restoring session…';
+        side = 'Restoring…';
     }
     if (userEl) { userEl.textContent = label; userEl.style.whiteSpace = 'pre-line'; }
     if (sideUser) sideUser.textContent = side;
-    if (signBtn) signBtn.textContent = googleToken ? 'Sign out' : 'Sign in with Google';
+    if (signBtn) {
+        signBtn.textContent = signedIn ? 'Sign out' : 'Sign in with Google';
+    }
 
     const st = loadCreditsState();
     if (creditsEl) {
@@ -9113,7 +9235,7 @@ document.addEventListener('click', () => {
 
 let authRefreshing = false; // silent token refresh in progress
 let authRefreshStartedAt = 0;
-const AUTH_REFRESH_MAX_MS = 10000; // soft-auth only this long, then show login
+const AUTH_REFRESH_MAX_MS = 6000; // soft-auth only this long, then show login
 let authRefreshWatchdog = null;
 
 function hasRememberedProfile() {
@@ -9198,8 +9320,10 @@ function updateCloudUI() {
     applyAuthGate();
     if (!googleClientId) {
         setCloudStatus('Cloud: host must set Client ID', 'warn');
-    } else if (googleToken) {
+    } else if (googleToken && isGoogleTokenValid()) {
         setCloudStatus('Cloud: signed in · auto-sync on ✓', 'ok');
+    } else if (authRefreshing) {
+        setCloudStatus('Cloud: restoring session…');
     } else {
         setCloudStatus('Cloud: sign in required');
     }
@@ -9349,7 +9473,10 @@ function requestGoogleTokenWithScopes(opts) {
 }
 
 function googleSignInOrOut() {
-    if (googleToken || hasRememberedProfile()) {
+    // Only a live, valid token means "signed in". A remembered profile alone is NOT signed in
+    // (that was the bug: menu said "Not signed in" / "Sign in" but click asked to sign out).
+    const reallySignedIn = !!(googleToken && isGoogleTokenValid());
+    if (reallySignedIn) {
         if (!confirm('Sign out? You will need to sign in again to use LuaX.')) return;
         try {
             if (googleToken && typeof google !== 'undefined' && google.accounts?.oauth2?.revoke) {
@@ -9357,11 +9484,29 @@ function googleSignInOrOut() {
             }
         } catch (_) {}
         authRefreshing = false;
+        authRefreshStartedAt = 0;
+        if (authRefreshWatchdog) {
+            clearTimeout(authRefreshWatchdog);
+            authRefreshWatchdog = null;
+        }
         clearPersistedGoogleToken({ keepProfile: false });
         updateCloudUI();
         setCloudStatus('Cloud: signed out');
         applyAuthGate();
         return;
+    }
+
+    // Stale / expired token or leftover profile → clean session state, then sign in
+    authRefreshing = false;
+    authRefreshStartedAt = 0;
+    if (authRefreshWatchdog) {
+        clearTimeout(authRefreshWatchdog);
+        authRefreshWatchdog = null;
+    }
+    if (googleToken || !isGoogleTokenValid()) {
+        clearPersistedGoogleToken({ keepProfile: true });
+        googleToken = null;
+        googleTokenExpiresAt = 0;
     }
     loginWithGoogle();
 }
@@ -9502,9 +9647,10 @@ async function cloudUpload(silent, opts) {
     if (!silent) setCloudStatus('Cloud: saving…');
     try {
         const payload = JSON.stringify({
-            version: 1,
+            version: 2,
             savedAt: new Date().toISOString(),
             projects,
+            projectMeta,
         });
         const boundary = 'luax_' + Date.now();
         const fileId = await findCloudFile();
@@ -9572,9 +9718,17 @@ function scheduleCloudSave() {
 
 /**
  * Sync with Drive on sign-in / reload.
- * - If cloud is NEWER than local → take cloud (other device / first restore)
- * - If local is NEWER or same → keep local (deletes & edits win) and push to cloud
- * Previously cloud always overwrote local, so deleted projects came back on reload.
+ *
+ * Per-project merge (not whole-blob compare): each project has its own
+ * updatedAt (last edit) and deletedAt (tombstone) in `projectMeta`. For every
+ * project name seen on either side, whichever side has the newer timestamp
+ * wins — independently. A local delete (tombstone) beats an older cloud copy
+ * of that same project, but doesn't affect any other project's sync, and an
+ * edit made on another device after this device deleted it will correctly
+ * come back. This replaces the old approach of comparing one savedAt/count
+ * for the entire projects blob, which meant one project's edit timing could
+ * cause an unrelated project's local delete to be silently reverted (or vice
+ * versa).
  */
 async function cloudSyncOnSignIn(opts) {
     try {
@@ -9584,37 +9738,66 @@ async function cloudSyncOnSignIn(opts) {
             const res = await driveFetch(`/files/${fileId}?alt=media`);
             const data = await res.json();
             if (data.projects && typeof data.projects === 'object') {
-                const cloudAt = data.savedAt ? Date.parse(data.savedAt) : 0;
-                let localAt = lastSaveAt ? Number(lastSaveAt) : 0;
-                if (!localAt) {
-                    try {
-                        const meta = JSON.parse(localStorage.getItem(STORAGE_META) || 'null');
-                        if (meta && meta.savedAt) localAt = Number(meta.savedAt);
-                    } catch (_) {}
+                const cloudProjects = data.projects;
+                const cloudMeta = (data.projectMeta && typeof data.projectMeta === 'object') ? data.projectMeta : null;
+                let changed = false;
+
+                if (cloudMeta) {
+                    // New format: merge project-by-project using timestamps.
+                    const names = new Set([
+                        ...Object.keys(cloudProjects),
+                        ...Object.keys(projects || {}),
+                        ...Object.keys(cloudMeta),
+                        ...Object.keys(projectMeta || {}),
+                    ]);
+                    names.forEach(name => {
+                        const c = cloudMeta[name] || {};
+                        const l = projectMeta[name] || {};
+                        const cTime = Math.max(c.updatedAt || 0, c.deletedAt || 0);
+                        const lTime = Math.max(l.updatedAt || 0, l.deletedAt || 0);
+                        // Only act when cloud is clearly newer for THIS project.
+                        if (cTime > lTime + 500) {
+                            const cloudIsDelete = (c.deletedAt || 0) >= (c.updatedAt || 0);
+                            if (cloudIsDelete) {
+                                if (projects[name]) { delete projects[name]; changed = true; }
+                            } else if (cloudProjects[name]) {
+                                projects[name] = cloudProjects[name];
+                                changed = true;
+                            }
+                            projectMeta[name] = c;
+                        }
+                        // else: local is newer or equal for this project — keep local, push below.
+                    });
+                } else {
+                    // Legacy cloud save with no per-project metadata (from before this
+                    // update) — fall back to "cloud only wins on first restore".
+                    const localCount = Object.keys(projects || {}).length;
+                    const cloudCount = Object.keys(cloudProjects).length;
+                    if (localCount === 0 && cloudCount > 0) {
+                        projects = cloudProjects;
+                        changed = true;
+                    }
                 }
-                const localCount = Object.keys(projects || {}).length;
-                const cloudCount = Object.keys(data.projects).length;
 
-                // Cloud wins only when it is clearly newer (e.g. other device saved later)
-                // or local is empty and cloud has data (first load on this browser)
-                const cloudNewer = cloudAt > localAt + 500; // 0.5s skew tolerance
-                const firstRestore = localCount === 0 && cloudCount > 0;
-
-                if (cloudNewer || firstRestore) {
-                    projects = data.projects;
+                if (changed) {
                     try {
                         localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-                        localStorage.setItem(STORAGE_META, JSON.stringify({
-                            savedAt: cloudAt || Date.now()
-                        }));
+                        localStorage.setItem(STORAGE_META, JSON.stringify({ savedAt: Date.now() }));
+                        saveProjectMeta();
                     } catch (_) {}
-                    lastSaveAt = cloudAt || Date.now();
+                    lastSaveAt = Date.now();
+                    // Re-seed the diff snapshot so the merged-in projects aren't
+                    // mistaken for local edits on the next saveState().
+                    const snap = {};
+                    Object.keys(projects).forEach(name => {
+                        try { snap[name] = JSON.stringify(projects[name]); } catch (_) { snap[name] = ''; }
+                    });
+                    _lastProjectsSnapshotStr = snap;
                     renderProjects();
                 }
-                // else: local is newer (includes deletions) — keep local, push below
             }
         }
-        // Always push local after decide so Drive matches this device
+        // Always push local after merging so Drive matches this device.
         await cloudUpload(true, { free: true });
         setCloudStatus('Cloud: synced ✓', 'ok');
         updateProfileUI();
