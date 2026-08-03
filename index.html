@@ -1452,6 +1452,26 @@
             margin: 0 0 6px; font-size: 1.1rem; color: var(--accent-color);
         }
         .pro-status-card p { margin: 0; font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
+        .pro-plan-badge {
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 999px;
+            margin-bottom: 6px;
+        }
+        .pro-plan-badge.trial {
+            color: #ffb020;
+            background: rgba(255, 176, 32, 0.15);
+            border: 1px solid rgba(255, 176, 32, 0.4);
+        }
+        .pro-plan-badge.paid {
+            color: #7ee0a3;
+            background: rgba(126, 224, 163, 0.12);
+            border: 1px solid rgba(126, 224, 163, 0.35);
+        }
         .pro-section-title {
             margin: 0 0 12px; font-size: 0.8rem; font-weight: 800;
             color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;
@@ -8559,19 +8579,19 @@ function setPro(on, meta) {
         if (on) {
             const email = (meta && meta.email) || currentAccountEmail();
             const prev = loadProStatus() || {};
-            // Monthly plan: refresh window ~35 days from activation / renewal signal
-            let activeUntil = (meta && meta.activeUntil) || null;
-            if (!activeUntil) {
-                const d = new Date();
-                d.setDate(d.getDate() + 35);
-                activeUntil = d.toISOString();
-            }
+            // Prefer Stripe period end from worker. Do NOT invent a "month"
+            // when we don't know — that misleads trial users.
+            let activeUntil = (meta && meta.activeUntil) || prev.activeUntil || null;
+            const trial = !!(meta && meta.trial) || (!!(prev.trial) && !(meta && meta.trial === false));
+            const status = (meta && meta.status) || prev.status || (trial ? 'trialing' : 'active');
             localStorage.setItem(PRO_KEY, JSON.stringify({
                 active: true,
                 email: email || prev.email || '',
                 source: (meta && meta.source) || prev.source || 'stripe',
                 since: (meta && meta.since) || prev.since || new Date().toISOString(),
                 activeUntil: activeUntil,
+                trial: !!trial,
+                status: status,
                 lastVerified: new Date().toISOString()
             }));
         } else {
@@ -8613,7 +8633,9 @@ async function verifySubscriptionOnAccess() {
                         email: email,
                         source: 'stripe_verify',
                         since: (st && st.since) || new Date().toISOString(),
-                        activeUntil: data.activeUntil || (st && st.activeUntil) || null
+                        activeUntil: data.activeUntil || (st && st.activeUntil) || null,
+                        trial: !!data.trial,
+                        status: data.status || (data.trial ? 'trialing' : 'active')
                     });
                     try { renderBillingPanel(); } catch (_) {}
                     return { active: true, reason: 'stripe_ok' };
@@ -8736,11 +8758,14 @@ function renderBillingPanel() {
     const since = st && st.since ? new Date(st.since).toLocaleDateString() : '';
 
     if (pro) {
+        const isTrial = !!(st && (st.trial || st.status === 'trialing'));
+        const until = st && st.activeUntil ? new Date(st.activeUntil).toLocaleDateString() : '';
         el.innerHTML = `
-            <p class="billing-status pro">LuaX Pro · active</p>
+            <p class="billing-status pro">LuaX Pro · ${isTrial ? 'trial' : 'subscription'}</p>
             <p class="billing-meta">
               ${email ? 'Account: ' + escapeHtml(email) + '<br>' : ''}
               ${since ? 'Since: ' + since + '<br>' : ''}
+              ${until ? (isTrial ? 'Trial ends: ' : 'Period ends: ') + until + '<br>' : ''}
               ${CREDIT_WEEKLY_PRO} credits / week · €5 / month
             </p>
             <div class="billing-actions">
@@ -8967,10 +8992,23 @@ function renderProPage() {
         const email = currentAccountEmail() || st.email || '';
         const since = st.since ? new Date(st.since).toLocaleDateString() : '';
         const until = st.activeUntil ? new Date(st.activeUntil).toLocaleDateString() : '';
+        const isTrial = !!(st.trial || st.status === 'trialing');
+        const planLabel = isTrial ? 'Trial' : 'Subscription';
+        let dateLine = '';
+        if (isTrial) {
+            dateLine = until
+                ? ('Trial ends ' + until + (since ? ' · started ' + since : ''))
+                : (since ? ('Trial started ' + since + ' · end date from Stripe when available') : 'Trial active');
+        } else {
+            dateLine = until
+                ? ((since ? 'Since ' + since + ' · ' : '') + 'Current period ends ' + until)
+                : (since ? ('Since ' + since) : 'Active subscription');
+        }
         body.innerHTML = `
             <div class="pro-status-card">
                 <h2>✓ LuaX Pro is active</h2>
-                <p>${email ? email + '<br>' : ''}${since ? 'Since ' + since : ''}${until ? ' · Renews / ends around ' + until : ''}</p>
+                <p><span class="pro-plan-badge ${isTrial ? 'trial' : 'paid'}">${planLabel}</span></p>
+                <p>${email ? escapeHtml(email) + '<br>' : ''}${dateLine}</p>
             </div>
             <p class="pro-section-title">Your Pro benefits</p>
             <div class="pro-benefits">
