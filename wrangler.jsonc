@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "luax-stripe",
+  "main": "worker.js",
+  "compatibility_date": "2025-02-04",
+  "observability": {
+    "enabled": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "LUAX_SUBS",
+      "id": "7e1741c030f742efacf1d19d825f03d0"
+    }
+  ]
+}
