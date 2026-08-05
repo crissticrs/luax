@@ -8529,6 +8529,7 @@ const STRIPE_PORTAL_LINK = 'https://billing.stripe.com/p/login/fZu7sKgHmckY0W5fi
 // See /luax-stripe-worker in this project for a ready-to-deploy
 // Cloudflare Worker implementing this endpoint from real Stripe webhooks.
 const STRIPE_STATUS_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/status';
+const STRIPE_CANCEL_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/cancel';
 // Optional: shared secret matching STATUS_SHARED_SECRET on the worker, sent
 // as an X-LuaX-Key header. Leave empty if you didn't set that secret.
 const STRIPE_STATUS_KEY = '';
@@ -8584,6 +8585,9 @@ function setPro(on, meta) {
             let activeUntil = (meta && meta.activeUntil) || prev.activeUntil || null;
             const trial = !!(meta && meta.trial) || (!!(prev.trial) && !(meta && meta.trial === false));
             const status = (meta && meta.status) || prev.status || (trial ? 'trialing' : 'active');
+            const cancelAtPeriodEnd = (meta && typeof meta.cancelAtPeriodEnd === 'boolean')
+                ? meta.cancelAtPeriodEnd
+                : !!prev.cancelAtPeriodEnd;
             localStorage.setItem(PRO_KEY, JSON.stringify({
                 active: true,
                 email: email || prev.email || '',
@@ -8592,6 +8596,7 @@ function setPro(on, meta) {
                 activeUntil: activeUntil,
                 trial: !!trial,
                 status: status,
+                cancelAtPeriodEnd: !!cancelAtPeriodEnd,
                 lastVerified: new Date().toISOString()
             }));
         } else {
@@ -8635,7 +8640,8 @@ async function verifySubscriptionOnAccess() {
                         since: (st && st.since) || new Date().toISOString(),
                         activeUntil: data.activeUntil || (st && st.activeUntil) || null,
                         trial: !!data.trial,
-                        status: data.status || (data.trial ? 'trialing' : 'active')
+                        status: data.status || (data.trial ? 'trialing' : 'active'),
+                        cancelAtPeriodEnd: !!data.cancelAtPeriodEnd
                     });
                     try { renderBillingPanel(); } catch (_) {}
                     return { active: true, reason: 'stripe_ok' };
@@ -8734,19 +8740,68 @@ function cancelSubscription() {
         openSubscriptionInfo();
         return;
     }
-    if (STRIPE_PORTAL_LINK) {
-        openModal(
-            'Cancel subscription',
-            `<div style="font-size:0.9rem;line-height:1.45;color:var(--text-color)">
-              <p style="margin:0 0 10px">You’ll open Stripe’s secure portal to cancel or change your plan.</p>
-              <p style="margin:0;color:var(--muted);font-size:0.85rem">After you cancel in Stripe, Pro is removed when status is verified (or when your paid period ends).</p>
-            </div>`,
-            'Open Stripe portal',
-            () => { openStripePortal(); }
-        );
+    if (!(googleToken && isGoogleTokenValid())) {
+        alert('Sign in with Google first to cancel your subscription.');
         return;
     }
-    openBillingManage();
+    const email = currentAccountEmail();
+    openModal(
+        'Cancel subscription',
+        `<div style="font-size:0.9rem;line-height:1.45;color:var(--text-color)">
+          <p style="margin:0 0 10px">Cancel Pro for <b>${email ? escapeHtml(email) : 'this account'}</b>?</p>
+          <p style="margin:0;color:var(--muted);font-size:0.85rem">You keep Pro until the end of the current billing period. No further charges after that. Only the signed-in Google account can cancel its own plan.</p>
+        </div>`,
+        'Cancel at period end',
+        () => { doCancelSubscription(); }
+    );
+}
+
+async function doCancelSubscription() {
+    if (!(googleToken && isGoogleTokenValid())) {
+        alert('Sign in with Google first to cancel your subscription.');
+        return;
+    }
+    const endpoint = (typeof STRIPE_CANCEL_ENDPOINT === 'string' && STRIPE_CANCEL_ENDPOINT)
+        ? STRIPE_CANCEL_ENDPOINT
+        : (STRIPE_STATUS_ENDPOINT ? STRIPE_STATUS_ENDPOINT.replace(/\/status\/?$/, '/cancel') : '');
+    if (!endpoint) {
+        alert('Cancel is not configured (missing worker URL).');
+        return;
+    }
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            credentials: 'omit',
+            headers: {
+                'Authorization': 'Bearer ' + googleToken,
+                'Content-Type': 'application/json'
+            },
+            body: '{}'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+            const err = (data && data.error) || ('HTTP ' + res.status);
+            if (err === 'not_signed_in' || err === 'invalid_google_token') {
+                alert('Please sign in with Google again, then cancel.');
+            } else {
+                alert('Could not cancel: ' + err);
+            }
+            return;
+        }
+        // Keep Pro until period end — refresh from worker (still active + cancelAtPeriodEnd)
+        try { await verifySubscriptionOnAccess(); } catch (_) {}
+        try { renderBillingPanel(); } catch (_) {}
+        try { renderProPage(); } catch (_) {}
+        const st = loadProStatus() || {};
+        const until = st.activeUntil ? new Date(st.activeUntil).toLocaleDateString() : '';
+        alert(
+            until
+                ? ('Cancellation scheduled. You keep Pro until ' + until + ', then the Free plan starts. No further charges.')
+                : 'Cancellation scheduled. You keep Pro until the end of the current period, then the Free plan starts.'
+        );
+    } catch (e) {
+        alert('Network error while cancelling. Try again.');
+    }
 }
 
 function renderBillingPanel() {
@@ -8993,9 +9048,15 @@ function renderProPage() {
         const since = st.since ? new Date(st.since).toLocaleDateString() : '';
         const until = st.activeUntil ? new Date(st.activeUntil).toLocaleDateString() : '';
         const isTrial = !!(st.trial || st.status === 'trialing');
-        const planLabel = isTrial ? 'Trial' : 'Subscription';
+        const ending = !!st.cancelAtPeriodEnd;
+        const planLabel = ending ? (isTrial ? 'Trial · ending' : 'Cancels at period end') : (isTrial ? 'Trial' : 'Subscription');
         let dateLine = '';
-        if (isTrial) {
+        if (ending) {
+            dateLine = until
+                ? ('Access until ' + until + ' · then Free (no further charges)')
+                : 'Cancellation scheduled · access until period ends';
+            if (since) dateLine = 'Since ' + since + ' · ' + dateLine;
+        } else if (isTrial) {
             dateLine = until
                 ? ('Trial ends ' + until + (since ? ' · started ' + since : ''))
                 : (since ? ('Trial started ' + since + ' · end date from Stripe when available') : 'Trial active');
