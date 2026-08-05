@@ -37,6 +37,12 @@ export default {
     if (request.method === 'POST' && url.pathname === '/cancel') {
       return handleCancel(request, env);
     }
+    if (request.method === 'GET' && url.pathname === '/credits') {
+      return handleCreditsGet(request, env);
+    }
+    if (request.method === 'POST' && url.pathname === '/credits/consume') {
+      return handleCreditsConsume(request, env);
+    }
     return new Response('Not found', { status: 404 });
   },
 };
@@ -199,6 +205,141 @@ async function listActiveSubscriptions(customerId, env) {
   } catch (_) {
     return [];
   }
+}
+
+
+const CREDIT_WEEKLY_FREE = 25;
+const CREDIT_WEEKLY_PRO = 250;
+
+function weekIdUTC(d) {
+  d = d || new Date();
+  const tmp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = tmp.getUTCDay() || 7;
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+  return tmp.getUTCFullYear() + '-W' + week;
+}
+
+async function isEmailPro(env, email) {
+  if (!env.LUAX_SUBS || !email) return false;
+  const raw = await env.LUAX_SUBS.get('sub:' + email);
+  if (!raw) return false;
+  try {
+    const data = JSON.parse(raw);
+    if (!data || !data.active) return false;
+    if (data.activeUntil) {
+      const end = Date.parse(data.activeUntil);
+      if (!isNaN(end) && Date.now() > end) return false;
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function readCredits(env, email) {
+  const wid = weekIdUTC();
+  const key = 'credits:' + email;
+  let used = 0;
+  let week = wid;
+  const raw = await env.LUAX_SUBS.get(key);
+  if (raw) {
+    try {
+      const data = JSON.parse(raw);
+      if (data && data.week === wid) {
+        used = Math.max(0, Number(data.used) || 0);
+        week = data.week;
+      }
+    } catch (_) {}
+  }
+  const pro = await isEmailPro(env, email);
+  const weekly = pro ? CREDIT_WEEKLY_PRO : CREDIT_WEEKLY_FREE;
+  return {
+    week,
+    used,
+    weekly,
+    left: Math.max(0, weekly - used),
+    pro,
+  };
+}
+
+async function writeCredits(env, email, week, used) {
+  await env.LUAX_SUBS.put(
+    'credits:' + email,
+    JSON.stringify({
+      week,
+      used: Math.max(0, used),
+      updatedAt: new Date().toISOString(),
+    })
+  );
+}
+
+async function requireGoogleEmail(request) {
+  const auth = request.headers.get('Authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!token) return { error: 'not_signed_in', status: 401 };
+  const identity = await verifyGoogleAccessToken(token);
+  if (!identity || !identity.email) return { error: 'invalid_google_token', status: 401 };
+  return { email: String(identity.email).trim().toLowerCase() };
+}
+
+/** GET /credits — Authorization: Bearer Google token */
+async function handleCreditsGet(request, env) {
+  if (!env.LUAX_SUBS) return json({ ok: false, error: 'missing_kv' }, 500);
+  const id = await requireGoogleEmail(request);
+  if (id.error) return json({ ok: false, error: id.error }, id.status);
+  const st = await readCredits(env, id.email);
+  return json({ ok: true, email: id.email, ...st });
+}
+
+/**
+ * POST /credits/consume
+ * Authorization: Bearer Google token
+ * Body: { "cost": number }
+ * Server is source of truth for used; can only increase within the week.
+ */
+async function handleCreditsConsume(request, env) {
+  if (!env.LUAX_SUBS) return json({ ok: false, error: 'missing_kv' }, 500);
+  const id = await requireGoogleEmail(request);
+  if (id.error) return json({ ok: false, error: id.error }, id.status);
+
+  let body = {};
+  try {
+    body = await request.json();
+  } catch (_) {
+    body = {};
+  }
+  const cost = Math.floor(Number(body.cost) || 0);
+  if (cost < 0 || cost > 1000) {
+    return json({ ok: false, error: 'bad_cost' }, 400);
+  }
+
+  const st = await readCredits(env, id.email);
+  if (cost > 0 && st.left < cost) {
+    return json({
+      ok: false,
+      error: 'insufficient',
+      email: id.email,
+      week: st.week,
+      used: st.used,
+      weekly: st.weekly,
+      left: st.left,
+      pro: st.pro,
+    }, 402);
+  }
+
+  const used = st.used + Math.max(0, cost);
+  await writeCredits(env, id.email, st.week, used);
+  return json({
+    ok: true,
+    email: id.email,
+    week: st.week,
+    used,
+    weekly: st.weekly,
+    left: Math.max(0, st.weekly - used),
+    pro: st.pro,
+  });
 }
 
 async function handleHealth(env) {

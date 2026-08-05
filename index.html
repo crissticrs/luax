@@ -5222,9 +5222,9 @@ function deleteFile(e, name) {
 }
 
 // Export / Import
-function exportProject() {
+async function exportProject() {
     if (!currentProjectName) return;
-    if (!spendCredits('export')) return;
+    if (!(await spendCredits('export'))) return;
     const data = {
         name: currentProjectName,
         files: projects[currentProjectName],
@@ -8530,6 +8530,8 @@ const STRIPE_PORTAL_LINK = 'https://billing.stripe.com/p/login/fZu7sKgHmckY0W5fi
 // Cloudflare Worker implementing this endpoint from real Stripe webhooks.
 const STRIPE_STATUS_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/status';
 const STRIPE_CANCEL_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/cancel';
+const STRIPE_CREDITS_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/credits';
+const STRIPE_CREDITS_CONSUME_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/credits/consume';
 // Optional: shared secret matching STATUS_SHARED_SECRET on the worker, sent
 // as an X-LuaX-Key header. Leave empty if you didn't set that secret.
 const STRIPE_STATUS_KEY = '';
@@ -8975,6 +8977,13 @@ function loadCreditsState() {
         st = { week: wid, used: 0 };
         try { localStorage.setItem(CREDITS_KEY, JSON.stringify(st)); } catch (_) {}
     }
+    // Prefer last server snapshot for this week when present
+    try {
+        const srv = JSON.parse(localStorage.getItem(CREDITS_KEY + '_server') || 'null');
+        if (srv && srv.week === wid && typeof srv.used === 'number') {
+            st.used = Math.max(st.used || 0, srv.used);
+        }
+    } catch (_) {}
     return { ...st, weekly, left: Math.max(0, weekly - (st.used || 0)) };
 }
 
@@ -8982,9 +8991,88 @@ function saveCreditsState(st) {
     try { localStorage.setItem(CREDITS_KEY, JSON.stringify({ week: st.week, used: st.used })); } catch (_) {}
 }
 
-function spendCredits(action, opts) {
+function applyServerCredits(data) {
+    if (!data || typeof data.used !== 'number') return;
+    const wid = data.week || weekId();
+    const used = Math.max(0, data.used);
+    try {
+        localStorage.setItem(CREDITS_KEY, JSON.stringify({ week: wid, used: used }));
+        localStorage.setItem(CREDITS_KEY + '_server', JSON.stringify({ week: wid, used: used, at: Date.now() }));
+    } catch (_) {}
+    try { updateProfileUI(); } catch (_) {}
+}
+
+/** Pull weekly usage from worker (source of truth). Call after sign-in. */
+async function refreshCreditsFromServer() {
+    if (!(googleToken && isGoogleTokenValid())) return null;
+    if (!STRIPE_CREDITS_ENDPOINT) return null;
+    try {
+        const res = await fetch(STRIPE_CREDITS_ENDPOINT, {
+            method: 'GET',
+            credentials: 'omit',
+            headers: { 'Authorization': 'Bearer ' + googleToken }
+        });
+        if (!res.ok) return null;
+        const data = await res.json().catch(() => null);
+        if (data && data.ok) {
+            applyServerCredits(data);
+            return data;
+        }
+    } catch (_) {}
+    return null;
+}
+
+/**
+ * Spend credits. When signed in, worker is source of truth (devtools localStorage reset won't help).
+ * Returns true/false; may be async — callers should await.
+ */
+async function spendCredits(action, opts) {
     const cost = CREDIT_COSTS[action] || 0;
     if (cost <= 0) return true;
+
+    // Server path when signed in
+    if (googleToken && isGoogleTokenValid() && STRIPE_CREDITS_CONSUME_ENDPOINT) {
+        try {
+            const res = await fetch(STRIPE_CREDITS_CONSUME_ENDPOINT, {
+                method: 'POST',
+                credentials: 'omit',
+                headers: {
+                    'Authorization': 'Bearer ' + googleToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ cost: cost })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 402 || (data && data.error === 'insufficient')) {
+                if (!opts || !opts.silent) {
+                    const left = (data && typeof data.left === 'number') ? data.left : 0;
+                    alert(
+                        'Not enough credits this week.\n\n' +
+                        'Need ' + cost + ' · you have ' + left + ' left.\n\n' +
+                        'Free: ' + CREDIT_WEEKLY_FREE + '/week · Pro (€5/mo): ' + CREDIT_WEEKLY_PRO + '/week\n' +
+                        'Editing & play stay free. Credits reset weekly.'
+                    );
+                }
+                if (data && typeof data.used === 'number') applyServerCredits(data);
+                return false;
+            }
+            if (!res.ok || !data.ok) {
+                if (!opts || !opts.silent) {
+                    alert('Could not verify credits (' + ((data && data.error) || res.status) + '). Try signing in again.');
+                }
+                return false;
+            }
+            applyServerCredits(data);
+            return true;
+        } catch (_) {
+            if (!opts || !opts.silent) {
+                alert('Network error checking credits. Try again.');
+            }
+            return false;
+        }
+    }
+
+    // Not signed in — local only (login gate usually prevents this for paid actions)
     const st = loadCreditsState();
     if (st.left < cost) {
         if (!opts || !opts.silent) {
@@ -9815,7 +9903,7 @@ async function cloudUpload(silent, opts) {
 
         // Charge only after a successful upload
         if (needCredit) {
-            if (spendCredits('cloud_save', { silent: true })) {
+            if (await spendCredits('cloud_save', { silent: true })) {
                 lastCloudCreditAt = now;
             }
         }
