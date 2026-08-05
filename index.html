@@ -8532,8 +8532,8 @@ const STRIPE_STATUS_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/status';
 const STRIPE_CANCEL_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/cancel';
 const STRIPE_CREDITS_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/credits';
 const STRIPE_CREDITS_CONSUME_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/credits/consume';
-// Optional: shared secret matching STATUS_SHARED_SECRET on the worker, sent
-// as an X-LuaX-Key header. Leave empty if you didn't set that secret.
+// /status is gated by Google access token (Authorization: Bearer).
+// STRIPE_STATUS_KEY unused (kept for compatibility with older notes).
 const STRIPE_STATUS_KEY = '';
 
 function weekId() {
@@ -8624,13 +8624,18 @@ async function verifySubscriptionOnAccess() {
     // logout during checkout left paid users stuck on Free.)
     if (typeof STRIPE_STATUS_ENDPOINT === 'string' && STRIPE_STATUS_ENDPOINT && email) {
         try {
+            // /status requires a Google token for this app — no public email probing
+            if (!(googleToken && isGoogleTokenValid())) {
+                try { renderBillingPanel(); } catch (_) {}
+                return { active: !!(st && st.active), reason: 'not_signed_in_for_status' };
+            }
             const res = await fetch(
                 STRIPE_STATUS_ENDPOINT + (STRIPE_STATUS_ENDPOINT.includes('?') ? '&' : '?') +
                 'email=' + encodeURIComponent(email),
                 {
                     method: 'GET',
                     credentials: 'omit',
-                    headers: STRIPE_STATUS_KEY ? { 'X-LuaX-Key': STRIPE_STATUS_KEY } : {}
+                    headers: { 'Authorization': 'Bearer ' + googleToken }
                 }
             );
             if (res.ok) {

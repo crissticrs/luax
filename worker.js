@@ -68,7 +68,7 @@ async function handleCancel(request, env) {
     return json({ ok: false, error: 'not_signed_in' }, 401);
   }
 
-  const identity = await verifyGoogleAccessToken(token);
+  const identity = await verifyGoogleAccessToken(token, env);
   if (!identity || !identity.email) {
     return json({ ok: false, error: 'invalid_google_token' }, 401);
   }
@@ -157,7 +157,12 @@ async function handleCancel(request, env) {
   });
 }
 
-async function verifyGoogleAccessToken(accessToken) {
+/**
+ * Validate Google access token and bind it to THIS app's OAuth client.
+ * Rejects tokens minted for other apps even if they include an email.
+ * Set secret GOOGLE_CLIENT_ID to override the default (same as index.html).
+ */
+async function verifyGoogleAccessToken(accessToken, env) {
   try {
     const res = await fetch(
       'https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(accessToken)
@@ -165,7 +170,22 @@ async function verifyGoogleAccessToken(accessToken) {
     if (!res.ok) return null;
     const data = await res.json().catch(() => null);
     if (!data || !data.email) return null;
-    // tokeninfo returns email for tokens that include email scope
+
+    const expected =
+      (env && env.GOOGLE_CLIENT_ID) ||
+      '996784289780-lrl7mub599dn6eti14h3nvfre2ov6027.apps.googleusercontent.com';
+
+    // Access tokens: azp = client that requested the token; aud may be the same
+    // or a Google API scope audience. Accept if azp or aud matches our client.
+    const azp = data.azp ? String(data.azp) : '';
+    const aud = data.aud ? String(data.aud) : '';
+    const audList = aud.split(' ').filter(Boolean);
+    const ok =
+      azp === expected ||
+      aud === expected ||
+      audList.indexOf(expected) !== -1;
+    if (!ok) return null;
+
     return { email: data.email, sub: data.sub || null };
   } catch (_) {
     return null;
@@ -211,13 +231,15 @@ async function listActiveSubscriptions(customerId, env) {
 const CREDIT_WEEKLY_FREE = 25;
 const CREDIT_WEEKLY_PRO = 250;
 
-function weekIdUTC(d) {
-  d = d || new Date();
-  const tmp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+function weekIdUTC(date) {
+  const base = date instanceof Date ? date : new Date();
+  const tmp = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()));
   const day = tmp.getUTCDay() || 7;
   tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
   const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-  const week = Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+  const week = Math.ceil(
+    (((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7
+  );
   return tmp.getUTCFullYear() + '-W' + week;
 }
 
@@ -275,11 +297,11 @@ async function writeCredits(env, email, week, used) {
   );
 }
 
-async function requireGoogleEmail(request) {
+async function requireGoogleEmail(request, env) {
   const auth = request.headers.get('Authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
   if (!token) return { error: 'not_signed_in', status: 401 };
-  const identity = await verifyGoogleAccessToken(token);
+  const identity = await verifyGoogleAccessToken(token, env);
   if (!identity || !identity.email) return { error: 'invalid_google_token', status: 401 };
   return { email: String(identity.email).trim().toLowerCase() };
 }
@@ -287,7 +309,7 @@ async function requireGoogleEmail(request) {
 /** GET /credits — Authorization: Bearer Google token */
 async function handleCreditsGet(request, env) {
   if (!env.LUAX_SUBS) return json({ ok: false, error: 'missing_kv' }, 500);
-  const id = await requireGoogleEmail(request);
+  const id = await requireGoogleEmail(request, env);
   if (id.error) return json({ ok: false, error: id.error }, id.status);
   const st = await readCredits(env, id.email);
   return json({ ok: true, email: id.email, ...st });
@@ -301,7 +323,7 @@ async function handleCreditsGet(request, env) {
  */
 async function handleCreditsConsume(request, env) {
   if (!env.LUAX_SUBS) return json({ ok: false, error: 'missing_kv' }, 500);
-  const id = await requireGoogleEmail(request);
+  const id = await requireGoogleEmail(request, env);
   if (id.error) return json({ ok: false, error: id.error }, id.status);
 
   let body = {};
@@ -349,32 +371,40 @@ async function handleHealth(env) {
     hasWebhookSecret: !!(env && env.STRIPE_WEBHOOK_SECRET),
     hasStripeKey: !!(env && env.STRIPE_SECRET_KEY),
     hasStatusKey: !!(env && env.STATUS_SHARED_SECRET),
+    hasGoogleClientId: !!(env && env.GOOGLE_CLIENT_ID),
   });
 }
 
+/**
+ * GET /status
+ * Requires Google access token for THIS app (Authorization: Bearer …).
+ * Returns Pro state only for the signed-in email — cannot probe other accounts.
+ * Optional ?email= must match the token email if provided.
+ */
 async function handleStatus(request, env, url) {
-  if (env.STATUS_SHARED_SECRET) {
-    const key = request.headers.get('X-LuaX-Key') || '';
-    if (key !== env.STATUS_SHARED_SECRET) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-  }
-
   if (!env.LUAX_SUBS) {
-    return json({ active: false, reason: 'no_kv_binding' });
+    return json({ active: false, reason: 'no_kv_binding' }, 500);
   }
 
-  const email = (url.searchParams.get('email') || '').trim().toLowerCase();
-  if (!email) return json({ active: false, reason: 'no_email' });
+  const id = await requireGoogleEmail(request, env);
+  if (id.error) {
+    return json({ active: false, reason: id.error }, id.status);
+  }
+  const email = id.email;
+
+  const q = (url.searchParams.get('email') || '').trim().toLowerCase();
+  if (q && q !== email) {
+    return json({ active: false, reason: 'email_mismatch' }, 403);
+  }
 
   const raw = await env.LUAX_SUBS.get('sub:' + email);
-  if (!raw) return json({ active: false, reason: 'not_found' });
+  if (!raw) return json({ active: false, reason: 'not_found', email });
 
   let data;
   try {
     data = JSON.parse(raw);
   } catch (_) {
-    return json({ active: false, reason: 'bad_kv' });
+    return json({ active: false, reason: 'bad_kv', email });
   }
   return json({
     active: !!data.active,
@@ -382,6 +412,7 @@ async function handleStatus(request, env, url) {
     trial: !!data.trial,
     status: data.status || (data.trial ? 'trialing' : data.active ? 'active' : 'inactive'),
     cancelAtPeriodEnd: !!data.cancelAtPeriodEnd,
+    email,
   });
 }
 
