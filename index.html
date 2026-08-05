@@ -8778,7 +8778,12 @@ async function doCancelSubscription() {
             },
             body: '{}'
         });
-        const data = await res.json().catch(() => ({}));
+        let data = {};
+        try { data = await res.json(); } catch (_) { data = {}; }
+        if (res.status === 404) {
+            alert('Cancel is not available on the server yet. Redeploy the worker (worker.js with POST /cancel), then try again.');
+            return;
+        }
         if (!res.ok || !data.ok) {
             const err = (data && data.error) || ('HTTP ' + res.status);
             if (err === 'not_signed_in' || err === 'invalid_google_token') {
@@ -8800,7 +8805,7 @@ async function doCancelSubscription() {
                 : 'Cancellation scheduled. You keep Pro until the end of the current period, then the Free plan starts.'
         );
     } catch (e) {
-        alert('Network error while cancelling. Try again.');
+        alert('Network error while cancelling. Usually the worker is missing POST /cancel or CORS. Redeploy worker.js, hard-refresh the app, try again.');
     }
 }
 

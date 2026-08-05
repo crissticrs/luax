@@ -2,11 +2,11 @@
  * LuaX Stripe verification worker (Cloudflare Workers + KV)
  *
  * POST /webhook  — Stripe events → KV sub:<email>
- * GET  /status?email= — { active, activeUntil }
- * GET  /health   — quick config check (no secrets leaked)
+ * GET  /status?email= — { active, activeUntil, trial, status }
+ * GET  /health   — config check
  *
- * Webhook URL:  https://luax-stripe.lua-x.workers.dev/webhook
- * Status URL:   https://luax-stripe.lua-x.workers.dev/status
+ * Webhook: https://luax-stripe.lua-x.workers.dev/webhook
+ * Status:  https://luax-stripe.lua-x.workers.dev/status
  */
 
 export default {
@@ -19,7 +19,7 @@ export default {
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, X-LuaX-Key',
+          'Access-Control-Allow-Headers': 'Content-Type, X-LuaX-Key, Authorization',
           'Access-Control-Max-Age': '86400',
         },
       });
@@ -34,9 +34,172 @@ export default {
     if (request.method === 'POST' && url.pathname === '/webhook') {
       return handleWebhook(request, env);
     }
+    if (request.method === 'POST' && url.pathname === '/cancel') {
+      return handleCancel(request, env);
+    }
     return new Response('Not found', { status: 404 });
   },
 };
+
+
+/**
+ * POST /cancel
+ * Authorization: Bearer <Google access token>
+ * Verifies the token with Google, then cancels Stripe subs for THAT email only.
+ * Nobody can cancel another account without that account's Google sign-in.
+ */
+async function handleCancel(request, env) {
+  if (!env.STRIPE_SECRET_KEY) {
+    return json({ ok: false, error: 'missing_stripe_key' }, 500);
+  }
+  if (!env.LUAX_SUBS) {
+    return json({ ok: false, error: 'missing_kv' }, 500);
+  }
+
+  const auth = request.headers.get('Authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!token) {
+    return json({ ok: false, error: 'not_signed_in' }, 401);
+  }
+
+  const identity = await verifyGoogleAccessToken(token);
+  if (!identity || !identity.email) {
+    return json({ ok: false, error: 'invalid_google_token' }, 401);
+  }
+  const email = String(identity.email).trim().toLowerCase();
+
+  const customerId = await findStripeCustomerIdByEmail(email, env);
+  if (!customerId) {
+    // Clear local Pro flag anyway
+    await putSub(env, email, {
+      active: false,
+      activeUntil: null,
+      trial: false,
+      status: 'canceled',
+      lastEvent: 'app_cancel_no_customer',
+    });
+    return json({ ok: true, email, canceled: 0, note: 'no_stripe_customer' });
+  }
+
+  const subs = await listActiveSubscriptions(customerId, env);
+  let scheduled = 0;
+  let activeUntil = null;
+  let trial = false;
+  const errors = [];
+
+  for (const sub of subs) {
+    // Keep access until period end — do not delete the sub immediately
+    const body = new URLSearchParams({ cancel_at_period_end: 'true' });
+    const res = await fetch('https://api.stripe.com/v1/subscriptions/' + sub.id, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    });
+    if (res.ok) {
+      scheduled++;
+      const updated = await res.json().catch(() => null);
+      const end =
+        (updated && updated.current_period_end) ||
+        (updated && updated.trial_end) ||
+        sub.current_period_end ||
+        sub.trial_end ||
+        null;
+      if (end) {
+        const iso = new Date(end * 1000).toISOString();
+        if (!activeUntil || iso > activeUntil) activeUntil = iso;
+      }
+      if ((updated && updated.status === 'trialing') || sub.status === 'trialing') trial = true;
+    } else {
+      const t = await res.text().catch(() => '');
+      errors.push({ id: sub.id, status: res.status, body: t.slice(0, 200) });
+    }
+  }
+
+  if (scheduled === 0 && !subs.length) {
+    // Nothing in Stripe — clear Pro
+    await putSub(env, email, {
+      active: false,
+      activeUntil: null,
+      trial: false,
+      status: 'canceled',
+      cancelAtPeriodEnd: false,
+      lastEvent: 'app_cancel_no_sub',
+    });
+    return json({ ok: true, email, scheduled: 0, note: 'no_active_subscription' });
+  }
+
+  // Stay Pro until period ends; webhook will set active:false when Stripe ends it
+  await putSub(env, email, {
+    active: true,
+    activeUntil: activeUntil,
+    trial: trial,
+    status: trial ? 'trialing' : 'active',
+    cancelAtPeriodEnd: true,
+    lastEvent: 'app_cancel_at_period_end',
+  });
+
+  return json({
+    ok: true,
+    email,
+    scheduled,
+    activeUntil,
+    cancelAtPeriodEnd: true,
+    errors: errors.length ? errors : undefined,
+  });
+}
+
+async function verifyGoogleAccessToken(accessToken) {
+  try {
+    const res = await fetch(
+      'https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(accessToken)
+    );
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    if (!data || !data.email) return null;
+    // tokeninfo returns email for tokens that include email scope
+    return { email: data.email, sub: data.sub || null };
+  } catch (_) {
+    return null;
+  }
+}
+
+async function findStripeCustomerIdByEmail(email, env) {
+  try {
+    const res = await fetch(
+      'https://api.stripe.com/v1/customers?email=' + encodeURIComponent(email) + '&limit=5',
+      { headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    const list = (data && data.data) || [];
+    if (!list.length) return null;
+    return list[0].id || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function listActiveSubscriptions(customerId, env) {
+  try {
+    const res = await fetch(
+      'https://api.stripe.com/v1/subscriptions?customer=' +
+        encodeURIComponent(customerId) +
+        '&status=all&limit=20',
+      { headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY } }
+    );
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => null);
+    const list = (data && data.data) || [];
+    return list.filter(
+      (s) => s && (s.status === 'active' || s.status === 'trialing' || s.status === 'past_due')
+    );
+  } catch (_) {
+    return [];
+  }
+}
 
 async function handleHealth(env) {
   return json({
@@ -75,6 +238,9 @@ async function handleStatus(request, env, url) {
   return json({
     active: !!data.active,
     activeUntil: data.activeUntil || null,
+    trial: !!data.trial,
+    status: data.status || (data.trial ? 'trialing' : data.active ? 'active' : 'inactive'),
+    cancelAtPeriodEnd: !!data.cancelAtPeriodEnd,
   });
 }
 
@@ -108,29 +274,61 @@ async function handleWebhook(request, env) {
   let email = null;
   let active = null;
   let activeUntil = null;
+  let trial = false;
+  let status = null;
+  let cancelAtPeriodEnd = false;
 
   if (event.type === 'checkout.session.completed') {
-    // Payment Link / Checkout — prefer explicit emails, then client_reference_id
-    // (LuaX sets client_reference_id to the signed-in Google email)
-    email =
+    // Prefer LuaX signed-in Google email (client_reference_id)
+    const fromApp = obj.client_reference_id;
+    const fromStripe =
       (obj.customer_details && obj.customer_details.email) ||
       obj.customer_email ||
-      obj.client_reference_id ||
       (obj.metadata && (obj.metadata.email || obj.metadata.user_email)) ||
       null;
-    active = true;
-    if (obj.customer && !looksLikeEmail(email)) {
-      email = (await lookupCustomerEmail(obj.customer, env)) || email;
+    if (looksLikeEmail(fromApp)) {
+      email = fromApp;
+    } else if (looksLikeEmail(fromStripe)) {
+      email = fromStripe;
+    } else if (obj.customer) {
+      email = await lookupCustomerEmail(obj.customer, env);
     }
+
+    active = true;
+    // Resolve subscription for trial + period end when Checkout created one
+    if (obj.subscription && env.STRIPE_SECRET_KEY) {
+      const sub = await lookupSubscription(obj.subscription, env);
+      if (sub) {
+        status = sub.status || null;
+        trial = sub.status === 'trialing' || !!sub.trial_end;
+        if (sub.current_period_end) {
+          activeUntil = new Date(sub.current_period_end * 1000).toISOString();
+        } else if (sub.trial_end) {
+          activeUntil = new Date(sub.trial_end * 1000).toISOString();
+        }
+      }
+    }
+    if (!status) status = trial ? 'trialing' : 'active';
   } else if (
     event.type === 'customer.subscription.created' ||
     event.type === 'customer.subscription.updated' ||
     event.type === 'customer.subscription.deleted'
   ) {
+    status = obj.status || null;
+    trial = obj.status === 'trialing';
     active = obj.status === 'active' || obj.status === 'trialing';
-    if (event.type === 'customer.subscription.deleted') active = false;
+    let cancelAtPeriodEnd = !!obj.cancel_at_period_end;
+    if (event.type === 'customer.subscription.deleted' || obj.status === 'canceled') {
+      active = false;
+      trial = false;
+      status = 'canceled';
+      cancelAtPeriodEnd = false;
+    }
     if (obj.current_period_end) {
       activeUntil = new Date(obj.current_period_end * 1000).toISOString();
+    } else if (obj.trial_end) {
+      activeUntil = new Date(obj.trial_end * 1000).toISOString();
+      trial = true;
     }
     email =
       obj.customer_email ||
@@ -141,6 +339,10 @@ async function handleWebhook(request, env) {
     }
   } else if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
     active = true;
+    // €0 invoice often means trial — mark trial if amount is 0
+    const amountPaid = typeof obj.amount_paid === 'number' ? obj.amount_paid : null;
+    trial = amountPaid === 0;
+    status = trial ? 'trialing' : 'active';
     email =
       obj.customer_email ||
       (obj.customer_details && obj.customer_details.email) ||
@@ -152,40 +354,56 @@ async function handleWebhook(request, env) {
       const end = obj.lines.data[0].period.end;
       if (end) activeUntil = new Date(end * 1000).toISOString();
     }
+    if (obj.subscription && env.STRIPE_SECRET_KEY) {
+      const sub = await lookupSubscription(obj.subscription, env);
+      if (sub) {
+        status = sub.status || status;
+        trial = sub.status === 'trialing' || trial;
+        if (sub.current_period_end) {
+          activeUntil = new Date(sub.current_period_end * 1000).toISOString();
+        }
+      }
+    }
   }
 
   if (email && !looksLikeEmail(email)) {
-    // client_reference_id might not be an email — don't write garbage keys
-    if (!(await lookupCustomerEmail(obj.customer, env))) {
+    email = obj.customer ? await lookupCustomerEmail(obj.customer, env) : null;
+    if (!looksLikeEmail(email)) {
       await rememberLast(env, {
         type: event.type,
         ok: false,
         note: 'email_not_valid',
-        raw: String(email).slice(0, 80),
       });
       return json({ received: true, saved: false, reason: 'email_not_valid' });
     }
-    email = await lookupCustomerEmail(obj.customer, env);
   }
 
   if (email && active !== null) {
     email = String(email).trim().toLowerCase();
-    await env.LUAX_SUBS.put(
-      'sub:' + email,
-      JSON.stringify({
-        active: !!active,
-        activeUntil: activeUntil || null,
-        updatedAt: new Date().toISOString(),
-        lastEvent: event.type,
-      })
-    );
+    await putSub(env, email, {
+      active: !!active,
+      activeUntil: activeUntil || null,
+      trial: !!trial,
+      status: status || (trial ? 'trialing' : active ? 'active' : 'inactive'),
+      cancelAtPeriodEnd: typeof cancelAtPeriodEnd === 'boolean' ? cancelAtPeriodEnd : false,
+      lastEvent: event.type,
+    });
     await rememberLast(env, {
       type: event.type,
       ok: true,
       email,
       active: !!active,
+      trial: !!trial,
+      activeUntil: activeUntil || null,
     });
-    return json({ received: true, saved: true, email, active: !!active });
+    return json({
+      received: true,
+      saved: true,
+      email,
+      active: !!active,
+      trial: !!trial,
+      activeUntil: activeUntil || null,
+    });
   }
 
   await rememberLast(env, {
@@ -199,6 +417,23 @@ async function handleWebhook(request, env) {
 
 function looksLikeEmail(v) {
   return typeof v === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
+
+async function putSub(env, email, fields) {
+  email = String(email).trim().toLowerCase();
+  if (!looksLikeEmail(email) || !env.LUAX_SUBS) return;
+  await env.LUAX_SUBS.put(
+    'sub:' + email,
+    JSON.stringify({
+      active: !!fields.active,
+      activeUntil: fields.activeUntil || null,
+      trial: !!fields.trial,
+      status: fields.status || null,
+      cancelAtPeriodEnd: !!fields.cancelAtPeriodEnd,
+      updatedAt: new Date().toISOString(),
+      lastEvent: fields.lastEvent || null,
+    })
+  );
 }
 
 async function rememberLast(env, info) {
@@ -225,8 +460,22 @@ async function lookupCustomerEmail(customerId, env) {
   }
 }
 
-function json(obj) {
+async function lookupSubscription(subscriptionId, env) {
+  if (!subscriptionId || !env.STRIPE_SECRET_KEY) return null;
+  try {
+    const res = await fetch('https://api.stripe.com/v1/subscriptions/' + subscriptionId, {
+      headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY },
+    });
+    if (!res.ok) return null;
+    return await res.json().catch(() => null);
+  } catch (_) {
+    return null;
+  }
+}
+
+function json(obj, status) {
   return new Response(JSON.stringify(obj), {
+    status: status || 200,
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
@@ -234,7 +483,6 @@ function json(obj) {
   });
 }
 
-/** Stripe-compatible HMAC check; accepts any v1 signature in the header. */
 async function verifyStripeSignature(payload, sigHeader, secret) {
   if (!sigHeader || !secret) return false;
 
