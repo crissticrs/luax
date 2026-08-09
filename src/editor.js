@@ -313,38 +313,88 @@ async function editorCopy() {
     } catch (_) {}
 }
 
-/** Paste — quiet Clipboard API, clean prompt fallback (no big console errors) */
+/** Paste into editor. Clipboard API first; mobile-friendly dialog fallback. */
 async function editorPaste() {
     if (!editor) return;
     editor.focus();
 
-    // Prefer modern Clipboard API when available and permitted
+    // 1) Clipboard API (works when browser grants permission — desktop + some mobile)
     if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
         try {
             const t = await navigator.clipboard.readText();
-            if (typeof t === 'string') {
+            if (typeof t === 'string' && t.length) {
                 editor.replaceSelection(t, 'around');
+                try { setStatus('Pasted ✓', 'ok'); setTimeout(() => setStatus(''), 1200); } catch (_) {}
                 return;
             }
-        } catch (err) {
-            // Permission denied / insecure context / etc. — silent, use fallback
-            // Do not rethrow; avoids the large browser console error noise
+        } catch (_) {
+            // denied / unsupported — fall through
         }
     }
 
-    // Fallback: prompt dialog (always works, no permission required)
-    let t = null;
-    try {
-        t = prompt('Paste text here (then OK):');
-    } catch (_) {
-        t = null;
-    }
-    if (t != null && t !== '') {
-        try {
-            editor.replaceSelection(t, 'around');
-        } catch (_) {}
-    }
+    // 2) Mobile-friendly paste dialog (long-press works inside the textarea)
+    showPasteDialog();
 }
+
+/** Simple overlay so mobile users can long-press → Paste into a real text field */
+function showPasteDialog() {
+    if (document.getElementById('luax-paste-dialog')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'luax-paste-dialog';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+    overlay.innerHTML = `
+      <div style="background:#1a1a2e;border:1px solid #333;border-radius:12px;padding:16px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+        <div style="color:#eee;font-size:15px;margin-bottom:8px;font-weight:600">Paste text</div>
+        <div style="color:#888;font-size:12px;margin-bottom:10px">Long-press the box below → Paste, then tap OK</div>
+        <textarea id="luax-paste-ta" rows="6" style="width:100%;box-sizing:border-box;background:#0d0d14;color:#eee;border:1px solid #444;border-radius:8px;padding:10px;font-size:14px;resize:vertical" placeholder="Paste here…"></textarea>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <button type="button" id="luax-paste-cancel" class="btn btn-sm" style="min-width:72px">Cancel</button>
+          <button type="button" id="luax-paste-ok" class="btn btn-sm btn-primary" style="min-width:72px">OK</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const ta = document.getElementById('luax-paste-ta');
+    const close = () => { try { overlay.remove(); } catch (_) {} };
+    document.getElementById('luax-paste-cancel').onclick = close;
+    document.getElementById('luax-paste-ok').onclick = () => {
+        const t = (ta && ta.value) || '';
+        close();
+        if (t && editor) {
+            try {
+                editor.focus();
+                editor.replaceSelection(t, 'around');
+                setStatus('Pasted ✓', 'ok');
+                setTimeout(() => setStatus(''), 1200);
+            } catch (_) {}
+        }
+    };
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    setTimeout(() => { try { ta.focus(); } catch (_) {} }, 50);
+}
+
+/** Ensure system / long-press paste reaches CodeMirror (mobile) */
+(function setupNativePasteSupport() {
+    if (!editor) return;
+    try {
+        const wrap = editor.getWrapperElement();
+        if (!wrap) return;
+        // When user long-presses → Paste, browser fires paste on the hidden textarea
+        wrap.addEventListener('paste', function (e) {
+            try {
+                // Let CodeMirror handle it normally if possible
+                const cd = e.clipboardData || window.clipboardData;
+                if (!cd) return;
+                const text = cd.getData('text/plain') || cd.getData('text');
+                if (text == null || text === '') return;
+                // If CM already consumed it, do nothing extra
+            } catch (_) {}
+        }, false);
+        // Focus help: tap on editor focuses CM (helps paste target)
+        wrap.addEventListener('touchend', function () {
+            try { editor.focus(); } catch (_) {}
+        }, { passive: true });
+    } catch (_) {}
+})();
 
 // Hover documentation tooltip
 (function setupLuaxHoverDocs() {
@@ -595,42 +645,3 @@ function closeEditor() {
     renderFiles();
     switchView('files-view');
 }
-
-// Inject Copy button into editor toolbar (keeps soft copy protection; toolbar Copy works)
-(function injectEditorCopyButton() {
-    function ensure() {
-        const bar = document.getElementById('editor-toolbar');
-        if (!bar) return;
-        if (bar.querySelector('[data-luax-copy]')) return;
-        const pasteBtn = Array.from(bar.querySelectorAll('button')).find(b =>
-            (b.getAttribute('onclick') || '').indexOf('editorPaste') !== -1 ||
-            (b.textContent || '').trim().toLowerCase() === 'paste'
-        );
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn btn-sm';
-        btn.setAttribute('data-luax-copy', '1');
-        btn.title = 'Copy selection (or whole file)';
-        btn.textContent = 'Copy';
-        btn.onclick = function () { editorCopy(); };
-        if (pasteBtn && pasteBtn.parentNode === bar) {
-            bar.insertBefore(btn, pasteBtn);
-        } else {
-            const selectBtn = Array.from(bar.querySelectorAll('button')).find(b =>
-                (b.getAttribute('onclick') || '').indexOf('editorSelectAll') !== -1
-            );
-            if (selectBtn && selectBtn.nextSibling) {
-                bar.insertBefore(btn, selectBtn.nextSibling);
-            } else {
-                bar.appendChild(btn);
-            }
-        }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', ensure);
-    } else {
-        ensure();
-    }
-    setTimeout(ensure, 500);
-    setTimeout(ensure, 2000);
-})();
