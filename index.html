@@ -3663,7 +3663,8 @@ function loginWithGoogle() {
         }
         return;
     }
-    // New scopes or first login → full consent so Drive appData is granted
+    // Prefer full consent when scopes may be incomplete so Drive appData is granted
+    // and we do not get a token that immediately fails cloud sync (login loop).
     const forceConsent = needsScopeReconsent() || !(hasRememberedProfile() || localStorage.getItem(TOKEN_STORAGE_KEY));
     client.requestAccessToken({ prompt: forceConsent ? 'consent' : '' });
 }
@@ -3802,18 +3803,37 @@ function ensureGoogleTokenClient(silent) {
                 }
                 persistGoogleToken(resp.access_token, resp.expires_in);
                 markScopesGranted();
-                updateCloudUI();
-                setCloudStatus('Cloud: signed in — syncing…', 'ok');
-                await fetchGoogleProfile();
-                tryFinishPendingProActivation();
-                await cloudSyncOnSignIn({ free: true });
-                await verifySubscriptionOnAccess();
+                // Unlock UI immediately so the user never bounces back to login
+                // if a later cloud/Drive call fails or re-prompts for scopes.
+                authRefreshing = false;
                 applyAuthGate();
                 document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
                 document.getElementById('projects-view')?.classList.add('active');
-                const shared = tryLoadSharedPlay();
-                if (shared) {
+                updateProfileUI();
+                setCloudStatus('Cloud: signed in — syncing…', 'ok');
+                try {
+                    await fetchGoogleProfile();
+                } catch (_) {}
+                try { tryFinishPendingProActivation(); } catch (_) {}
+                try {
+                    await cloudSyncOnSignIn({ free: true });
+                } catch (err) {
+                    console.warn('cloudSyncOnSignIn after login', err);
+                    setCloudStatus('Cloud: signed in (sync later)', 'warn');
+                }
+                try {
+                    await verifySubscriptionOnAccess();
+                } catch (_) {}
+                // Keep projects view even if something above called applyAuthGate
+                if (isAuthed()) {
+                    document.getElementById('login-view')?.classList.remove('active');
+                    if (!document.querySelector('.view.active:not(#login-view)')) {
+                        document.getElementById('projects-view')?.classList.add('active');
+                    }
                     renderProjects();
+                }
+                const shared = tryLoadSharedPlay();
+                if (shared && isAuthed()) {
                     openProject(shared);
                     setTimeout(() => startPlayMode(), 250);
                 }
@@ -3957,11 +3977,12 @@ async function driveFetch(path, options = {}) {
             /insufficient.*scope|ACCESS_TOKEN_SCOPE_INSUFFICIENT|permission/i.test(msg) ||
             (err.error && err.error.status === 'PERMISSION_DENIED');
         if (insufficient && !scopeReauthInFlight) {
+            // Do NOT clear the access token here — that was kicking users back
+            // to the login page right after a successful Google sign-in.
+            // Keep them signed in; only re-prompt for the missing Drive scope.
             scopeReauthInFlight = true;
-            setCloudStatus('Cloud: need Drive permission — sign in again…', 'warn');
+            setCloudStatus('Cloud: need Drive permission — approve when prompted', 'warn');
             try { localStorage.removeItem(SCOPE_VERSION_KEY); } catch (_) {}
-            clearPersistedGoogleToken({ keepProfile: true });
-            // Prompt user to grant drive.appdata
             setTimeout(() => {
                 scopeReauthInFlight = false;
                 requestGoogleTokenWithScopes({ forceConsent: true, silent: true });
