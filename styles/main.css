@@ -838,8 +838,12 @@ body.controls-hidden #console-panel {
     font-size: 2rem; font-weight: 800; letter-spacing: -0.02em;
     color: var(--text-color); margin: 0 0 8px;
 }
+.login-card .login-tagline {
+    margin: 0 0 10px; color: var(--text-color); font-size: 1.05rem;
+    font-weight: 600; line-height: 1.35; letter-spacing: -0.01em;
+}
 .login-card .login-sub {
-    margin: 0 0 24px; color: var(--muted); font-size: 0.95rem; line-height: 1.4;
+    margin: 0 0 24px; color: var(--muted); font-size: 0.9rem; line-height: 1.45;
 }
 .login-card .btn-google-login {
     width: 100%; min-height: 48px; font-size: 1rem;
