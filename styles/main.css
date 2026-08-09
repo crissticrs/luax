@@ -1,1 +1,3 @@
-PLACEHOLDER
+:root, [data-theme="purple"] {
+    --bg-color: #0c0a12;
+}
