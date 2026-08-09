@@ -4,6 +4,15 @@
 // Exposes: openModal, closeModal, confirmModal, lxAlert, lxConfirm, lxToast
 // window.alert is overridden to use the themed dialog.
 
+// Inject toast/dialog CSS (no need to edit main.css / index.html)
+(function injectLxDialogCss() {
+    if (document.getElementById('lx-dialog-css')) return;
+    const s = document.createElement('style');
+    s.id = 'lx-dialog-css';
+    s.textContent = '.lx-dialog-msg {\n    margin: 0;\n    font-size: 0.95rem;\n    line-height: 1.45;\n    color: var(--text-color, #e8e6f0);\n    white-space: pre-wrap;\n    word-break: break-word;\n}\n#lx-toast-host {\n    position: fixed;\n    left: 50%;\n    bottom: calc(16px + env(safe-area-inset-bottom, 0px));\n    transform: translateX(-50%);\n    z-index: 100000;\n    display: flex;\n    flex-direction: column-reverse;\n    align-items: center;\n    gap: 8px;\n    pointer-events: none;\n    width: min(92vw, 420px);\n}\n.lx-toast {\n    pointer-events: none;\n    opacity: 0;\n    transform: translateY(12px) scale(0.98);\n    transition: opacity 0.22s ease, transform 0.22s ease;\n    padding: 12px 16px;\n    border-radius: 12px;\n    font-size: 0.9rem;\n    line-height: 1.35;\n    text-align: center;\n    color: #fff;\n    background: color-mix(in srgb, var(--panel-color, #1a1625) 92%, #000);\n    border: 1px solid color-mix(in srgb, var(--accent-color, #8b5cf6) 35%, transparent);\n    box-shadow: 0 8px 28px rgba(0,0,0,0.45);\n    max-width: 100%;\n}\n.lx-toast.show { opacity: 1; transform: translateY(0) scale(1); }\n.lx-toast-ok { border-color: color-mix(in srgb, #22c55e 50%, transparent); }\n.lx-toast-error { border-color: color-mix(in srgb, #f43f5e 55%, transparent); }\n.lx-toast-info { border-color: color-mix(in srgb, var(--accent-color, #8b5cf6) 45%, transparent); }\n';
+    (document.head || document.documentElement).appendChild(s);
+})();
+
 let modalCallback = null;
 let modalCancelCallback = null;
 let modalMode = 'form'; // 'form' | 'alert' | 'confirm'
@@ -57,10 +66,6 @@ function _lxEsc(s) {
         .replace(/\n/g, '<br>');
 }
 
-/**
- * Themed alert dialog. Returns a Promise that resolves when the user taps OK.
- * Also assigned to window.alert (fire-and-forget; does not block the JS thread).
- */
 function lxAlert(message, title) {
     title = title || 'LuaX';
     return new Promise((resolve) => {
@@ -77,9 +82,6 @@ function lxAlert(message, title) {
     });
 }
 
-/**
- * Themed confirm dialog. Resolves true (OK) or false (Cancel).
- */
 function lxConfirm(message, title) {
     title = title || 'Confirm';
     return new Promise((resolve) => {
@@ -105,9 +107,8 @@ function lxConfirm(message, title) {
     });
 }
 
-/** Non-blocking toast (success / error / info). Auto-hides. */
 function lxToast(message, type, ms) {
-    type = type || 'info'; // info | ok | error
+    type = type || 'info';
     ms = ms == null ? 2800 : ms;
     let host = document.getElementById('lx-toast-host');
     if (!host) {
@@ -127,7 +128,6 @@ function lxToast(message, type, ms) {
     }, ms);
 }
 
-// Override native alert → themed (keeps every alert(...) call working)
 (function patchNativeDialogs() {
     const nativeAlert = window.alert.bind(window);
     window.alert = function (msg) {
@@ -139,11 +139,9 @@ function lxToast(message, type, ms) {
         } catch (_) {}
         nativeAlert(msg);
     };
-    // Keep a path to native if ever needed
     window._nativeAlert = nativeAlert;
 })();
 
-// Backdrop click = cancel for confirm/alert
 document.addEventListener('DOMContentLoaded', () => {
     const m = document.getElementById('custom-modal');
     if (!m) return;
