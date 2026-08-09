@@ -1,25 +1,23 @@
 // src/error-tracking.js — lightweight production error visibility
 //
-// Setup (optional Sentry free tier):
-//   1. Create a browser project at https://sentry.io
-//   2. Either set in index.html BEFORE other scripts:
-//        <script>window.LUAX_SENTRY_DSN = "https://...@o....ingest.sentry.io/...";</script>
-//      or set LUAX_SENTRY_DSN below.
-// Without a DSN, errors are still stored in sessionStorage and logged to the console.
+// Sentry: uses the official loader (no separate DSN string needed).
+// Local fallback: always logs to console + sessionStorage even if Sentry fails.
 //
 // Usage in catch blocks:
 //   catch (e) { reportError(e, 'cloud-sync.upload'); }
+//
+// Debug: getLuaxErrorLog()  /  clearLuaxErrorLog()
 
 (function (global) {
     'use strict';
 
-    // Optional: paste your Sentry DSN here (or set window.LUAX_SENTRY_DSN earlier)
-    var HARDCODED_DSN = '';
+    // Your Sentry browser loader (from Sentry project settings)
+    var SENTRY_LOADER =
+        (global.LUAX_SENTRY_LOADER || '').trim() ||
+        'https://js-de.sentry-cdn.com/c7bd3e8628715121a64a79e5a8c183dc.min.js';
 
-    var DSN = (global.LUAX_SENTRY_DSN || HARDCODED_DSN || '').trim();
     var LOCAL_KEY = 'luax_error_log';
     var MAX_LOCAL = 40;
-    var SENTRY_CDN = 'https://browser.sentry-cdn.com/8.47.0/bundle.min.js';
 
     function pushLocal(entry) {
         try {
@@ -86,7 +84,10 @@
             href: (typeof location !== 'undefined' && location.href) || ''
         };
         pushLocal(entry);
-        try { console[level] ? console[level]('[LuaX]', msg, extra || '') : console.log('[LuaX]', msg); } catch (_) {}
+        try {
+            if (console[level]) console[level]('[LuaX]', msg, extra || '');
+            else console.log('[LuaX]', msg);
+        } catch (_) {}
         if (global.Sentry && typeof global.Sentry.captureMessage === 'function') {
             try {
                 global.Sentry.withScope(function (scope) {
@@ -133,40 +134,26 @@
     }
 
     function initSentry() {
-        if (!DSN || global.Sentry) return;
+        if (!SENTRY_LOADER) return;
+        if (document.querySelector('script[data-luax-sentry]')) return;
         var s = document.createElement('script');
-        s.src = SENTRY_CDN;
+        s.src = SENTRY_LOADER;
         s.crossOrigin = 'anonymous';
+        s.setAttribute('data-luax-sentry', '1');
         s.onload = function () {
-            if (!global.Sentry || !global.Sentry.init) return;
             try {
-                global.Sentry.init({
-                    dsn: DSN,
-                    environment: (typeof location !== 'undefined' && location.hostname) || 'unknown',
-                    release: global.LUAX_RELEASE || undefined,
-                    tracesSampleRate: 0,
-                    sampleRate: 1.0,
-                    ignoreErrors: [
-                        'ResizeObserver loop',
-                        'Non-Error promise rejection captured'
-                    ],
-                    beforeSend: function (event) {
-                        try {
-                            var text = JSON.stringify(event);
-                            if (/ya29\.|Bearer [A-Za-z0-9\-._~+\/]+=*/.test(text)) {
-                                if (event.request) delete event.request.cookies;
-                            }
-                        } catch (_) {}
-                        return event;
-                    }
-                });
-                try { global.Sentry.setTag('app', 'luax'); } catch (_) {}
-            } catch (err) {
-                try { console.warn('[LuaX] Sentry init failed', err); } catch (_) {}
-            }
+                if (global.Sentry && global.Sentry.setTag) {
+                    global.Sentry.setTag('app', 'luax');
+                }
+                if (global.Sentry && global.Sentry.setContext) {
+                    global.Sentry.setContext('luax', {
+                        host: (typeof location !== 'undefined' && location.hostname) || ''
+                    });
+                }
+            } catch (_) {}
         };
         s.onerror = function () {
-            try { console.warn('[LuaX] Failed to load Sentry SDK'); } catch (_) {}
+            try { console.warn('[LuaX] Failed to load Sentry loader'); } catch (_) {}
         };
         (document.head || document.documentElement).appendChild(s);
     }
