@@ -2463,6 +2463,982 @@ function ensureMusicClock() {
     musicState._clockId = requestAnimationFrame(tick);
 }
 
+
+// ============================================================
+// CONSOLE
+// ============================================================
+function pushConsole(msg, kind) {
+    consoleLines.push({ msg: String(msg), kind: kind || '' });
+    if (consoleLines.length > 80) consoleLines.shift();
+    renderConsole();
+}
+function renderConsole() {
+    const panel = document.getElementById('console-panel');
+    panel.innerHTML = consoleLines.map(l =>
+        `<div class="line ${l.kind}">${escapeHtml(l.msg)}</div>`
+    ).join('');
+    panel.scrollTop = panel.scrollHeight;
+}
+function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function toggleConsole() {
+    consoleOpen = !consoleOpen;
+    document.getElementById('console-panel').classList.toggle('open', consoleOpen);
+}
+function clearConsole() {
+    consoleLines.length = 0;
+    renderConsole();
+}
+
+// ============================================================
+// LUA BINDINGS
+// ============================================================
+
+// ============================================================
+
+// PARTICLE FX (auto-managed — no user arrays needed)
+// ============================================================
+const fxParticles = [];
+const FX_MAX = 400;
+
+function fxClear() {
+    fxParticles.length = 0;
+}
+
+function fxSpawn(opts) {
+    if (!opts) return;
+    const n = Math.max(1, Math.min(80, Math.floor(Number(opts.count) || 12)));
+    const x = Number(opts.x) || 0;
+    const y = Number(opts.y) || 0;
+    const color = opts.color || '#fff';
+    const life = Math.max(0.05, Number(opts.life) || 0.55);
+    const speed = Math.max(0, Number(opts.speed) || 120);
+    const size = Math.max(0.5, Number(opts.size) || 3);
+    const gravity = opts.gravity != null ? Number(opts.gravity) : 280;
+    const spread = opts.spread != null ? Number(opts.spread) : Math.PI * 2;
+    const angle = opts.angle != null ? Number(opts.angle) : 0;
+    const drag = opts.drag != null ? Number(opts.drag) : 0.92;
+    const shape = opts.shape || 'circle';
+    for (let i = 0; i < n; i++) {
+        if (fxParticles.length >= FX_MAX) fxParticles.shift();
+        const a = angle + (Math.random() - 0.5) * spread;
+        const sp = speed * (0.35 + Math.random() * 0.9);
+        fxParticles.push({
+            x: x, y: y,
+            vx: Math.cos(a) * sp,
+            vy: Math.sin(a) * sp,
+            life: life * (0.6 + Math.random() * 0.6),
+            maxLife: life,
+            size: size * (0.5 + Math.random() * 0.9),
+            color: color,
+            gravity: gravity,
+            drag: drag,
+            shape: shape,
+            rot: Math.random() * Math.PI * 2,
+            spin: (Math.random() - 0.5) * 10
+        });
+    }
+}
+
+function fxBurst(x, y, color, count) {
+    fxSpawn({
+        x: x, y: y, color: color || '#ff8844',
+        count: count != null ? count : 16,
+        life: 0.5, speed: 160, size: 3.5, gravity: 220,
+        spread: Math.PI * 2, shape: 'circle'
+    });
+}
+
+function fxSpark(x, y, color, count) {
+    fxSpawn({
+        x: x, y: y, color: color || '#ffe566',
+        count: count != null ? count : 10,
+        life: 0.35, speed: 220, size: 2.2, gravity: 120,
+        spread: Math.PI * 2, shape: 'spark'
+    });
+}
+
+function fxDust(x, y, color, count) {
+    fxSpawn({
+        x: x, y: y, color: color || '#c4b5a0',
+        count: count != null ? count : 8,
+        life: 0.7, speed: 50, size: 4, gravity: -20,
+        spread: Math.PI * 1.2, angle: -Math.PI / 2, drag: 0.88, shape: 'circle'
+    });
+}
+
+function fxSmoke(x, y, color, count) {
+    fxSpawn({
+        x: x, y: y, color: color || '#8899aa',
+        count: count != null ? count : 6,
+        life: 1.1, speed: 35, size: 5, gravity: -40,
+        spread: 0.9, angle: -Math.PI / 2, drag: 0.95, shape: 'circle'
+    });
+}
+
+function fxConfetti(x, y, color, count) {
+    const colors = Array.isArray(color) ? color : null;
+    const n = count != null ? count : 20;
+    for (let i = 0; i < n; i++) {
+        fxSpawn({
+            x: x, y: y,
+            color: colors ? colors[i % colors.length] : (color || '#8b5cf6'),
+            count: 1, life: 0.9, speed: 140, size: 3.5, gravity: 320,
+            spread: Math.PI * 2, shape: 'square'
+        });
+    }
+}
+
+function fxUpdate(dt) {
+    if (!fxParticles.length) return;
+    for (let i = fxParticles.length - 1; i >= 0; i--) {
+        const p = fxParticles[i];
+        p.life -= dt;
+        if (p.life <= 0) {
+            fxParticles.splice(i, 1);
+            continue;
+        }
+        p.vx *= Math.pow(p.drag, dt * 60);
+        p.vy *= Math.pow(p.drag, dt * 60);
+        p.vy += p.gravity * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.rot += p.spin * dt;
+    }
+}
+
+function fxDraw() {
+    if (!fxParticles.length || typeof ctx === 'undefined' || !ctx) return;
+    for (let i = 0; i < fxParticles.length; i++) {
+        const p = fxParticles[i];
+        const t = Math.max(0, p.life / p.maxLife);
+        const alpha = t * t;
+        const s = p.size * (0.6 + 0.4 * t);
+        ctx.globalAlpha = Math.min(1, alpha);
+        ctx.fillStyle = p.color;
+        if (p.shape === 'square') {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillRect(-s, -s, s * 2, s * 2);
+            ctx.restore();
+        } else if (p.shape === 'spark') {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(Math.atan2(p.vy, p.vx) || 0);
+            ctx.fillRect(-s * 1.8, -s * 0.35, s * 3.6, s * 0.7);
+            ctx.restore();
+        } else {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, s, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    ctx.globalAlpha = 1;
+}
+
+
+// ============================================================
+// GAME SAVE DATA (player progress — not project source)
+// Per-project localStorage. Independent of cloud project sync.
+// ============================================================
+const GAMEDATA_PREFIX = 'luax_gamedata_v1:';
+
+function gameDataStorageKey(projectName) {
+    const proj = projectName || currentProjectName || '_default';
+    let account = '';
+    try {
+        if (typeof currentAccountEmail === 'function') account = currentAccountEmail() || '';
+        else if (typeof googleProfile !== 'undefined' && googleProfile && googleProfile.email)
+            account = String(googleProfile.email).toLowerCase();
+    } catch (_) {}
+    // Scope by account when signed in so devices/users don't collide
+    return GAMEDATA_PREFIX + (account ? account + '::' : '') + proj;
+}
+
+function loadGameDataStore(projectName) {
+    try {
+        const raw = localStorage.getItem(gameDataStorageKey(projectName));
+        if (!raw) return {};
+        const data = JSON.parse(raw);
+        return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    } catch (_) {
+        return {};
+    }
+}
+
+function saveGameDataStore(store, projectName) {
+    try {
+        localStorage.setItem(gameDataStorageKey(projectName), JSON.stringify(store || {}));
+        return true;
+    } catch (e) {
+        console.warn('Game data save failed', e);
+        return false;
+    }
+}
+
+function gameDataSave(key, value) {
+    if (key == null || key === '') return false;
+    const k = String(key);
+    const store = loadGameDataStore();
+    store[k] = value;
+    return saveGameDataStore(store);
+}
+
+function gameDataLoad(key, defaultValue) {
+    if (key == null || key === '') {
+        return defaultValue !== undefined ? defaultValue : null;
+    }
+    const store = loadGameDataStore();
+    const k = String(key);
+    if (!Object.prototype.hasOwnProperty.call(store, k)) {
+        return defaultValue !== undefined ? defaultValue : null;
+    }
+    return store[k];
+}
+
+function gameDataHas(key) {
+    if (key == null || key === '') return false;
+    const store = loadGameDataStore();
+    return Object.prototype.hasOwnProperty.call(store, String(key));
+}
+
+function gameDataRemove(key) {
+    if (key == null || key === '') return false;
+    const store = loadGameDataStore();
+    const k = String(key);
+    if (!Object.prototype.hasOwnProperty.call(store, k)) return false;
+    delete store[k];
+    return saveGameDataStore(store);
+}
+
+function gameDataClear() {
+    try {
+        localStorage.removeItem(gameDataStorageKey());
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+function gameDataKeys() {
+    return Object.keys(loadGameDataStore());
+}
+
+function gameDataAll() {
+    return loadGameDataStore();
+}
+
+window.LuaDeckAPI = {
+    gfx: {
+        cls(c) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            const dpr = window.devicePixelRatio || 1;
+            ctx.fillStyle = c || '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.translate(-cam.x, -cam.y);
+        },
+        rect(x, y, w, h, c) { ctx.strokeStyle = c || '#fff'; ctx.strokeRect(x, y, w, h); },
+        rectfill(x, y, w, h, c) { ctx.fillStyle = c || '#fff'; ctx.fillRect(x, y, w, h); },
+        circle(x, y, r, c) {
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.strokeStyle = c || '#fff'; ctx.stroke();
+        },
+        circlefill(x, y, r, c) {
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fillStyle = c || '#fff'; ctx.fill();
+        },
+        line(x1, y1, x2, y2, c) {
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+            ctx.strokeStyle = c || '#fff'; ctx.stroke();
+        },
+        pixel(x, y, c) {
+            ctx.fillStyle = c || '#fff';
+            ctx.fillRect(Math.floor(x), Math.floor(y), 1, 1);
+        },
+        text(s, x, y, c, f) {
+            ctx.font = f || '16px sans-serif';
+            ctx.fillStyle = c || '#fff';
+            ctx.fillText(String(s), x, y);
+        },
+        cam(x, y) { cam.x = x || 0; cam.y = y || 0; },
+
+        /** Resolve a project PNG to a loaded HTMLImageElement (or null). */
+        _spriteImg(name) {
+            if (!name || !currentProjectName) return null;
+            const map = getProjectAssetMap(currentProjectName);
+            const src = map[name];
+            if (!src) return null;
+            const key = currentProjectName + '::' + name;
+            let img = spriteImageCache[key];
+            if (!img) {
+                img = new Image();
+                img.src = src;
+                spriteImageCache[key] = img;
+            }
+            if (!img.complete || !img.naturalWidth) return null;
+            return img;
+        },
+
+        /**
+         * Draw a project image asset.
+         * gfx.sprite("player.png", x, y)
+         * gfx.sprite("player.png", x, y, w, h)
+         */
+        sprite(name, x, y, w, h) {
+            const img = this._spriteImg(name);
+            if (!img) return;
+            if (w != null && h != null) ctx.drawImage(img, x, y, w, h);
+            else ctx.drawImage(img, x, y);
+        },
+
+        /**
+         * Draw one frame from a sprite sheet (grid, left→right then top→bottom).
+         * Frame is 0-based.
+         *
+         *   gfx.anim("walk.png", frame, x, y)
+         *   gfx.anim("walk.png", frame, x, y, fw, fh)
+         *   gfx.anim("walk.png", frame, x, y, fw, fh, dw, dh)
+         *   gfx.anim("walk.png", frame, x, y, fw, fh, dw, dh, cols, rows)
+         *
+         * Easiest for a 2×2 sheet (ignore pixel sizes):
+         *   gfx.anim("hero.png", frame, x, y, 0, 0, 96, 96, 2, 2)
+         *   -- cell size is computed as imageWidth/cols × imageHeight/rows
+         *
+         * fw/fh = cell size in the sheet (optional if cols+rows given)
+         * dw/dh = size on screen
+         * cols/rows = grid size (optional; otherwise derived from fw/fh)
+         */
+        anim(name, frame, x, y, fw, fh, dw, dh, cols, rows) {
+            const img = (typeof this._spriteImg === 'function')
+                ? this._spriteImg(name)
+                : (window.LuaDeckAPI && window.LuaDeckAPI.gfx._spriteImg(name));
+            if (!img) return;
+
+            const imgW = img.naturalWidth;
+            const imgH = img.naturalHeight;
+            if (!imgW || !imgH) return;
+
+            let nCols = Number(cols);
+            let nRows = Number(rows);
+            let cellW = Number(fw);
+            let cellH = Number(fh);
+
+            // Preferred: explicit grid (cols × rows) → auto cell size
+            if (nCols > 0 && nRows > 0) {
+                cellW = imgW / nCols;
+                cellH = imgH / nRows;
+            } else {
+                // Fallback: cell size in pixels (default 16)
+                if (!(cellW > 0)) cellW = 16;
+                if (!(cellH > 0)) cellH = 16;
+                nCols = Math.max(1, Math.floor(imgW / cellW));
+                nRows = Math.max(1, Math.floor(imgH / cellH));
+                // Recompute exact cell from grid so we don't clip remainder
+                cellW = imgW / nCols;
+                cellH = imgH / nRows;
+            }
+
+            const total = Math.max(1, nCols * nRows);
+            let fi = Math.floor(Number(frame) || 0);
+            fi = ((fi % total) + total) % total;
+
+            const col = fi % nCols;
+            const row = Math.floor(fi / nCols);
+            const sx = col * cellW;
+            const sy = row * cellH;
+
+            let outW = Number(dw);
+            let outH = Number(dh);
+            if (!(outW > 0)) outW = cellW;
+            if (!(outH > 0)) outH = cellH;
+
+            const dx = Number(x) || 0;
+            const dy = Number(y) || 0;
+
+            ctx.drawImage(
+                img,
+                sx, sy, cellW, cellH,
+                dx, dy, outW, outH
+            );
+        },
+
+        /** List asset filenames for current project (JS array) */
+        sprites() {
+            if (!currentProjectName) return [];
+            return Object.keys(getProjectAssetMap(currentProjectName));
+        },
+
+
+        /**
+         * Raycast renderer (Wolfenstein-style solid walls).
+         * opts = {
+         *   map: 2D array of numbers (0 = empty, 1+ = wall id),
+         *   x, y: player position in map units,
+         *   angle: facing direction in radians (0 = +X / east),
+         *   fov: field of view in radians (default Math.PI/3),
+         *   ceil: ceiling color (default "#1a1c28"),
+         *   floor: floor color (default "#2a2c35"),
+         *   colors: optional map { [wallId]: "#hex" },
+         *   fog: max distance for fog fade (default 16),
+         *   scale: projection scale (default 0.66),
+         *   pitch: look up/down in radians, clamped ~±90° (default 0)
+         * }
+         */
+        raycast(opts) {
+            if (!opts || !opts.map) return;
+            const map = opts.map;
+            const mapH = map.length;
+            if (!mapH) return;
+            const mapW = map[0].length;
+            // Lua maps are 1-based: cell (1,1) lives at continuous [1,2)×[1,2).
+            // After tojs(), map[0] === Lua map[1], so shift positions into 0-based space.
+            const px = (opts.x ?? 1.5) - 1;
+            const py = (opts.y ?? 1.5) - 1;
+            const angle = opts.angle ?? 0;
+            const fov = opts.fov ?? (Math.PI / 3);
+            const ceilC = opts.ceil || '#1a1c28';
+            const floorC = opts.floor || '#2a2c35';
+            const fogMax = opts.fog ?? 16;
+            const projScale = opts.scale ?? 0.66;
+            // pitch in radians; shift horizon (positive = look up)
+            let pitch = opts.pitch ?? 0;
+            const pitchMax = Math.PI / 2 - 0.01;
+            if (pitch > pitchMax) pitch = pitchMax;
+            if (pitch < -pitchMax) pitch = -pitchMax;
+            const defaultColors = {
+                1: '#c44', 2: '#4a8', 3: '#48a', 4: '#a84',
+                5: '#84a', 6: '#a48', 7: '#8a4', 8: '#aaa'
+            };
+            const colors = opts.colors || defaultColors;
+
+            // Force clean transform for full-screen raycast (ignore 2D cam)
+            const dpr = window.devicePixelRatio || 1;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            const w = canvas.width / dpr;
+            const h = canvas.height / dpr;
+            // horizon shifts with pitch (look up → more floor visible below)
+            const pitchOffset = Math.tan(pitch) * h * 0.5;
+            const mid = h / 2 + pitchOffset;
+            const numRays = Math.max(1, Math.floor(w));
+
+            // Ceiling + floor relative to shifted horizon
+            ctx.fillStyle = ceilC;
+            ctx.fillRect(0, 0, w, Math.max(0, mid));
+            ctx.fillStyle = floorC;
+            ctx.fillRect(0, Math.max(0, mid), w, h);
+
+            const cosA = Math.cos(angle);
+            const sinA = Math.sin(angle);
+
+            for (let col = 0; col < numRays; col++) {
+                const rayOffset = ((col / numRays) - 0.5) * fov;
+                const rayAngle = angle + rayOffset;
+                const rayDirX = Math.cos(rayAngle);
+                const rayDirY = Math.sin(rayAngle);
+
+                // DDA setup
+                let mapX = Math.floor(px);
+                let mapY = Math.floor(py);
+                const deltaDistX = rayDirX === 0 ? 1e30 : Math.abs(1 / rayDirX);
+                const deltaDistY = rayDirY === 0 ? 1e30 : Math.abs(1 / rayDirY);
+
+                let stepX, stepY, sideDistX, sideDistY;
+                if (rayDirX < 0) {
+                    stepX = -1;
+                    sideDistX = (px - mapX) * deltaDistX;
+                } else {
+                    stepX = 1;
+                    sideDistX = (mapX + 1 - px) * deltaDistX;
+                }
+                if (rayDirY < 0) {
+                    stepY = -1;
+                    sideDistY = (py - mapY) * deltaDistY;
+                } else {
+                    stepY = 1;
+                    sideDistY = (mapY + 1 - py) * deltaDistY;
+                }
+
+                let hit = 0;
+                let side = 0; // 0 = NS (vertical wall), 1 = EW
+                let wallId = 0;
+                const maxSteps = mapW + mapH + 4;
+                for (let i = 0; i < maxSteps; i++) {
+                    if (sideDistX < sideDistY) {
+                        sideDistX += deltaDistX;
+                        mapX += stepX;
+                        side = 0;
+                    } else {
+                        sideDistY += deltaDistY;
+                        mapY += stepY;
+                        side = 1;
+                    }
+                    if (mapY < 0 || mapY >= mapH || mapX < 0 || mapX >= mapW) {
+                        hit = 1;
+                        wallId = 1;
+                        break;
+                    }
+                    const cell = map[mapY][mapX];
+                    if (cell && cell !== 0) {
+                        hit = 1;
+                        wallId = cell;
+                        break;
+                    }
+                }
+
+                if (!hit) continue;
+
+                // Perpendicular distance (fish-eye correction)
+                let perpDist;
+                if (side === 0) {
+                    perpDist = (mapX - px + (1 - stepX) / 2) / rayDirX;
+                } else {
+                    perpDist = (mapY - py + (1 - stepY) / 2) / rayDirY;
+                }
+                perpDist = Math.max(0.05, Math.abs(perpDist));
+
+                const lineH = (h / perpDist) * projScale;
+                const drawStart = Math.max(0, mid - lineH / 2);
+                const drawEnd = Math.min(h, mid + lineH / 2);
+
+                // Color + side shading + distance fog
+                let base = colors[wallId] || colors[1] || '#888';
+                // Parse hex → RGB for darkening
+                let r = 136, g = 136, b = 136;
+                if (typeof base === 'string' && base[0] === '#') {
+                    const hex = base.length === 4
+                        ? base[1] + base[1] + base[2] + base[2] + base[3] + base[3]
+                        : base.slice(1);
+                    r = parseInt(hex.slice(0, 2), 16) || 0;
+                    g = parseInt(hex.slice(2, 4), 16) || 0;
+                    b = parseInt(hex.slice(4, 6), 16) || 0;
+                }
+                if (side === 1) { // EW walls darker
+                    r = (r * 0.65) | 0;
+                    g = (g * 0.65) | 0;
+                    b = (b * 0.65) | 0;
+                }
+                const fog = Math.min(1, perpDist / fogMax);
+                r = (r * (1 - fog) + 20 * fog) | 0;
+                g = (g * (1 - fog) + 22 * fog) | 0;
+                b = (b * (1 - fog) + 28 * fog) | 0;
+
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(col, drawStart, 1, drawEnd - drawStart);
+            }
+        },
+
+        // Logical screen size (CSS pixels)
+        width() {
+            const dpr = window.devicePixelRatio || 1;
+            return canvas.width / dpr;
+        },
+        height() {
+            const dpr = window.devicePixelRatio || 1;
+            return canvas.height / dpr;
+        }
+    },
+    input: {
+        btn: i => !!btnState[i|0],
+        btnp: i => !!(btnState[i|0] && !btnPrevState[i|0]),
+        btnr: i => !!(!btnState[i|0] && btnPrevState[i|0]),
+        axis: i => (i|0) === 0 ? stickAxis.x : stickAxis.y,
+        // Touch/mouse look deltas (yaw / pitch). Cleared after each _update.
+        lookx: () => lookDeltaX + keyLook * 0.045,
+        looky: () => lookDeltaY,
+        mouseX: () => pointer.x,
+        mouseY: () => pointer.y,
+        mouseBtn: () => !!pointer.btn
+    },
+    sfx: {
+        beep: (freq, dur, type) => playBeep(freq, dur, type),
+        music(spec) { startMusic(spec); },
+        stop() { stopMusic(); },
+        playing() { return isMusicPlaying(); },
+        note(name) { return noteToFreq(name); },
+    },
+    fx: {
+        burst(x, y, color, count) { fxBurst(x, y, color, count); },
+        spark(x, y, color, count) { fxSpark(x, y, color, count); },
+        dust(x, y, color, count) { fxDust(x, y, color, count); },
+        smoke(x, y, color, count) { fxSmoke(x, y, color, count); },
+        confetti(x, y, color, count) { fxConfetti(x, y, color, count); },
+        spawn(opts) { fxSpawn(opts); },
+        clear() { fxClear(); },
+        count() { return fxParticles.length; },
+    },
+    data: {
+        save(key, value) { return gameDataSave(key, value); },
+        load(key, defaultValue) {
+            const v = gameDataLoad(key, defaultValue !== undefined ? defaultValue : null);
+            return v;
+        },
+        has(key) { return gameDataHas(key); },
+        remove(key) { return gameDataRemove(key); },
+        clear() { return gameDataClear(); },
+        keys() { return gameDataKeys(); },
+        all() { return gameDataAll(); },
+    },
+    sys: {
+        getFileContent(filename) {
+            if (!currentProjectName) return null;
+            const c = projects[currentProjectName][filename];
+            return typeof c === 'string' ? c : null;
+        },
+        log(msg) { pushConsole(msg, 'info'); },
+        isMobile: () => isMobileDevice,
+        setControlsVisible: (v) => setControlsVisible(!!v),
+        controlsVisible: () => areControlsVisible()
+    }
+};
+
+
+const LuaShim = `
+local _orig_require = require
+local js = _orig_require("js")
+local api = js.global.LuaDeckAPI
+
+-- Convert nested Lua tables → plain JS arrays/objects so JS can index them
+local function tojs(val)
+    if type(val) ~= "table" then return val end
+    local is_array = true
+    local n = 0
+    for k, _ in pairs(val) do
+        if type(k) ~= "number" or k < 1 or k ~= math.floor(k) then
+            is_array = false
+            break
+        end
+        if k > n then n = k end
+    end
+    if is_array then
+        local arr = js.new(js.global.Array)
+        for i = 1, n do
+            arr[i - 1] = tojs(val[i])  -- JS arrays are 0-based
+        end
+        return arr
+    else
+        local obj = js.new(js.global.Object)
+        for k, v in pairs(val) do
+            obj[tostring(k)] = tojs(v)
+        end
+        return obj
+    end
+end
+
+gfx = {
+    cls = function(c) api.gfx:cls(c) end,
+    rect = function(x,y,w,h,c) api.gfx:rect(x,y,w,h,c) end,
+    rectfill = function(x,y,w,h,c) api.gfx:rectfill(x,y,w,h,c) end,
+    circle = function(x,y,r,c) api.gfx:circle(x,y,r,c) end,
+    circlefill = function(x,y,r,c) api.gfx:circlefill(x,y,r,c) end,
+    line = function(x1,y1,x2,y2,c) api.gfx:line(x1,y1,x2,y2,c) end,
+    pixel = function(x,y,c) api.gfx:pixel(x,y,c) end,
+    text = function(s,x,y,c,f) api.gfx:text(tostring(s),x,y,c,f) end,
+    cam = function(x,y) api.gfx:cam(x,y) end,
+    sprite = function(name, x, y, w, h) api.gfx:sprite(name, x, y, w, h) end,
+    -- Draw frame from a sprite sheet (0-based frame index)
+    -- gfx.anim("walk.png", frame, x, y)
+    -- gfx.anim("walk.png", frame, x, y, fw, fh)
+    -- gfx.anim("walk.png", frame, x, y, fw, fh, dw, dh)
+    -- gfx.anim("hero.png", frame, x, y, 0, 0, 96, 96, 2, 2)  -- 2x2 grid, auto cell size
+    anim = function(name, frame, x, y, fw, fh, dw, dh, cols, rows)
+        api.gfx:anim(name, frame, x, y, fw, fh, dw, dh, cols, rows)
+    end,
+    sprites = function()
+        local arr = api.gfx:sprites()
+        local t = {}
+        if arr then
+            local n = tonumber(arr.length) or 0
+            for i = 0, n - 1 do t[#t+1] = arr[i] end
+        end
+        return t
+    end,
+    raycast = function(opts)
+        -- deep-convert so JS receives real arrays
+        local jsOpts = tojs(opts)
+        api.gfx:raycast(jsOpts)
+    end,
+    width = function() return api.gfx:width() end,
+    height = function() return api.gfx:height() end
+}
+
+function btn(i) return api.input:btn(i) end
+function btnp(i) return api.input:btnp(i) end
+function btnr(i) return api.input:btnr(i) end
+function axis(i) return api.input:axis(i) end
+function lookx() return api.input:lookx() end
+function looky() return api.input:looky() end
+-- Returns yaw, pitch deltas this frame (for: local lookX, lookY = look())
+function look()
+    return api.input:lookx(), api.input:looky()
+end
+
+mouse = setmetatable({}, {
+    __index = function(_, k)
+        if k == "x" then return api.input:mouseX() end
+        if k == "y" then return api.input:mouseY() end
+        if k == "btn" then return api.input:mouseBtn() end
+    end
+})
+
+sfx = {
+    beep = function(freq, dur, typ) api.sfx:beep(freq, dur, typ) end,
+    -- string = saved pattern name ("theme" / "theme.music")
+    -- table  = inline { bpm, wave, steps, channels / [1]=row, ... }
+    music = function(opts)
+        if type(opts) == "string" then
+            api.sfx:music(opts)
+            return
+        end
+        if type(opts) ~= "table" then return end
+        api.sfx:music(tojs(opts))
+    end,
+    stop = function() api.sfx:stop() end,
+    playing = function() return api.sfx:playing() end,
+    note = function(name) return api.sfx:note(tostring(name or "")) end,
+}
+
+-- Particle effects (auto update + draw — no arrays needed)
+fx = {
+    burst = function(x, y, color, count) api.fx:burst(x, y, color, count) end,
+    spark = function(x, y, color, count) api.fx:spark(x, y, color, count) end,
+    dust  = function(x, y, color, count) api.fx:dust(x, y, color, count) end,
+    smoke = function(x, y, color, count) api.fx:smoke(x, y, color, count) end,
+    confetti = function(x, y, color, count) api.fx:confetti(x, y, color, count) end,
+    spawn = function(opts)
+        if type(opts) ~= "table" then return end
+        api.fx:spawn(tojs(opts))
+    end,
+    clear = function() api.fx:clear() end,
+    count = function() return api.fx:count() end,
+}
+
+-- Persistent player save data (per project, not source code)
+-- data.save("highscore", 500)
+-- local hs = data.load("highscore", 0)
+data = {
+    save = function(key, value)
+        -- tables → plain JS objects/arrays for JSON storage
+        if type(value) == "table" then
+            return api.data:save(tostring(key), tojs(value))
+        end
+        return api.data:save(tostring(key), value)
+    end,
+    load = function(key, defaultValue)
+        local v = api.data:load(tostring(key), nil)
+        if v == nil or v == js.null then
+            return defaultValue
+        end
+        -- Convert JS arrays/objects back to Lua tables
+        local function fromjs(val)
+            if val == nil or val == js.null then return nil end
+            local t = type(val)
+            -- Fengari may expose JS objects with special type
+            if t ~= "userdata" and t ~= "table" and t ~= "object" then
+                return val
+            end
+            -- Try array
+            local ok, len = pcall(function() return tonumber(val.length) end)
+            if ok and len and len >= 0 and val[0] ~= nil then
+                local arr = {}
+                for i = 0, len - 1 do
+                    arr[i + 1] = fromjs(val[i])
+                end
+                return arr
+            end
+            -- Try object keys via JS Object.keys if available
+            local ok2, keys = pcall(function()
+                return js.global.Object:keys(val)
+            end)
+            if ok2 and keys then
+                local n = tonumber(keys.length) or 0
+                if n > 0 then
+                    local obj = {}
+                    for i = 0, n - 1 do
+                        local k = keys[i]
+                        obj[k] = fromjs(val[k])
+                    end
+                    return obj
+                end
+            end
+            return val
+        end
+        return fromjs(v)
+    end,
+    has = function(key) return api.data:has(tostring(key)) end,
+    remove = function(key) return api.data:remove(tostring(key)) end,
+    clear = function() return api.data:clear() end,
+    keys = function()
+        local arr = api.data:keys()
+        local t = {}
+        if arr then
+            local n = tonumber(arr.length) or 0
+            for i = 0, n - 1 do t[#t + 1] = arr[i] end
+        end
+        return t
+    end,
+}
+
+dt = 0.016
+
+function print(...)
+    local n = select("#", ...)
+    local parts = {}
+    for i = 1, n do parts[i] = tostring(select(i, ...)) end
+    api.sys:log(table.concat(parts, "\\t"))
+end
+
+-- Device / on-screen controls (joystick + face buttons)
+function is_mobile() return api.sys:isMobile() end
+function set_controls_visible(v) api.sys:setControlsVisible(not not v) end
+function controls_visible() return api.sys:controlsVisible() end
+
+-- Clear only user modules; keep system ones like "js"
+do
+    local keep = { js = true, package = true, coroutine = true, string = true, table = true, math = true, io = true, os = true, debug = true, utf8 = true, _G = true }
+    for k in pairs(package.loaded) do
+        if not keep[k] then package.loaded[k] = nil end
+    end
+end
+
+function require(modname)
+    if modname == "js" then return _orig_require("js") end
+    if package.loaded[modname] then return package.loaded[modname] end
+    local filename = modname
+    if not string.match(filename, "%.lua$") then filename = filename .. ".lua" end
+    local content = api.sys:getFileContent(filename)
+    if type(content) == "string" then
+        local f, err = load(content, "@" .. filename)
+        if f then
+            local res = f()
+            if res == nil then res = true end
+            package.loaded[modname] = res
+            return res
+        else
+            error("Syntax Error in " .. filename .. ": " .. tostring(err))
+        end
+    end
+    error("Module not found: " .. modname)
+end
+`;
+
+function setLuaGlobal(name, value) {
+    const L = fengari.L;
+    if (typeof value === 'number') {
+        fengari.lua.lua_pushnumber(L, value);
+    } else if (typeof value === 'string') {
+        fengari.lua.lua_pushstring(L, fengari.to_luastring(value));
+    } else if (typeof value === 'boolean') {
+        fengari.lua.lua_pushboolean(L, value);
+    } else return;
+    fengari.lua.lua_setglobal(L, fengari.to_luastring(name));
+}
+
+function callLua(name, arg) {
+    const L = fengari.L;
+    fengari.lua.lua_getglobal(L, fengari.to_luastring(name));
+    if (!fengari.lua.lua_isfunction(L, -1)) {
+        fengari.lua.lua_pop(L, 1);
+        return true;
+    }
+    let nArgs = 0;
+    if (typeof arg === 'number') {
+        fengari.lua.lua_pushnumber(L, arg);
+        nArgs = 1;
+    }
+    if (fengari.lua.lua_pcall(L, nArgs, 0, 0) !== fengari.lua.LUA_OK) {
+        const err = fengari.to_jsstring(fengari.lua.lua_tostring(L, -1));
+        fengari.lua.lua_pop(L, 1);
+        showError('Runtime: ' + err);
+        pushConsole(err, 'err');
+        stopPlayMode();
+        // Jump to editor and mark the runtime line when possible
+        try {
+            const line = parseLuaErrorLine(err);
+            // Prefer file named in the error, else main.lua
+            let file = 'main.lua';
+            const fm = String(err).match(/([\w./\\-]+\.lua)/);
+            if (fm && currentProjectName && projects[currentProjectName][fm[1]] != null) {
+                file = fm[1];
+            }
+            if (currentProjectName && projects[currentProjectName][file] != null) {
+                openFile(file);
+                if (line) setEditorError(line, err);
+                setStatus(
+                    line
+                        ? ('Runtime error on line ' + line + ': ' + formatLuaErrorMessage(err))
+                        : ('Runtime: ' + err),
+                    'error'
+                );
+            }
+        } catch (_) {}
+        return false;
+    }
+    return true;
+}
+
+function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function showError(msg) {
+    const el = document.getElementById('error-overlay');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+function gameLoop(timestamp) {
+    if (!isPlaying) return;
+    if (isPaused) {
+        loopId = requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    if (!lastTime) lastTime = timestamp;
+    let dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    if (dt > 0.1) dt = 0.1; // clamp big stalls
+
+    tickMusic(dt);
+
+    // FPS
+    fpsFrames++;
+    fpsTimer += dt;
+    if (fpsTimer >= 0.5) {
+        currentFps = Math.round(fpsFrames / fpsTimer);
+        document.getElementById('fps-badge').textContent = currentFps + ' FPS';
+        fpsFrames = 0;
+        fpsTimer = 0;
+    }
+
+    setLuaGlobal('dt', dt);
+    cam.x = cam.y = 0;
+
+    if (!callLua('_update', dt)) return;
+    // clear look deltas after Lua has read them
+    lookDeltaX = 0;
+    lookDeltaY = 0;
+    try { fxUpdate(dt); } catch (_) {}
+    if (!callLua('_draw')) return;
+    try { fxDraw(); } catch (_) {}
+
+    for (let i = 0; i < 8; i++) btnPrevState[i] = btnState[i];
+    loopId = requestAnimationFrame(gameLoop);
+}
+
+
 async function startPlayMode() {
     if (!isAuthed()) { applyAuthGate(); return; }
     if (!currentProjectName) {
