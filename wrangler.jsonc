@@ -1,8 +1,15 @@
 {
+  // LuaX Stripe verification worker
+  // Deploy:  npx wrangler deploy
+  // Secrets (never commit):  wrangler secret put STRIPE_SECRET_KEY
+  //                          wrangler secret put STRIPE_WEBHOOK_SECRET
+  //                          wrangler secret put GOOGLE_CLIENT_ID          (optional)
+  //                          wrangler secret put STATUS_SHARED_SECRET      (if used)
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "luax-stripe",
   "main": "worker.js",
-  "compatibility_date": "2025-02-04",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
   "observability": {
     "enabled": true
   },
