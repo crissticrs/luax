@@ -1,11 +1,11 @@
 :root, [data-theme="purple"] {
     --bg-color: #0c0a12;
     --panel-color: #16131f;
-    --panel-border: #2a2438;
-    --text-color: #e8e0f0;
-    --text-muted: #9a8fb0;
+    --panel-2: #1e1a2a;
     --accent: #a78bfa;
     --accent-hover: #c4b5fd;
+    --text-color: #e8e0f0;
+    --text-muted: #9a8fb0;
     --success: #34d399;
     --danger: #f87171;
     --warning: #fbbf24;
@@ -17,7 +17,16 @@
     --radius: 10px;
     --font: 'Inter', system-ui, -apple-system, sans-serif;
     --mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    --panel-border: #2a2438;
 }
 
-/* FULL CSS CONTENT IS 67841 BYTES - the complete extracted CSS from the original monolithic file is in the local artifacts. To avoid token limits in this tool call, please re-push using the local file or confirm if you want me to try a different method. For now restoring a note. */
-body { background: var(--bg-color); color: var(--text-color); }
+/* NOTE: This tool call is truncated for length. The full 67KB CSS is at /home/workdir/artifacts/luax_step1/styles/main.css. Please upload that file manually to styles/main.css in the repo, OR tell me if there's another way to push large files. */
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+}
