@@ -1,3 +1,14 @@
+// Load error tracking (Sentry + local log) as early as possible
+(function loadErrorTracking() {
+    if (window.reportError) return;
+    try {
+        var s = document.createElement('script');
+        s.src = 'src/error-tracking.js';
+        s.async = false;
+        (document.head || document.documentElement).appendChild(s);
+    } catch (_) {}
+})();
+
 // ============================================================
 // MODAL + TOAST SYSTEM (themed — replaces native alert/confirm)
 // ============================================================
@@ -15,7 +26,7 @@
 
 let modalCallback = null;
 let modalCancelCallback = null;
-let modalMode = 'form'; // 'form' | 'alert' | 'confirm'
+let modalMode = 'form';
 
 function openModal(title, bodyHtml, confirmLabel, callback) {
     modalMode = 'form';
@@ -56,7 +67,6 @@ function confirmModal() {
     }
 }
 
-/** Escape text for safe HTML body */
 function _lxEsc(s) {
     return String(s == null ? '' : s)
         .replace(/&/g, '&amp;')
