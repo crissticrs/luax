@@ -938,6 +938,11 @@ function setupSpriteCanvasInput() {
     let pinch = null;
     // mouse pan: right-click or middle-click drag (desktop)
     let mousePan = null;
+    // After a pinch, ignore leftover single-finger until all fingers lift
+    // (prevents random pixels when zooming / panning with two fingers)
+    let blockPaintUntilTouchClear = false;
+    // True if current stroke pushed history at start (so we can roll it back)
+    let strokePushedHistory = false;
 
     const endPinch = () => {
         pinch = null;
@@ -950,22 +955,46 @@ function setupSpriteCanvasInput() {
         document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
     };
 
+    /** Undo accidental paint from the first finger when a second finger starts a pinch */
+    const cancelStrokeForGesture = () => {
+        if (!spriteEd.drawing && !strokePushedHistory) {
+            spriteEd.drawing = false;
+            return;
+        }
+        spriteEd.drawing = false;
+        if (strokePushedHistory && spriteEd.historyIdx >= 0 && spriteEd.history[spriteEd.historyIdx]) {
+            try {
+                restoreLayers(spriteEd.history[spriteEd.historyIdx]);
+                // Drop the history entry for the cancelled stroke
+                spriteEd.history = spriteEd.history.slice(0, spriteEd.historyIdx);
+                spriteEd.historyIdx = spriteEd.history.length - 1;
+            } catch (_) {}
+            try { redrawSpriteCanvas(); } catch (_) {}
+        }
+        strokePushedHistory = false;
+    };
+
+    const beginPinchFromTouches = (t0, t1) => {
+        cancelStrokeForGesture();
+        blockPaintUntilTouchClear = true;
+        pinch = {
+            startDist: touchDist(t0, t1),
+            startZoom: Math.max(0.25, Math.min(8, Number(spriteEd.zoom) || 1)),
+            startPanX: spriteEd.panX || 0,
+            startPanY: spriteEd.panY || 0,
+            startMid: touchMid(t0, t1)
+        };
+        document.getElementById('sprite-editor-view')?.classList.add('spr-drawing');
+        document.getElementById('spr-canvas-wrap')?.classList.add('dragging', 'panning');
+    };
+
     const down = (e) => {
-        // Two fingers → zoom & pan mode
+        // Two fingers → zoom & pan mode (and undo any paint from the first finger)
         if (e.touches && e.touches.length >= 2) {
             e.preventDefault();
             e.stopPropagation();
-            spriteEd.drawing = false; // cancel paint stroke
             const t0 = e.touches[0], t1 = e.touches[1];
-            pinch = {
-                startDist: touchDist(t0, t1),
-                startZoom: Math.max(0.25, Math.min(8, Number(spriteEd.zoom) || 1)),
-                startPanX: spriteEd.panX || 0,
-                startPanY: spriteEd.panY || 0,
-                startMid: touchMid(t0, t1)
-            };
-            document.getElementById('sprite-editor-view')?.classList.add('spr-drawing');
-            document.getElementById('spr-canvas-wrap')?.classList.add('dragging', 'panning');
+            beginPinchFromTouches(t0, t1);
             return;
         }
 
@@ -974,6 +1003,7 @@ function setupSpriteCanvasInput() {
             e.preventDefault();
             e.stopPropagation();
             spriteEd.drawing = false;
+            strokePushedHistory = false;
             const p = ptrPos(e);
             mousePan = {
                 startX: p.x,
@@ -988,13 +1018,20 @@ function setupSpriteCanvasInput() {
 
         if (e.button != null && e.button !== 0) return;
         if (pinch || mousePan) return;
+        // Still holding a finger after pinch/zoom — do not paint
+        if (blockPaintUntilTouchClear) return;
+        // Multi-touch already active (e.g. 2nd finger on another element)
+        if (e.touches && e.touches.length > 1) return;
+
         e.preventDefault();
         e.stopPropagation();
         const p = ptrPos(e);
         document.getElementById('sprite-editor-view')?.classList.add('spr-drawing');
         spriteEd.drawing = true;
+        strokePushedHistory = false;
         if (spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
             pushSpriteHistory();
+            strokePushedHistory = true;
         }
         applySpriteToolAt(p.x, p.y, true);
     };
@@ -1005,14 +1042,7 @@ function setupSpriteCanvasInput() {
             e.preventDefault();
             const t0 = e.touches[0], t1 = e.touches[1];
             if (!pinch) {
-                pinch = {
-                    startDist: touchDist(t0, t1),
-                    startZoom: Math.max(0.25, Math.min(8, Number(spriteEd.zoom) || 1)),
-                    startPanX: spriteEd.panX || 0,
-                    startPanY: spriteEd.panY || 0,
-                    startMid: touchMid(t0, t1)
-                };
-                spriteEd.drawing = false;
+                beginPinchFromTouches(t0, t1);
             }
             const dist = touchDist(t0, t1);
             const mid = touchMid(t0, t1);
@@ -1036,7 +1066,8 @@ function setupSpriteCanvasInput() {
             return;
         }
 
-        if (pinch) return; // ignore leftover single finger during pinch release
+        if (pinch) return; // ignore leftover single finger during pinch
+        if (blockPaintUntilTouchClear) return;
         if (!spriteEd.drawing) return;
         e.preventDefault();
         if (spriteEd.tool === 'fill' || spriteEd.tool === 'picker') return;
@@ -1046,7 +1077,30 @@ function setupSpriteCanvasInput() {
 
     const up = (e) => {
         if (e) e.preventDefault();
+
+        // Still 2+ fingers on screen — stay in pinch mode
         if (e && e.touches && e.touches.length >= 2) return;
+
+        // One finger left after pinch: keep blocking paint until all fingers up
+        if (e && e.touches && e.touches.length === 1 && (pinch || blockPaintUntilTouchClear)) {
+            if (pinch) {
+                endPinch();
+                document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
+            }
+            spriteEd.drawing = false;
+            strokePushedHistory = false;
+            return;
+        }
+
+        // All fingers up
+        if (e && e.touches && e.touches.length === 0) {
+            blockPaintUntilTouchClear = false;
+        }
+        // touchend with no touches property (some browsers) or mouseup
+        if (!e || !e.touches) {
+            blockPaintUntilTouchClear = false;
+        }
+
         if (mousePan) {
             endMousePan();
             return;
@@ -1054,9 +1108,16 @@ function setupSpriteCanvasInput() {
         if (pinch) {
             endPinch();
             document.getElementById('sprite-editor-view')?.classList.remove('spr-drawing');
+            spriteEd.drawing = false;
+            strokePushedHistory = false;
             return;
         }
-        if (!spriteEd.drawing) return;
+        if (!spriteEd.drawing) {
+            strokePushedHistory = false;
+            return;
+        }
+        // Completed a real single-finger stroke — snapshot result for undo
+        strokePushedHistory = false;
         if (spriteEd.tool !== 'picker' && spriteEd.tool !== 'fill') {
             pushSpriteHistory();
         }
