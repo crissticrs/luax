@@ -9,18 +9,25 @@
     } catch (_) {}
 })();
 
+// Load XSS guard (hardens esc for project/file names in onclick)
+(function loadXssGuard() {
+    try {
+        var s = document.createElement('script');
+        s.src = 'src/xss-guard.js';
+        s.async = false;
+        (document.head || document.documentElement).appendChild(s);
+    } catch (_) {}
+})();
+
 // ============================================================
 // MODAL + TOAST SYSTEM (themed — replaces native alert/confirm)
 // ============================================================
-// Exposes: openModal, closeModal, confirmModal, lxAlert, lxConfirm, lxToast
-// window.alert is overridden to use the themed dialog.
 
-// Inject toast/dialog CSS (no need to edit main.css / index.html)
 (function injectLxDialogCss() {
     if (document.getElementById('lx-dialog-css')) return;
     const s = document.createElement('style');
     s.id = 'lx-dialog-css';
-    s.textContent = '.lx-dialog-msg {\n    margin: 0;\n    font-size: 0.95rem;\n    line-height: 1.45;\n    color: var(--text-color, #e8e6f0);\n    white-space: pre-wrap;\n    word-break: break-word;\n}\n#lx-toast-host {\n    position: fixed;\n    left: 50%;\n    bottom: calc(16px + env(safe-area-inset-bottom, 0px));\n    transform: translateX(-50%);\n    z-index: 100000;\n    display: flex;\n    flex-direction: column-reverse;\n    align-items: center;\n    gap: 8px;\n    pointer-events: none;\n    width: min(92vw, 420px);\n}\n.lx-toast {\n    pointer-events: none;\n    opacity: 0;\n    transform: translateY(12px) scale(0.98);\n    transition: opacity 0.22s ease, transform 0.22s ease;\n    padding: 12px 16px;\n    border-radius: 12px;\n    font-size: 0.9rem;\n    line-height: 1.35;\n    text-align: center;\n    color: #fff;\n    background: color-mix(in srgb, var(--panel-color, #1a1625) 92%, #000);\n    border: 1px solid color-mix(in srgb, var(--accent-color, #8b5cf6) 35%, transparent);\n    box-shadow: 0 8px 28px rgba(0,0,0,0.45);\n    max-width: 100%;\n}\n.lx-toast.show { opacity: 1; transform: translateY(0) scale(1); }\n.lx-toast-ok { border-color: color-mix(in srgb, #22c55e 50%, transparent); }\n.lx-toast-error { border-color: color-mix(in srgb, #f43f5e 55%, transparent); }\n.lx-toast-info { border-color: color-mix(in srgb, var(--accent-color, #8b5cf6) 45%, transparent); }\n';
+    s.textContent = '.lx-dialog-msg{margin:0;font-size:0.95rem;line-height:1.45;color:var(--text-color,#e8e6f0);white-space:pre-wrap;word-break:break-word}#lx-toast-host{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:100000;display:flex;flex-direction:column-reverse;align-items:center;gap:8px;pointer-events:none;width:min(92vw,420px)}.lx-toast{pointer-events:none;opacity:0;transform:translateY(12px) scale(0.98);transition:opacity .22s ease,transform .22s ease;padding:12px 16px;border-radius:12px;font-size:0.9rem;line-height:1.35;text-align:center;color:#fff;background:color-mix(in srgb,var(--panel-color,#1a1625) 92%,#000);border:1px solid color-mix(in srgb,var(--accent-color,#8b5cf6) 35%,transparent);box-shadow:0 8px 28px rgba(0,0,0,.45);max-width:100%}.lx-toast.show{opacity:1;transform:translateY(0) scale(1)}.lx-toast-ok{border-color:color-mix(in srgb,#22c55e 50%,transparent)}.lx-toast-error{border-color:color-mix(in srgb,#f43f5e 55%,transparent)}.lx-toast-info{border-color:color-mix(in srgb,var(--accent-color,#8b5cf6) 45%,transparent)}';
     (document.head || document.documentElement).appendChild(s);
 })();
 
