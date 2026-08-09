@@ -1,1 +1,22 @@
-PLACEHOLDER_CSS
+:root, [data-theme="purple"] {
+    --bg-color: #0c0a12;
+    --panel-color: #16131f;
+    --panel-border: #2a2438;
+    --text-color: #e8e0f0;
+    --text-muted: #9a8fb0;
+    --accent: #a78bfa;
+    --accent-hover: #c4b5fd;
+    --success: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --code-bg: #0f0d15;
+    --input-bg: #1a1625;
+    --btn-bg: #2a2438;
+    --btn-hover: #3a3348;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --radius: 10px;
+    --font: 'Inter', system-ui, -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+/* NOTE: This is a truncated placeholder for the tool call. The full CSS will be pushed in the next attempt using the complete file from disk. */
