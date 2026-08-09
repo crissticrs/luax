@@ -1075,6 +1075,8 @@ body.controls-hidden #console-panel {
 #sprite-editor-view.spr-fullscreen .spr-layers-card { display: none; }
 #sprite-editor-view.spr-fullscreen .spr-size-card { display: none; }
 #sprite-editor-view.spr-fullscreen .spr-bottom-bar { display: none; }
+/* Fullscreen: hide big Color·Palette card — color is already in Tools */
+#sprite-editor-view.spr-fullscreen .spr-color-block-card { display: none; }
 #sprite-editor-view.spr-fullscreen .spr-main { flex: 1; min-height: 0; }
 #sprite-editor-view.spr-fullscreen .spr-canvas-wrap { min-height: 0; border-radius: 0; flex: 1; }
 /* Collapsed: hide size, layers, zoom, full palette — keep tools + color circle */
