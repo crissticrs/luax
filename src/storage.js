@@ -9,10 +9,10 @@ function esc(s) {
         .replace(/\r/g, '\\r')
         .replace(/\u2028/g, '\\u2028')
         .replace(/\u2029/g, '\\u2029')
-        .replace(/&/g, '&amp;')
-        .replace(/"/g, '&quot;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+        .replace(/&/g, '&')
+        .replace(/"/g, '"')
+        .replace(/</g, '<')
+        .replace(/>/g, '>');
 }
 function sanitizeName(name, fallback) {
     let s = String(name == null ? '' : name).trim();
@@ -146,8 +146,16 @@ let projectAssets = loadProjectAssets();
 const spriteImageCache = {}; // dataURL or name → HTMLImageElement
 
 function saveProjectAssets() {
-    try { localStorage.setItem(ASSETS_KEY, JSON.stringify(projectAssets)); } catch (e) {
+    try {
+        localStorage.setItem(ASSETS_KEY, JSON.stringify(projectAssets));
+        return true;
+    } catch (e) {
         console.warn('assets save failed', e);
+        const msg = (e && e.name === 'QuotaExceededError')
+            ? 'Storage full — delete unused images or export the project, then try again.'
+            : ('Could not save images: ' + (e && e.message ? e.message : e));
+        try { alert(msg); } catch (_) {}
+        return false;
     }
 }
 
@@ -156,6 +164,107 @@ function getProjectAssetMap(name) {
     if (!projectAssets[name]) projectAssets[name] = {};
     return projectAssets[name];
 }
+
+/**
+ * Decode an image File, optionally downscale, re-encode as PNG (pixel-art
+ * friendly) or WebP when clearly smaller. Keeps localStorage / Drive lean.
+ *
+ * opts.maxDim   — longest side in pixels (default 512)
+ * opts.pixelArt — nearest-neighbor scaling when true (default true)
+ *
+ * @returns {Promise<{dataUrl,width,height,origWidth,origHeight,format,scaled,bytesApprox}>}
+ */
+function compressImageFile(file, opts) {
+    opts = opts || {};
+    const maxDim = opts.maxDim != null ? opts.maxDim : 512;
+    const pixelArt = opts.pixelArt !== false;
+
+    return new Promise((resolve, reject) => {
+        if (!file) return reject(new Error('No file'));
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Could not read file'));
+        reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    let w = img.naturalWidth || 1;
+                    let h = img.naturalHeight || 1;
+                    const origW = w;
+                    const origH = h;
+                    if (w > maxDim || h > maxDim) {
+                        const s = Math.min(maxDim / w, maxDim / h);
+                        w = Math.max(1, Math.round(w * s));
+                        h = Math.max(1, Math.round(h * s));
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    const draw = (tw, th) => {
+                        canvas.width = tw;
+                        canvas.height = th;
+                        const ctx = canvas.getContext('2d');
+                        ctx.imageSmoothingEnabled = !pixelArt;
+                        if (!pixelArt) {
+                            try { ctx.imageSmoothingQuality = 'high'; } catch (_) {}
+                        }
+                        ctx.clearRect(0, 0, tw, th);
+                        ctx.drawImage(img, 0, 0, tw, th);
+                    };
+
+                    draw(w, h);
+
+                    let dataUrl = canvas.toDataURL('image/png');
+                    let format = 'png';
+
+                    // Use WebP when it is meaningfully smaller (photos, not tiny pixel art)
+                    try {
+                        const webp = canvas.toDataURL('image/webp', 0.82);
+                        if (webp.indexOf('data:image/webp') === 0 && webp.length < dataUrl.length * 0.8) {
+                            dataUrl = webp;
+                            format = 'webp';
+                        }
+                    } catch (_) {}
+
+                    // Still too large for storage → scale down further
+                    if (dataUrl.length > 1.2e6) {
+                        const factor = Math.sqrt(1.0e6 / dataUrl.length);
+                        w = Math.max(1, Math.round(w * factor));
+                        h = Math.max(1, Math.round(h * factor));
+                        draw(w, h);
+                        dataUrl = canvas.toDataURL('image/png');
+                        format = 'png';
+                        try {
+                            const webp2 = canvas.toDataURL('image/webp', 0.75);
+                            if (webp2.indexOf('data:image/webp') === 0 && webp2.length < dataUrl.length) {
+                                dataUrl = webp2;
+                                format = 'webp';
+                            }
+                        } catch (_) {}
+                    }
+
+                    resolve({
+                        dataUrl: dataUrl,
+                        width: w,
+                        height: h,
+                        origWidth: origW,
+                        origHeight: origH,
+                        format: format,
+                        scaled: (w !== origW || h !== origH),
+                        bytesApprox: Math.round(dataUrl.length * 0.75)
+                    });
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            img.onerror = () => reject(new Error('Invalid or unsupported image'));
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+try {
+    window.compressImageFile = compressImageFile;
+} catch (_) {}
 
 
 function getProjectGamepad(name) {
@@ -478,4 +587,3 @@ window.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') saveState();
 });
 setInterval(() => { if (lastSaveAt) updateSaveIndicator(); }, 15000);
-
