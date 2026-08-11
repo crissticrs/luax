@@ -1,1 +1,18 @@
-PLACEHOLDER
+:root, [data-theme="purple"] {
+    --bg-color: #0c0a12;
+    --panel-color: #16131f;
+    --panel-2: #1e1a2a;
+    --accent-color: #8b5cf6;
+    --accent-hover: #a78bfa;
+    --text-color: #e8e4f0;
+    --muted: #8b849c;
+    --glass-bg: rgba(30, 26, 42, 0.6);
+    --glass-border: rgba(139, 92, 246, 0.18);
+    --card-border: rgba(139, 92, 246, 0.22);
+    --nav-bg: #120f18;
+    --empty-glow: rgba(139, 92, 246, 0.25);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+}
