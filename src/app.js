@@ -356,28 +356,52 @@ function importSpriteFile() {
 function handleSpriteImport(ev) {
     const file = ev.target.files && ev.target.files[0];
     if (!file || !currentProjectName) return;
-    if (file.size > 1.5 * 1024 * 1024) {
-        alert('Image too large (max ~1.5 MB). Compress it first.');
+
+    // Accept larger source files — we compress before storing
+    if (file.size > 8 * 1024 * 1024) {
+        alert('Image too large (max 8 MB source file).');
         ev.target.value = '';
         return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-        let name = file.name || 'sprite.png';
-        name = name.replace(/[^\w.\-]+/g, '_');
-        const map = getProjectAssetMap(currentProjectName);
-        if (map[name] && !confirm('Replace existing "' + name + '"?')) {
-            ev.target.value = '';
-            return;
-        }
-        map[name] = reader.result;
-        delete spriteImageCache[currentProjectName + '::' + name];
-        saveProjectAssets();
-        renderFiles();
-        alert('Imported "' + name + '". In Lua: gfx.sprite("' + name + '", x, y)');
+
+    let name = file.name || 'sprite.png';
+    name = name.replace(/[^\w.\-]+/g, '_');
+    // Normalize extension after possible WebP re-encode
+    const map = getProjectAssetMap(currentProjectName);
+    if (map[name] && !confirm('Replace existing "' + name + '"?')) {
         ev.target.value = '';
-    };
-    reader.readAsDataURL(file);
+        return;
+    }
+
+    const inputEl = ev.target;
+    compressImageFile(file, { maxDim: 512, pixelArt: true })
+        .then((result) => {
+            // If we switched to WebP and the filename still says .png, keep the name
+            // (gfx.sprite looks up by the stored key, not by MIME).
+            map[name] = result.dataUrl;
+            delete spriteImageCache[currentProjectName + '::' + name];
+            if (!saveProjectAssets()) {
+                delete map[name];
+                inputEl.value = '';
+                return;
+            }
+            renderFiles();
+            const sizeKb = Math.max(1, Math.round((result.bytesApprox || 0) / 1024));
+            let msg = 'Imported "' + name + '" (' + result.width + '×' + result.height +
+                ', ~' + sizeKb + ' KB' + (result.format === 'webp' ? ', WebP' : '') + ').';
+            if (result.scaled) {
+                msg += '\n\nResized from ' + result.origWidth + '×' + result.origHeight +
+                    ' (max side 512 for game sprites).';
+            }
+            msg += '\n\nIn Lua: gfx.sprite("' + name + '", x, y)';
+            alert(msg);
+            inputEl.value = '';
+        })
+        .catch((err) => {
+            console.warn('sprite import failed', err);
+            alert('Import failed: ' + (err && err.message ? err.message : err));
+            inputEl.value = '';
+        });
 }
 
 // (editor → src/editor.js, play → src/play-mode.js)
