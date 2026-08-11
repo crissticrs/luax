@@ -12,35 +12,18 @@ const CREDIT_WEEKLY_PRO = 250;
 // STRIPE (€5 / month) — Apple Pay & Google Pay appear in Checkout
 // when enabled in the Stripe Dashboard (no extra code needed).
 //
-// SETUP (once):
-// 1. https://dashboard.stripe.com → Products → Add product
-//    Name: LuaX Pro · Pricing: €5.00 / month recurring
-// 2. Create a Payment Link for that price (Payment Links)
-//    After payment → redirect to your site URL with ?pro=success
-//    e.g. https://yoursite.netlify.app/?pro=success
-// 3. Paste the Payment Link below into STRIPE_PAYMENT_LINK
-// 4. (Optional) Settings → Billing → Customer portal → activate,
-//    then paste the portal login link into STRIPE_PORTAL_LINK
-// 5. Settings → Payment methods → enable Apple Pay + Google Pay
-//    (Apple Pay needs your domain added under Apple Pay domains)
-//
-// NOTE: Without a server webhook, Pro is activated on return from
-// Checkout (tied to the signed-in Google email). For production,
-// add a webhook that confirms subscription status by email.
+// Free trial is ONLY granted by worker POST /checkout (once per
+// Google email + prior Stripe customer history). The static Payment
+// Link is kept for portal / manual use but is NEVER used for subscribe
+// — it cannot enforce one trial and was abused with multiple accounts.
 // ---------------------------------------------------------------
 const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/fZu7sKgHmckY0W5fiY3Je00';
 const STRIPE_PORTAL_LINK = 'https://billing.stripe.com/p/login/fZu7sKgHmckY0W5fiY3Je00';
-// Optional: your backend that returns { "active": true/false, "activeUntil": "ISO" }
-// Leave empty to use local Pro status (email match + activeUntil window).
-// See /luax-stripe-worker in this project for a ready-to-deploy
-// Cloudflare Worker implementing this endpoint from real Stripe webhooks.
 const STRIPE_STATUS_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/status';
 const STRIPE_CANCEL_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/cancel';
 const STRIPE_CREDITS_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/credits';
 const STRIPE_CREDITS_CONSUME_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/credits/consume';
 const STRIPE_CHECKOUT_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/checkout';
-// /status is gated by Google access token (Authorization: Bearer).
-// STRIPE_STATUS_KEY unused (kept for compatibility with older notes).
 const STRIPE_STATUS_KEY = '';
 
 function weekId() {
@@ -61,7 +44,6 @@ function loadProStatus() {
     try {
         const raw = localStorage.getItem(PRO_KEY);
         if (!raw) return null;
-        // migrate old '1' flag
         if (raw === '1') return { active: true, email: '', source: 'legacy' };
         const data = JSON.parse(raw);
         return (data && typeof data === 'object') ? data : null;
@@ -74,9 +56,7 @@ function isPro() {
     const st = loadProStatus();
     if (!st || !st.active) return false;
     const email = currentAccountEmail();
-    // If we know the account email, Pro must match that account
     if (email && st.email && st.email !== email) return false;
-    // Optional period end (set by verify / payment return)
     if (st.activeUntil) {
         const end = Date.parse(st.activeUntil);
         if (!isNaN(end) && Date.now() > end) return false;
@@ -89,8 +69,6 @@ function setPro(on, meta) {
         if (on) {
             const email = (meta && meta.email) || currentAccountEmail();
             const prev = loadProStatus() || {};
-            // Prefer Stripe period end from worker. Do NOT invent a "month"
-            // when we don't know — that misleads trial users.
             let activeUntil = (meta && meta.activeUntil) || prev.activeUntil || null;
             const trial = !!(meta && meta.trial) || (!!(prev.trial) && !(meta && meta.trial === false));
             const status = (meta && meta.status) || prev.status || (trial ? 'trialing' : 'active');
@@ -116,22 +94,12 @@ function setPro(on, meta) {
     try { renderBillingPanel(); } catch (_) {}
 }
 
-/**
- * Run on every site open after auth is known.
- * - Wrong account email → Free
- * - activeUntil expired → Free
- * - Optional STRIPE_STATUS_ENDPOINT can confirm live Stripe status
- */
 async function verifySubscriptionOnAccess() {
     const st = loadProStatus() || null;
     const email = currentAccountEmail() || (st && st.email) || '';
 
-    // Always ask Stripe worker when configured — can GRANT Pro after re-login.
-    // (Bug before: only checked server when local Pro was already on, so a
-    // logout during checkout left paid users stuck on Free.)
     if (typeof STRIPE_STATUS_ENDPOINT === 'string' && STRIPE_STATUS_ENDPOINT && email) {
         try {
-            // /status requires a Google token for this app — no public email probing
             if (!(googleToken && isGoogleTokenValid())) {
                 try { renderBillingPanel(); } catch (_) {}
                 return { active: !!(st && st.active), reason: 'not_signed_in_for_status' };
@@ -166,9 +134,7 @@ async function verifySubscriptionOnAccess() {
                     return { active: false, reason: 'stripe_inactive' };
                 }
             }
-        } catch (_) {
-            // Network error: fall through to local status
-        }
+        } catch (_) {}
     }
 
     if (!st || !st.active) {
@@ -198,9 +164,9 @@ async function verifySubscriptionOnAccess() {
 }
 
 /**
- * Start Pro checkout.
- * Prefers worker /checkout (applies 5-day trial only once per Google email).
- * Falls back to Payment Link if the worker is unavailable.
+ * Start Pro checkout via worker only.
+ * 5-day free trial is applied once per Google email (server-side).
+ * No Payment Link fallback — that path allowed infinite trials.
  */
 async function startStripeCheckout() {
     if (!(googleToken && isGoogleTokenValid())) {
@@ -214,56 +180,49 @@ async function startStripeCheckout() {
         if (em) localStorage.setItem('luax_stripe_pending_email', em);
     } catch (_) {}
 
-    // Preferred path: server-created Checkout Session (trial once per email)
-    if (typeof STRIPE_CHECKOUT_ENDPOINT === 'string' && STRIPE_CHECKOUT_ENDPOINT) {
-        try {
-            const res = await fetch(STRIPE_CHECKOUT_ENDPOINT, {
-                method: 'POST',
-                credentials: 'omit',
-                headers: {
-                    'Authorization': 'Bearer ' + googleToken,
-                    'Content-Type': 'application/json'
-                },
-                body: '{}'
-            });
-            const data = await res.json().catch(() => ({}));
-            if (res.ok && data && data.url) {
-                try {
-                    if (data.trialEligible === false) {
-                        // Optional soft notice — still go to paid checkout
-                        console.info('[LuaX] No free trial (already used). Opening paid checkout.');
-                    }
-                } catch (_) {}
-                window.location.href = data.url;
-                return;
-            }
-            // Missing price id / worker not deployed yet → fall through to Payment Link
-            if (data && data.error === 'missing_price_id') {
-                console.warn('[LuaX] STRIPE_PRICE_ID not set on worker; using Payment Link fallback');
-            } else if (data && data.error) {
-                console.warn('[LuaX] checkout error', data.error);
-            }
-        } catch (e) {
-            console.warn('[LuaX] checkout network error', e);
-        }
-    }
-
-    // Fallback: static Payment Link (cannot enforce one trial — disable trial on the link in Stripe)
-    if (!STRIPE_PAYMENT_LINK) {
-        alert(
-            'Stripe is not configured yet.\n\n' +
-            'Deploy the worker with STRIPE_PRICE_ID, or paste a Payment Link into STRIPE_PAYMENT_LINK.'
-        );
+    if (!(typeof STRIPE_CHECKOUT_ENDPOINT === 'string' && STRIPE_CHECKOUT_ENDPOINT)) {
+        alert('Checkout is not configured (missing worker URL).');
         return;
     }
-    let url = STRIPE_PAYMENT_LINK;
-    const email = currentAccountEmail();
-    if (email) {
-        const sep = url.includes('?') ? '&' : '?';
-        url += sep + 'prefilled_email=' + encodeURIComponent(email);
-        url += '&client_reference_id=' + encodeURIComponent(email);
+
+    try {
+        const res = await fetch(STRIPE_CHECKOUT_ENDPOINT, {
+            method: 'POST',
+            credentials: 'omit',
+            headers: {
+                'Authorization': 'Bearer ' + googleToken,
+                'Content-Type': 'application/json'
+            },
+            body: '{}'
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data && data.url) {
+            if (data.trialEligible === false) {
+                console.info('[LuaX] No free trial (already used). Opening paid checkout.');
+            }
+            window.location.href = data.url;
+            return;
+        }
+
+        const err = (data && data.error) || ('HTTP ' + res.status);
+        if (err === 'not_signed_in' || err === 'invalid_google_token') {
+            alert('Please sign in with Google again, then try Subscribe.');
+            return;
+        }
+        if (err === 'missing_price_id') {
+            alert('Stripe price is not set on the server. Owner: wrangler secret put STRIPE_PRICE_ID');
+            return;
+        }
+        if (err === 'missing_stripe_key') {
+            alert('Stripe is not fully configured on the server.');
+            return;
+        }
+        alert('Could not start checkout: ' + err + '\n\nTry signing out and back in, then Subscribe again.');
+    } catch (e) {
+        console.warn('[LuaX] checkout network error', e);
+        alert('Network error starting checkout. Check your connection and try again.');
     }
-    window.location.href = url;
 }
 
 function openStripePortal() {
@@ -274,7 +233,6 @@ function openStripePortal() {
     return false;
 }
 
-/** Cancel / manage subscription — real cancel happens in Stripe Customer Portal */
 function openBillingManage() {
     closeAccountMenu();
     if (openStripePortal()) return;
@@ -286,9 +244,8 @@ function openBillingManage() {
           <ol style="margin:0 0 10px;padding-left:18px;color:var(--muted);font-size:0.85rem">
             <li>Stripe Dashboard → Settings → Billing → Customer portal</li>
             <li>Turn the portal <b>on</b> (allow cancel subscription)</li>
-            <li>Copy the portal link into <code>STRIPE_PORTAL_LINK</code> in index.html</li>
+            <li>Copy the portal link into <code>STRIPE_PORTAL_LINK</code></li>
           </ol>
-          <p style="margin:0;font-size:0.8rem;color:var(--muted)">Pro only unlocks after Stripe redirects back with <code>?pro=success</code>.</p>
         </div>`,
         'OK',
         () => {}
@@ -342,7 +299,7 @@ async function doCancelSubscription() {
         let data = {};
         try { data = await res.json(); } catch (_) { data = {}; }
         if (res.status === 404) {
-            alert('Cancel is not available on the server yet. Redeploy the worker (worker.js with POST /cancel), then try again.');
+            alert('Cancel is not available on the server yet. Redeploy the worker, then try again.');
             return;
         }
         if (!res.ok || !data.ok) {
@@ -354,7 +311,6 @@ async function doCancelSubscription() {
             }
             return;
         }
-        // Keep Pro until period end — refresh from worker (still active + cancelAtPeriodEnd)
         try { await verifySubscriptionOnAccess(); } catch (_) {}
         try { renderBillingPanel(); } catch (_) {}
         try { renderProPage(); } catch (_) {}
@@ -366,7 +322,7 @@ async function doCancelSubscription() {
                 : 'Cancellation scheduled. You keep Pro until the end of the current period, then the Free plan starts.'
         );
     } catch (e) {
-        alert('Network error while cancelling. Usually the worker is missing POST /cancel or CORS. Redeploy worker.js, hard-refresh the app, try again.');
+        alert('Network error while cancelling. Try again in a moment.');
     }
 }
 
@@ -406,18 +362,9 @@ function renderBillingPanel() {
     }
 }
 
-/**
- * Unlock Pro after Stripe checkout.
- * Requires either a live Google session or a remembered profile (token may still be restoring).
- * Returns false if auth is not ready yet — caller can retry.
- */
 function activateProAfterPayment(source) {
-    // Token may still be refreshing after redirect; remembered profile is enough
     const ready = isAuthed() || hasRememberedProfile() || !!currentAccountEmail();
-    if (!ready) {
-        // Do not alert here — auth is often still loading after Stripe redirect
-        return false;
-    }
+    if (!ready) return false;
     setPro(true, { source: source || 'stripe', email: currentAccountEmail() });
     try {
         sessionStorage.removeItem('luax_stripe_pending');
@@ -452,10 +399,6 @@ function hadStripeCheckoutPending() {
     }
 }
 
-/**
- * Apply a pending Pro unlock once Google session is available.
- * Called from boot timeout and after successful sign-in / session restore.
- */
 function tryFinishPendingProActivation() {
     let need = false;
     try { need = sessionStorage.getItem('luax_stripe_activate') === '1'; } catch (_) {}
@@ -470,14 +413,6 @@ function tryFinishPendingProActivation() {
     return false;
 }
 
-/**
- * Handle return from Stripe Checkout.
- *
- * luax_stripe_pending is only a UX filter (reduces noise from bare /?pro=success).
- * It is NOT a security gate — anyone can set that flag in devtools.
- * Real security is verifySubscriptionOnAccess() → worker /status (Stripe webhook → KV).
- * A forged local Pro is cleared on the next load when the worker has no sub for that email.
- */
 function handleStripeReturn() {
     try {
         const params = new URLSearchParams(window.location.search);
@@ -493,21 +428,14 @@ function handleStripeReturn() {
 
         if (success) {
             cleanStripeParamsFromUrl();
-
-            // UX filter only (not security — see comment above)
-            if (!hadStripeCheckoutPending()) {
-                return false;
-            }
-
+            if (!hadStripeCheckoutPending()) return false;
             try { sessionStorage.setItem('luax_stripe_activate', '1'); } catch (_) {}
             try { localStorage.setItem('luax_stripe_activate', '1'); } catch (_) {}
-
             if (activateProAfterPayment('stripe_return')) {
                 setTimeout(() => {
                     alert('Welcome to LuaX Pro! Your higher credit limit is active on this account.');
                 }, 300);
             }
-            // else: auth still loading — tryFinishPendingProActivation() will finish it
             return true;
         }
         if (
@@ -536,7 +464,6 @@ function loadCreditsState() {
         st = { week: wid, used: 0 };
         try { localStorage.setItem(CREDITS_KEY, JSON.stringify(st)); } catch (_) {}
     }
-    // Prefer last server snapshot for this week when present
     try {
         const srv = JSON.parse(localStorage.getItem(CREDITS_KEY + '_server') || 'null');
         if (srv && srv.week === wid && typeof srv.used === 'number') {
@@ -561,7 +488,6 @@ function applyServerCredits(data) {
     try { updateProfileUI(); } catch (_) {}
 }
 
-/** Pull weekly usage from worker (source of truth). Call after sign-in. */
 async function refreshCreditsFromServer() {
     if (!(googleToken && isGoogleTokenValid())) return null;
     if (!STRIPE_CREDITS_ENDPOINT) return null;
@@ -581,15 +507,10 @@ async function refreshCreditsFromServer() {
     return null;
 }
 
-/**
- * Spend credits. When signed in, worker is source of truth (devtools localStorage reset won't help).
- * Returns true/false; may be async — callers should await.
- */
 async function spendCredits(action, opts) {
     const cost = CREDIT_COSTS[action] || 0;
     if (cost <= 0) return true;
 
-    // Server path when signed in
     if (googleToken && isGoogleTokenValid() && STRIPE_CREDITS_CONSUME_ENDPOINT) {
         try {
             const res = await fetch(STRIPE_CREDITS_CONSUME_ENDPOINT, {
@@ -631,7 +552,6 @@ async function spendCredits(action, opts) {
         }
     }
 
-    // Not signed in — local only (login gate usually prevents this for paid actions)
     const st = loadCreditsState();
     if (st.left < cost) {
         if (!opts || !opts.silent) {
@@ -653,7 +573,6 @@ async function spendCredits(action, opts) {
 function openSubscriptionInfo() {
     closeAccountMenu();
     try { closeModal(); } catch (_) {}
-    // Remember where to return
     const active = document.querySelector('.view.active');
     window._proReturnView = (active && active.id && active.id !== 'pro-view')
         ? active.id
@@ -669,7 +588,6 @@ function openSubscriptionInfo() {
 function closeProView() {
     const back = window._proReturnView || 'projects-view';
     window._proReturnView = null;
-    // Prefer files/music if still in a project context
     if (back === 'pro-view' || !document.getElementById(back)) {
         switchView('projects-view');
     } else {
@@ -682,7 +600,7 @@ function renderProPage() {
     const title = document.getElementById('pro-page-title');
     if (!body) return;
     const pro = isPro();
-    const stripeReady = !!STRIPE_PAYMENT_LINK;
+    const stripeReady = !!STRIPE_CHECKOUT_ENDPOINT;
     if (title) title.textContent = pro ? 'Your Pro plan' : 'Upgrade to Pro';
 
     const cloudCost = (typeof CREDIT_COSTS !== 'undefined' && CREDIT_COSTS.cloud_save) || 2;
@@ -775,6 +693,7 @@ function renderProPage() {
             <div class="pro-badge">LuaX Pro</div>
             <p class="pro-price">€5 <span>/ month</span></p>
             <p class="pro-tagline">Unlock higher limits. The editor and play engine stay free forever.</p>
+            <p class="pro-tagline" style="margin-top:6px;opacity:0.85">New accounts get a <b>5-day free trial</b> (once per Google account).</p>
         </div>
 
         <p class="pro-section-title">Everything you get</p>
@@ -855,12 +774,12 @@ function renderProPage() {
                     <td class="yes">Yes · more room</td>
                 </tr>
                 <tr>
-                    <td>Code editor &amp; PLAY</td>
+                    <td>Code editor & PLAY</td>
                     <td class="yes">Free</td>
                     <td class="yes">Free</td>
                 </tr>
                 <tr>
-                    <td>Sprite &amp; music editors</td>
+                    <td>Sprite & music editors</td>
                     <td class="yes">Free</td>
                     <td class="yes">Free</td>
                 </tr>
@@ -870,15 +789,15 @@ function renderProPage() {
         <div class="pro-cta">
             <button type="button" class="btn btn-primary" id="pro-subscribe-btn"
                 onclick="${stripeReady ? 'startStripeCheckout()' : 'alert(\'Stripe is not configured yet.\')'}">
-                ${stripeReady ? 'Subscribe — €5/mo' : 'Stripe not configured'}
+                ${stripeReady ? 'Start 5-day free trial' : 'Stripe not configured'}
             </button>
             <p class="pro-email-warn" role="alert">
                 Important: Your billing email must match your LuaX account email.<br>
                 If using Apple Pay / Google Pay, check the email on Stripe’s form before making a purchase, or Pro won’t unlock on this account.
             </p>
             <p class="pro-cta-note">
-                Secure checkout opens in Stripe. Apple Pay &amp; Google Pay appear when available.<br>
-                Pro unlocks after payment redirects back to this site for the matching signed-in account.
+                Secure checkout opens in Stripe. One free trial per Google account.<br>
+                After the trial, €5/month. Cancel anytime.
             </p>
         </div>
     `;
