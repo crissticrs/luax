@@ -17,6 +17,8 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <link rel="stylesheet" href="styles/main.css">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
 </head>
 <body>
 
@@ -148,7 +150,7 @@
             <button class="lx-tab" data-nav="settings" onclick="lxNav('settings')"><i class="lx-ico lx-ico-lg" data-ico="gear"></i>Settings</button>
         </nav>
 
-        <input type="file" id="import-input" accept=".json,application/json" style="display:none" onchange="handleImport(event)">
+        <input type="file" id="import-input" accept=".json,application/json,.luax.json" style="display:none" onchange="handleImport(event)">
     </div>
 
     <!-- Files -->
@@ -516,6 +518,8 @@
 <script src="src/cloud-sync.js"></script>
 <script src="src/editor.js"></script>
 <script src="src/play-mode.js"></script>
+<script src="src/perf-tune.js"></script>
+<script src="src/export-share.js"></script>
 <script src="src/app.js"></script>
 
 <script>
