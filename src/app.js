@@ -1,5 +1,6 @@
 // src/app.js — app shell: navigation, projects UI, themes, file list, boot
 // Extracted from index.html so the page stays markup-only.
+// Modal helpers (openModal / closeModal / confirmModal) live in src/modal.js.
 
 // PLAY / RUN GAME — capture-phase so it always works, even if later code fails
 document.addEventListener('click', function (e) {
@@ -17,7 +18,7 @@ document.addEventListener('click', function (e) {
 
 
 // ============================================================
-// NAV + MODAL
+// NAV
 // ============================================================
 function switchView(id) {
     if (!isAuthed() && id !== 'login-view') {
@@ -26,26 +27,6 @@ function switchView(id) {
     }
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-}
-
-function openModal(title, bodyHtml, confirmLabel, callback) {
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-body').innerHTML = bodyHtml;
-    document.getElementById('modal-confirm').textContent = confirmLabel || 'OK';
-    document.getElementById('custom-modal').style.display = 'flex';
-    modalCallback = callback;
-    const input = document.querySelector('#modal-body input');
-    if (input) setTimeout(() => input.focus(), 40);
-}
-
-function closeModal() {
-    document.getElementById('custom-modal').style.display = 'none';
-    modalCallback = null;
-}
-
-function confirmModal() {
-    if (modalCallback) modalCallback();
-    closeModal();
 }
 
 // ============================================================
@@ -400,9 +381,7 @@ function handleSpriteImport(ev) {
 }
 
 // (editor → src/editor.js, play → src/play-mode.js)
-
-
-// Modules: src/auth.js · src/billing.js · src/cloud-sync.js
+// Modules: src/auth.js · src/billing.js · src/cloud-sync.js · src/modal.js
 
 // boot
 try {
