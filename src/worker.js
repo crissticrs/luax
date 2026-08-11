@@ -2,8 +2,7 @@
  * LuaX Stripe verification worker (Cloudflare Workers + KV)
  *
  * POST /webhook  — Stripe events → KV sub:<email>
- * GET  /status?email= — { active, activeUntil, trial, trialUsed, status }
- * POST /checkout — create Checkout Session (5-day trial once per email)
+ * GET  /status?email= — { active, activeUntil, trial, status }
  * GET  /health   — config check
  *
  * Webhook: https://luax-stripe.lua-x.workers.dev/webhook
@@ -597,7 +596,6 @@ function looksLikeEmail(v) {
   return typeof v === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
 
-
 /**
  * POST /checkout
  * Authorization: Bearer <Google access token>
@@ -722,15 +720,8 @@ async function putSub(env, email, fields) {
   try {
     const raw = await env.LUAX_SUBS.get('sub:' + email);
     if (raw) prev = JSON.parse(raw) || {};
-  } catch (_) {
-    prev = {};
-  }
-  // Once someone has used a free trial, never offer another for this email
-  const trialUsed = !!(
-    prev.trialUsed ||
-    fields.trialUsed ||
-    fields.trial
-  );
+  } catch (_) { prev = {}; }
+  const trialUsed = !!(prev.trialUsed || fields.trialUsed || fields.trial);
   await env.LUAX_SUBS.put(
     'sub:' + email,
     JSON.stringify({
