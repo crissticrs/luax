@@ -56,7 +56,10 @@ function isPro() {
     const st = loadProStatus();
     if (!st || !st.active) return false;
     const email = currentAccountEmail();
-    if (email && st.email && st.email !== email) return false;
+    // Signed-in account must match stored Pro email (no cross-account leak)
+    if (email) {
+        if (!st.email || st.email !== email) return false;
+    }
     if (st.activeUntil) {
         const end = Date.parse(st.activeUntil);
         if (!isNaN(end) && Date.now() > end) return false;
@@ -115,12 +118,18 @@ async function verifySubscriptionOnAccess() {
             );
             if (res.ok) {
                 const data = await res.json().catch(() => ({}));
-                if (data && data.active === true) {
+                // Server may still flag active with a past activeUntil — treat as expired
+                let serverActive = !!(data && data.active === true);
+                if (serverActive && data.activeUntil) {
+                    const end = Date.parse(data.activeUntil);
+                    if (!isNaN(end) && Date.now() > end) serverActive = false;
+                }
+                if (serverActive) {
                     setPro(true, {
                         email: email,
                         source: 'stripe_verify',
                         since: (st && st.since) || new Date().toISOString(),
-                        activeUntil: data.activeUntil || (st && st.activeUntil) || null,
+                        activeUntil: data.activeUntil || null,
                         trial: !!data.trial,
                         status: data.status || (data.trial ? 'trialing' : 'active'),
                         cancelAtPeriodEnd: !!data.cancelAtPeriodEnd
@@ -128,10 +137,11 @@ async function verifySubscriptionOnAccess() {
                     try { renderBillingPanel(); } catch (_) {}
                     return { active: true, reason: 'stripe_ok' };
                 }
-                if (data && data.active === false) {
+                if (data && (data.active === false || data.active === true)) {
+                    // inactive or expired
                     if (st && st.active) setPro(false);
                     try { renderBillingPanel(); } catch (_) {}
-                    return { active: false, reason: 'stripe_inactive' };
+                    return { active: false, reason: serverActive ? 'stripe_ok' : 'stripe_inactive' };
                 }
             }
         } catch (_) {}
@@ -365,10 +375,28 @@ function renderBillingPanel() {
 function activateProAfterPayment(source) {
     const ready = isAuthed() || hasRememberedProfile() || !!currentAccountEmail();
     if (!ready) return false;
-    setPro(true, { source: source || 'stripe', email: currentAccountEmail() });
+    const email = currentAccountEmail();
+    // Only activate for the Google account that started checkout
+    let pendingEmail = '';
+    try { pendingEmail = (localStorage.getItem('luax_stripe_pending_email') || '').toLowerCase(); } catch (_) {}
+    if (pendingEmail && email && pendingEmail !== email) {
+        console.warn('[LuaX] Pro activate blocked: pending email mismatch', pendingEmail, email);
+        try {
+            sessionStorage.removeItem('luax_stripe_pending');
+            sessionStorage.removeItem('luax_stripe_activate');
+            localStorage.removeItem('luax_stripe_pending');
+            localStorage.removeItem('luax_stripe_activate');
+        } catch (_) {}
+        return false;
+    }
+    if (!email) return false;
+    setPro(true, { source: source || 'stripe', email: email });
     try {
         sessionStorage.removeItem('luax_stripe_pending');
         sessionStorage.removeItem('luax_stripe_activate');
+        localStorage.removeItem('luax_stripe_pending');
+        localStorage.removeItem('luax_stripe_activate');
+        localStorage.removeItem('luax_stripe_pending_email');
     } catch (_) {}
     updateProfileUI();
     try { renderBillingPanel(); } catch (_) {}
