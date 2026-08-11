@@ -454,6 +454,7 @@ async function handleWebhook(request, env) {
   let trial = false;
   let status = null;
   let cancelAtPeriodEnd = false;
+  let cardGuardBlocked = false;
 
   if (event.type === 'checkout.session.completed') {
     // Prefer LuaX signed-in Google email (client_reference_id)
@@ -484,6 +485,20 @@ async function handleWebhook(request, env) {
           activeUntil = new Date(sub.trial_end * 1000).toISOString();
         }
       }
+
+      // One trial per physical card, regardless of email/Google account.
+      // If this card already burned a trial elsewhere, decline this one —
+      // cancel immediately (no charge, since a trial owes $0).
+      if (trial && looksLikeEmail(email)) {
+        const guard = await applyTrialCardGuard(obj.subscription, email, env);
+        if (guard.blocked) {
+          trial = guard.trial;
+          status = guard.status;
+          activeUntil = guard.activeUntil;
+          active = false;
+        }
+        cardGuardBlocked = guard.blocked;
+      }
     }
     if (!status) status = trial ? 'trialing' : 'active';
   } else if (
@@ -494,7 +509,7 @@ async function handleWebhook(request, env) {
     status = obj.status || null;
     trial = obj.status === 'trialing';
     active = obj.status === 'active' || obj.status === 'trialing';
-    let cancelAtPeriodEnd = !!obj.cancel_at_period_end;
+    cancelAtPeriodEnd = !!obj.cancel_at_period_end;
     if (event.type === 'customer.subscription.deleted' || obj.status === 'canceled') {
       active = false;
       trial = false;
@@ -561,9 +576,10 @@ async function handleWebhook(request, env) {
       active: !!active,
       activeUntil: activeUntil || null,
       trial: !!trial,
+      trialUsed: cardGuardBlocked || undefined,
       status: status || (trial ? 'trialing' : active ? 'active' : 'inactive'),
       cancelAtPeriodEnd: typeof cancelAtPeriodEnd === 'boolean' ? cancelAtPeriodEnd : false,
-      lastEvent: event.type,
+      lastEvent: cardGuardBlocked ? 'trial_card_reused_blocked' : event.type,
     });
     await rememberLast(env, {
       type: event.type,
@@ -572,6 +588,7 @@ async function handleWebhook(request, env) {
       active: !!active,
       trial: !!trial,
       activeUntil: activeUntil || null,
+      cardGuardBlocked: cardGuardBlocked,
     });
     return json({
       received: true,
@@ -604,7 +621,7 @@ function looksLikeEmail(v) {
  * or prior subscription (checked in KV + Stripe customer history).
  *
  * Secrets: STRIPE_SECRET_KEY, STRIPE_PRICE_ID (price_xxx for €5/mo)
- * Optional: APP_URL (default https://luax.pages.dev)
+ * Optional: APP_URL (default https://crissticrs.github.io/luax)
  */
 async function handleCheckout(request, env) {
   if (!env.STRIPE_SECRET_KEY) {
@@ -621,7 +638,7 @@ async function handleCheckout(request, env) {
   const email = id.email;
 
   const trialEligible = !(await customerHasUsedTrial(email, env));
-  const appUrl = (env.APP_URL || 'https://luax.pages.dev').replace(/\/$/, '');
+  const appUrl = (env.APP_URL || 'https://crissticrs.github.io/luax').replace(/\/$/, '');
 
   const params = new URLSearchParams();
   params.set('mode', 'subscription');
@@ -765,6 +782,111 @@ async function lookupSubscription(subscriptionId, env) {
   if (!subscriptionId || !env.STRIPE_SECRET_KEY) return null;
   try {
     const res = await fetch('https://api.stripe.com/v1/subscriptions/' + subscriptionId, {
+      headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY },
+    });
+    if (!res.ok) return null;
+    return await res.json().catch(() => null);
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * One free trial per physical card — not per email/Google account.
+ *
+ * Stripe gives every payment method a stable "fingerprint" that identifies the
+ * physical card across customers, even across totally unrelated Stripe
+ * Customer objects. We key a KV record off that fingerprint (trialcard:<fp>)
+ * the first time a card is used for a trial. If the *same* card shows up on
+ * a *new* trialing subscription (i.e. a different Google account signed up
+ * again), we cancel that trial immediately — a trialing subscription has $0
+ * due, so cancelling it bills nothing and no money moves. The person simply
+ * doesn't get Pro on the second account; their card is never charged.
+ *
+ * Cards that pay immediately (no trial) are also recorded, so a card can't
+ * be "saved up" on a paid account and then used for a trial on a fresh one.
+ *
+ * Returns { trial, status, activeUntil, blocked }. Only apply the returned
+ * trial/status/activeUntil over the caller's values when blocked === true.
+ */
+async function applyTrialCardGuard(subscriptionId, email, env) {
+  const result = { trial: null, status: null, activeUntil: null, blocked: false };
+  if (!subscriptionId || !env.STRIPE_SECRET_KEY || !env.LUAX_SUBS) return result;
+
+  let sub;
+  try {
+    const res = await fetch(
+      'https://api.stripe.com/v1/subscriptions/' +
+        subscriptionId +
+        '?expand[]=default_payment_method&expand[]=customer.invoice_settings.default_payment_method',
+      { headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY } }
+    );
+    if (!res.ok) return result;
+    sub = await res.json().catch(() => null);
+  } catch (_) {
+    return result;
+  }
+  if (!sub) return result;
+
+  const pm =
+    (sub.default_payment_method && typeof sub.default_payment_method === 'object' && sub.default_payment_method) ||
+    (sub.customer &&
+      typeof sub.customer === 'object' &&
+      sub.customer.invoice_settings &&
+      sub.customer.invoice_settings.default_payment_method) ||
+    null;
+  const fingerprint = pm && pm.card && pm.card.fingerprint ? pm.card.fingerprint : null;
+  if (!fingerprint) return result; // can't identify the card — fail open, don't block a real user
+
+  const key = 'trialcard:' + fingerprint;
+  let already = null;
+  try {
+    already = await env.LUAX_SUBS.get(key);
+  } catch (_) {}
+
+  if (sub.status === 'trialing') {
+    if (already) {
+      // Do NOT charge the card — cancelling during a trial generates no
+      // invoice, so nothing is billed. We simply decline the second trial.
+      const canceled = await cancelSubscriptionNoCharge(subscriptionId, env);
+      if (canceled) {
+        result.trial = false;
+        result.status = 'canceled';
+        result.activeUntil = null;
+        result.blocked = true;
+      }
+      // If the cancel call itself failed, fail open — leave the trial alone
+      // rather than claim it's canceled when Stripe still has it trialing.
+      return result;
+    }
+    // First time this card has been seen — it's now "spent" on this trial.
+    try {
+      await env.LUAX_SUBS.put(key, JSON.stringify({ email, usedAt: new Date().toISOString() }));
+    } catch (_) {}
+    return result;
+  }
+
+  // Not trialing (already paid) — still record the card so it can't be
+  // reused for a *fresh* trial on a different account later.
+  if (!already) {
+    try {
+      await env.LUAX_SUBS.put(key, JSON.stringify({ email, usedAt: new Date().toISOString() }));
+    } catch (_) {}
+  }
+  return result;
+}
+
+/**
+ * Cancels a still-trialing subscription immediately, with no charge.
+ * A subscription in "trialing" status has $0 due — Stripe's cancel endpoint
+ * does not generate an invoice or bill the card in this state, it just ends
+ * the subscription. This is how we decline a reused-card trial without ever
+ * touching the person's money.
+ */
+async function cancelSubscriptionNoCharge(subscriptionId, env) {
+  try {
+    const res = await fetch('https://api.stripe.com/v1/subscriptions/' + subscriptionId, {
+      method: 'DELETE',
       headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY },
     });
     if (!res.ok) return null;
