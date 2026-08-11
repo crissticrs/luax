@@ -650,6 +650,10 @@ async function handleCheckout(request, env) {
   params.set('metadata[email]', email);
   params.set('subscription_data[metadata][email]', email);
   params.set('allow_promotion_codes', 'true');
+  // Managed Payments is on by default on the account and requires a
+  // product tax_code we haven't set — disable it for this session so
+  // checkout doesn't fail with "product tax code is ineligible".
+  params.set('managed_payments[enabled]', 'false');
 
   // Reuse Stripe customer when possible (avoids duplicate customers)
   const existingCustomer = await findStripeCustomerIdByEmail(email, env);
