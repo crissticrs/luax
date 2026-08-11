@@ -518,5 +518,31 @@
 <script src="src/play-mode.js"></script>
 <script src="src/app.js"></script>
 
+<script>
+// Service worker — offline shell + CDN cache (GitHub Pages /luax/ scope)
+(function registerLuaXSW() {
+    if (!('serviceWorker' in navigator)) return;
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js', { scope: './' })
+            .then(function (reg) {
+                // Pick up new SW versions without forcing a hard refresh dance
+                if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                reg.addEventListener('updatefound', function () {
+                    var nw = reg.installing;
+                    if (!nw) return;
+                    nw.addEventListener('statechange', function () {
+                        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New version ready; next navigation gets it via skipWaiting+claim
+                        }
+                    });
+                });
+            })
+            .catch(function (err) {
+                console.warn('SW registration failed', err);
+            });
+    });
+})();
+</script>
+
 </body>
 </html>
