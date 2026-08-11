@@ -13,7 +13,9 @@
         let bin = '';
         const chunk = 0x8000;
         for (let i = 0; i < bytes.length; i += chunk) {
-            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+            // Use Array.from so apply never hits call-stack limits on huge buffers
+            const slice = bytes.subarray(i, i + chunk);
+            bin += String.fromCharCode.apply(null, Array.from(slice));
         }
         return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
@@ -61,10 +63,13 @@
     function buildProjectPayload(name, opts) {
         opts = opts || {};
         name = name || (typeof currentProjectName !== 'undefined' ? currentProjectName : null);
-        if (!name || typeof projects === 'undefined' || !projects[name]) return null;
+        if (!name) return null;
+        // Classic scripts share the same global env; prefer bare name, fall back to window
+        const projMap = (typeof projects !== 'undefined' ? projects : (window.projects || null));
+        if (!projMap || !projMap[name]) return null;
 
         const files = {};
-        const src = projects[name];
+        const src = projMap[name];
         Object.keys(src).forEach(function (k) {
             files[k] = src[k];
         });
@@ -130,34 +135,38 @@
      * Export open project as .luax.json (costs credits).
      */
     async function exportProject() {
-        if (typeof currentProjectName === 'undefined' || !currentProjectName) {
-            alert('Open a project first.');
-            return;
-        }
-        const payload = buildProjectPayload(currentProjectName);
-        if (!payload) {
-            alert('Nothing to export.');
-            return;
-        }
+        try {
+            if (typeof currentProjectName === 'undefined' || !currentProjectName) {
+                alert('Open a project first.');
+                return;
+            }
+            const payload = buildProjectPayload(currentProjectName);
+            if (!payload) {
+                alert('Nothing to export.');
+                return;
+            }
 
-        // Credits gate (same as cloud backup)
-        if (typeof spendCredits === 'function') {
-            const ok = await spendCredits('export');
-            if (!ok) return;
+            if (typeof spendCredits === 'function') {
+                const ok = await spendCredits('export');
+                if (!ok) return;
+            }
+
+            const json = JSON.stringify(payload, null, 2);
+            const fname = safeFilename(currentProjectName) + '.luax.json';
+            downloadText(fname, json, 'application/json;charset=utf-8');
+
+            const nFiles = Object.keys(payload.files || {}).length;
+            const nAssets = Object.keys(payload.assets || {}).length;
+            const nMusic = Object.keys(payload.music || {}).length;
+            alert(
+                'Exported "' + currentProjectName + '"\n\n' +
+                nFiles + ' Lua file(s) · ' + nAssets + ' image(s) · ' + nMusic + ' music pattern(s)\n\n' +
+                'Saved as ' + fname
+            );
+        } catch (err) {
+            console.error('exportProject', err);
+            alert('Export failed: ' + (err && err.message ? err.message : err));
         }
-
-        const json = JSON.stringify(payload, null, 2);
-        const fname = safeFilename(currentProjectName) + '.luax.json';
-        downloadText(fname, json, 'application/json;charset=utf-8');
-
-        const nFiles = Object.keys(payload.files || {}).length;
-        const nAssets = Object.keys(payload.assets || {}).length;
-        const nMusic = Object.keys(payload.music || {}).length;
-        alert(
-            'Exported "' + currentProjectName + '"\n\n' +
-            nFiles + ' Lua file(s) · ' + nAssets + ' image(s) · ' + nMusic + ' music pattern(s)\n\n' +
-            'Saved as ' + fname
-        );
     }
 
     async function encodeSharePayload(payload) {
@@ -166,7 +175,6 @@
         if (gz) {
             return 'gz1.' + bytesToBase64url(gz);
         }
-        // Fallback: raw utf8 → base64url (larger)
         return 'raw1.' + bytesToBase64url(utf8ToBytes(json));
     }
 
@@ -199,67 +207,31 @@
         }
     }
 
-    /**
-     * Build a playable share URL and copy it.
-     * Free (no credits) — code + small assets only when URL stays short.
-     */
-    async function sharePlayLink() {
-        if (typeof currentProjectName === 'undefined' || !currentProjectName) {
-            alert('Open a project first.');
-            return;
-        }
-
-        // Prefer full package; if URL too long, retry without assets
-        let payload = buildProjectPayload(currentProjectName, { omitAssets: false });
-        if (!payload) {
-            alert('Nothing to share.');
-            return;
-        }
-
-        let token = await encodeSharePayload(payload);
+    function shareBaseUrl() {
         let base = location.origin + location.pathname;
-        // normalize trailing path for GH Pages
+        // GitHub Pages directory index often has no trailing slash
         if (!base.endsWith('/') && base.indexOf('.html') < 0) base += '/';
-        let url = base + '#play=' + token;
-        let strippedAssets = false;
+        return base;
+    }
 
-        if (url.length > SHARE_URL_SOFT_MAX) {
-            payload = buildProjectPayload(currentProjectName, { omitAssets: true });
-            token = await encodeSharePayload(payload);
-            url = base + '#play=' + token;
-            strippedAssets = true;
-        }
+    function showShareUrlModal(url, note) {
+        const noteHtml = note
+            ? '<p style="margin:0 0 10px;font-size:0.85rem;opacity:0.9">' + note + '</p>'
+            : '';
+        const safe = String(url)
+            .replace(/&/g, '&')
+            .replace(/</g, '<')
+            .replace(/>/g, '>');
 
-        if (url.length > SHARE_URL_SOFT_MAX * 1.4) {
-            alert(
-                'This project is too large for a share link (code/music alone is still big).\n\n' +
-                'Use Export instead to download a .luax.json file.'
-            );
-            return;
-        }
-
-        try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText(url);
-            } else {
-                throw new Error('no clipboard');
-            }
-            alert(
-                'Share link copied!\n\n' +
-                (strippedAssets
-                    ? 'Images were left out so the URL stays short.\nRecipients get code + music only.\n\n'
-                    : '') +
-                'Anyone with the link can play in the browser.\n\n' +
-                url.slice(0, 80) + (url.length > 80 ? '…' : '')
-            );
-        } catch (_) {
-            // Fallback: show URL for manual copy
+        if (typeof openModal === 'function') {
             openModal(
                 'Share link',
-                '<p style="margin:0 0 8px;font-size:0.9rem;opacity:0.85">Copy this URL:</p>' +
-                '<textarea id="share-url-box" readonly style="width:100%;min-height:90px;font-size:12px;font-family:monospace">' +
-                String(url).replace(/</g, '&lt;') +
-                '</textarea>',
+                noteHtml +
+                '<p style="margin:0 0 8px;font-size:0.9rem;opacity:0.85">Copy this URL and send it to anyone:</p>' +
+                '<textarea id="share-url-box" readonly style="width:100%;min-height:110px;font-size:12px;font-family:monospace;box-sizing:border-box;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.35);color:inherit">' +
+                safe +
+                '</textarea>' +
+                '<button type="button" class="btn btn-sm" id="share-copy-btn" style="margin-top:10px;width:100%">Copy to clipboard</button>',
                 'Done',
                 function () {}
             );
@@ -269,7 +241,97 @@
                     box.focus();
                     box.select();
                 }
-            }, 50);
+                const btn = document.getElementById('share-copy-btn');
+                if (btn) {
+                    btn.onclick = function () {
+                        const text = box ? box.value : url;
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(text).then(function () {
+                                btn.textContent = 'Copied!';
+                                setTimeout(function () { btn.textContent = 'Copy to clipboard'; }, 1500);
+                            }).catch(function () {
+                                if (box) { box.focus(); box.select(); }
+                                alert('Select the text and press Ctrl/Cmd+C');
+                            });
+                        } else if (box) {
+                            box.focus();
+                            box.select();
+                            try {
+                                document.execCommand('copy');
+                                btn.textContent = 'Copied!';
+                                setTimeout(function () { btn.textContent = 'Copy to clipboard'; }, 1500);
+                            } catch (_) {
+                                alert('Select the text and press Ctrl/Cmd+C');
+                            }
+                        }
+                    };
+                }
+            }, 60);
+            return;
+        }
+
+        // Absolute last resort
+        window.prompt('Copy this share link:', url);
+    }
+
+    /**
+     * Build a playable share URL and show it (clipboard after await often fails).
+     * Free (no credits) — code + small assets only when URL stays short.
+     */
+    async function sharePlayLink() {
+        try {
+            if (typeof currentProjectName === 'undefined' || !currentProjectName) {
+                alert('Open a project first.');
+                return;
+            }
+
+            // Prefer full package; if URL too long, retry without assets
+            let payload = buildProjectPayload(currentProjectName, { omitAssets: false });
+            if (!payload) {
+                alert('Nothing to share. Open a project that has files.');
+                return;
+            }
+
+            let token = await encodeSharePayload(payload);
+            let url = shareBaseUrl() + '#play=' + token;
+            let strippedAssets = false;
+
+            if (url.length > SHARE_URL_SOFT_MAX) {
+                payload = buildProjectPayload(currentProjectName, { omitAssets: true });
+                token = await encodeSharePayload(payload);
+                url = shareBaseUrl() + '#play=' + token;
+                strippedAssets = true;
+            }
+
+            if (url.length > SHARE_URL_SOFT_MAX * 1.5) {
+                alert(
+                    'This project is too large for a share link (even without images).\n\n' +
+                    'Use Export instead to download a .luax.json file.'
+                );
+                return;
+            }
+
+            // Try clipboard, but always show the modal — async work breaks the
+            // user-gesture chain on Safari/Chrome so clipboard often fails silently.
+            let copied = false;
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(url);
+                    copied = true;
+                }
+            } catch (_) {
+                copied = false;
+            }
+
+            const note = (copied ? 'Link also copied to clipboard. ' : '') +
+                (strippedAssets
+                    ? 'Images were left out so the URL stays short — recipients get code + music only.'
+                    : 'Anyone with the link can open and play in the browser (after signing in).');
+
+            showShareUrlModal(url, note);
+        } catch (err) {
+            console.error('sharePlayLink', err);
+            alert('Share failed: ' + (err && err.message ? err.message : err));
         }
     }
 
@@ -277,7 +339,9 @@
      * Install a payload into local projects. Returns the final project name.
      */
     function installProjectPayload(payload, preferredName) {
-        if (!payload || !payload.files || typeof projects === 'undefined') return null;
+        if (!payload || !payload.files) return null;
+        const projMap = (typeof projects !== 'undefined' ? projects : (window.projects || null));
+        if (!projMap) return null;
 
         let name = preferredName || payload.name || 'Shared game';
         if (typeof sanitizeName === 'function') {
@@ -286,21 +350,20 @@
             name = String(name).trim().slice(0, 80) || 'Shared game';
         }
 
-        // Avoid clobbering an existing project unless user confirms
-        if (projects[name]) {
+        if (projMap[name]) {
             const alt = name + ' (shared)';
-            if (projects[alt]) {
+            if (projMap[alt]) {
                 let i = 2;
-                while (projects[name + ' (' + i + ')']) i++;
+                while (projMap[name + ' (' + i + ')']) i++;
                 name = name + ' (' + i + ')';
             } else {
                 name = alt;
             }
         }
 
-        projects[name] = {};
+        projMap[name] = {};
         Object.keys(payload.files).forEach(function (k) {
-            projects[name][k] = payload.files[k];
+            projMap[name][k] = payload.files[k];
         });
 
         if (payload.assets && typeof getProjectAssetMap === 'function') {
@@ -333,7 +396,7 @@
     }
 
     /**
-     * Called on boot from app.js. If URL has #play=..., install and return name.
+     * Called on boot from app.js. If URL has #play=..., install and open.
      */
     function tryLoadSharedPlay() {
         try {
@@ -341,12 +404,10 @@
             const m = hash.match(/^#play=(.+)$/);
             if (!m) return null;
 
-            // Decode is async — kick off and return null for sync call sites;
-            // we also expose an async path that auto-opens.
             const token = decodeURIComponent(m[1]);
             decodeSharePayload(token).then(function (payload) {
                 if (!payload) {
-                    alert('Could not read this share link (invalid or too old).');
+                    alert('Could not read this share link (invalid or corrupted).');
                     try {
                         history.replaceState(null, '', location.pathname + location.search);
                     } catch (_) {}
@@ -357,13 +418,11 @@
                     alert('Could not import shared project.');
                     return;
                 }
-                // Clear hash so refresh doesn't re-import
                 try {
                     history.replaceState(null, '', location.pathname + location.search);
                 } catch (_) {}
                 try {
                     if (typeof openProject === 'function') openProject(name);
-                    // Auto-play after a short tick so canvas / views are ready
                     setTimeout(function () {
                         try {
                             if (typeof startPlayMode === 'function') startPlayMode();
@@ -382,7 +441,6 @@
                 alert('Could not load share link.');
             });
 
-            // Sync callers get null; async path handles open+play
             return null;
         } catch (err) {
             console.warn('tryLoadSharedPlay', err);
@@ -414,7 +472,6 @@
                 const text = String(reader.result || '');
                 const data = JSON.parse(text);
 
-                // Accept our format, or a bare { files: {...} } / flat lua map
                 let payload = null;
                 if (data && data.format === LUAX_FORMAT && data.files) {
                     payload = data;
@@ -429,7 +486,6 @@
                         settings: data.settings || null
                     };
                 } else if (data && typeof data === 'object' && data['main.lua']) {
-                    // Flat map of lua files
                     payload = {
                         format: LUAX_FORMAT,
                         version: LUAX_VERSION,
@@ -464,7 +520,7 @@
         reader.readAsText(file);
     }
 
-    // Public API
+    // Public API — always on window so inline onclick works
     window.exportProject = exportProject;
     window.sharePlayLink = sharePlayLink;
     window.tryLoadSharedPlay = tryLoadSharedPlay;
