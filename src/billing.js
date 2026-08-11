@@ -38,6 +38,7 @@ const STRIPE_STATUS_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/status';
 const STRIPE_CANCEL_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/cancel';
 const STRIPE_CREDITS_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/credits';
 const STRIPE_CREDITS_CONSUME_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/credits/consume';
+const STRIPE_CHECKOUT_ENDPOINT = 'https://luax-stripe.lua-x.workers.dev/checkout';
 // /status is gated by Google access token (Authorization: Bearer).
 // STRIPE_STATUS_KEY unused (kept for compatibility with older notes).
 const STRIPE_STATUS_KEY = '';
@@ -196,20 +197,67 @@ async function verifySubscriptionOnAccess() {
     return { active: true, reason: 'local_ok' };
 }
 
-function startStripeCheckout() {
-    if (!STRIPE_PAYMENT_LINK) {
-        alert(
-            'Stripe is not configured yet.\n\n' +
-            'Create a €5/month Payment Link in the Stripe Dashboard and paste it into STRIPE_PAYMENT_LINK in index.html.'
-        );
+/**
+ * Start Pro checkout.
+ * Prefers worker /checkout (applies 5-day trial only once per Google email).
+ * Falls back to Payment Link if the worker is unavailable.
+ */
+async function startStripeCheckout() {
+    if (!(googleToken && isGoogleTokenValid())) {
+        alert('Sign in with Google first to start Pro.');
         return;
     }
     try { sessionStorage.setItem('luax_stripe_pending', '1'); } catch (_) {}
     try { localStorage.setItem('luax_stripe_pending', '1'); } catch (_) {}
-    try { const em = currentAccountEmail(); if (em) localStorage.setItem('luax_stripe_pending_email', em); } catch (_) {}
+    try {
+        const em = currentAccountEmail();
+        if (em) localStorage.setItem('luax_stripe_pending_email', em);
+    } catch (_) {}
+
+    // Preferred path: server-created Checkout Session (trial once per email)
+    if (typeof STRIPE_CHECKOUT_ENDPOINT === 'string' && STRIPE_CHECKOUT_ENDPOINT) {
+        try {
+            const res = await fetch(STRIPE_CHECKOUT_ENDPOINT, {
+                method: 'POST',
+                credentials: 'omit',
+                headers: {
+                    'Authorization': 'Bearer ' + googleToken,
+                    'Content-Type': 'application/json'
+                },
+                body: '{}'
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data && data.url) {
+                try {
+                    if (data.trialEligible === false) {
+                        // Optional soft notice — still go to paid checkout
+                        console.info('[LuaX] No free trial (already used). Opening paid checkout.');
+                    }
+                } catch (_) {}
+                window.location.href = data.url;
+                return;
+            }
+            // Missing price id / worker not deployed yet → fall through to Payment Link
+            if (data && data.error === 'missing_price_id') {
+                console.warn('[LuaX] STRIPE_PRICE_ID not set on worker; using Payment Link fallback');
+            } else if (data && data.error) {
+                console.warn('[LuaX] checkout error', data.error);
+            }
+        } catch (e) {
+            console.warn('[LuaX] checkout network error', e);
+        }
+    }
+
+    // Fallback: static Payment Link (cannot enforce one trial — disable trial on the link in Stripe)
+    if (!STRIPE_PAYMENT_LINK) {
+        alert(
+            'Stripe is not configured yet.\n\n' +
+            'Deploy the worker with STRIPE_PRICE_ID, or paste a Payment Link into STRIPE_PAYMENT_LINK.'
+        );
+        return;
+    }
     let url = STRIPE_PAYMENT_LINK;
     const email = currentAccountEmail();
-    // Prefill email on Checkout when possible
     if (email) {
         const sep = url.includes('?') ? '&' : '?';
         url += sep + 'prefilled_email=' + encodeURIComponent(email);
