@@ -1,5 +1,5 @@
 // src/perf-tune.js — loaded after play-mode.js
-// Caps canvas DPR, tightens frame dt, scales raycast resolution via quality.
+// Caps canvas DPR, scales raycast resolution, exposes set_quality / fps to Lua.
 
 (function () {
     'use strict';
@@ -40,12 +40,11 @@
 
     // ---- Cap device pixel ratio (mobile 3× screens are costly) ----
     if (typeof resizeCanvas === 'function') {
-        const _resizeCanvas = resizeCanvas;
         window.resizeCanvas = function resizedWithQuality() {
             const canvasEl = document.getElementById('game-canvas');
-            if (!canvasEl) return _resizeCanvas();
+            if (!canvasEl) return;
             const ctx2 = canvasEl.getContext('2d', { alpha: false });
-            if (!ctx2) return _resizeCanvas();
+            if (!ctx2) return;
 
             let dpr = window.devicePixelRatio || 1;
             const mobile = (typeof isMobileDevice !== 'undefined') ? isMobileDevice : false;
@@ -59,69 +58,14 @@
             canvasEl.height = Math.max(1, Math.floor(rect.height * dpr));
             ctx2.setTransform(dpr, 0, 0, dpr, 0, 0);
         };
-        // Keep global name used by play-mode listeners
         try { resizeCanvas = window.resizeCanvas; } catch (_) {}
     }
 
-    // ---- Tighter dt clamp inside rAF by wrapping requestAnimationFrame once ----
-    // play-mode clamps at 0.1; we post-process Lua global dt is harder,
-    // so patch the known gameLoop if exposed later. Soft approach: monkey-patch
-    // nothing critical here — raycast + DPR are the main wins.
-
-    // ---- Quality-scaled raycast ----
+    // ---- Quality-scaled raycast (fewer vertical strips on mobile) ----
     function installRaycastQuality() {
         const api = window.LuaDeckAPI;
         if (!api || !api.gfx || typeof api.gfx.raycast !== 'function') return false;
         if (api.gfx._luaxRaycastPatched) return true;
-
-        const original = api.gfx.raycast.bind(api.gfx);
-        api.gfx.raycast = function raycastWithQuality(opts) {
-            if (!opts || typeof opts !== 'object') return original(opts);
-            // Inject quality if the game didn't specify one
-            if (opts.quality == null) {
-                opts = Object.assign({}, opts, { quality: renderQuality });
-            }
-            // Lower-quality path: fewer rays via a scaled internal width trick
-            // by temporarily shrinking the canvas backing resolution is too invasive.
-            // Instead, intercept by wrapping with a column-skipping renderer when quality < 1.
-            const q = Math.max(0.35, Math.min(1, Number(opts.quality) || 1));
-            if (q >= 0.98) return original(opts);
-
-            // Call original but with a hack: we re-implement a thin wrapper that
-            // reduces horizontal resolution by drawing to an offscreen buffer.
-            const canvasEl = document.getElementById('game-canvas');
-            if (!canvasEl) return original(opts);
-            const ctx2 = canvasEl.getContext('2d');
-            if (!ctx2) return original(opts);
-
-            const dpr = window.devicePixelRatio || 1;
-            const fullW = canvasEl.width / dpr;
-            const fullH = canvasEl.height / dpr;
-            const lowW = Math.max(80, Math.floor(fullW * q));
-            const lowH = Math.max(60, Math.floor(fullH * q));
-
-            // Offscreen low-res render
-            let off = api.gfx._rayOff;
-            if (!off || off.width !== Math.floor(lowW * dpr) || off.height !== Math.floor(lowH * dpr)) {
-                off = document.createElement('canvas');
-                off.width = Math.max(1, Math.floor(lowW * dpr));
-                off.height = Math.max(1, Math.floor(lowH * dpr));
-                api.gfx._rayOff = off;
-            }
-            const octx = off.getContext('2d', { alpha: false });
-            // Swap globals briefly so original raycast draws into offscreen
-            // LuaDeckAPI.gfx.raycast uses module-level `canvas` and `ctx` — not swappable easily.
-            // Fall back: call original (full res) when we can't redirect.
-            // Practical compromise: original with quality tag for future native support,
-            // plus reduce max wall distance fog steps is not enough.
-            // Use CSS-scale approach: original draws full, we accept DPR cap as main win.
-            return original(opts);
-        };
-
-        // Native path inside original already uses full width; patch by replacing
-        // the function body strategy: wrap canvas width perception.
-        // Final approach — replace raycast entirely with a quality-aware copy of the core loop
-        // by calling original only when quality is high; otherwise run reduced-ray version.
 
         api.gfx.raycast = function (opts) {
             if (!opts || !opts.map) return;
@@ -267,10 +211,8 @@
         return true;
     }
 
-    // Install when API is ready (play-mode defines it at parse time)
     installRaycastQuality();
 
-    // Expose on sys API
     function exposeSys() {
         const api = window.LuaDeckAPI;
         if (!api || !api.sys) return false;
@@ -283,13 +225,49 @@
     }
     exposeSys();
 
-    // Globals for console / future UI
+    // Inject Lua globals after each PLAY boot (shim reloads every start)
+    const LUA_PERF_HELPERS =
+        'do\n' +
+        '  local js = require("js")\n' +
+        '  local api = js.global.LuaDeckAPI\n' +
+        '  function set_quality(q) if api and api.sys then return api.sys:setQuality(q) end end\n' +
+        '  function quality() if api and api.sys then return api.sys:quality() end return 1 end\n' +
+        '  function fps() if api and api.sys then return api.sys:fps() end return 0 end\n' +
+        'end\n';
+
+    function injectLuaHelpers() {
+        try {
+            if (typeof fengari === 'undefined') return;
+            const L = fengari.L;
+            fengari.lauxlib.luaL_dostring(L, fengari.to_luastring(LUA_PERF_HELPERS));
+        } catch (e) {
+            console.warn('[LuaX] perf lua inject failed', e);
+        }
+    }
+
+    function wrapStartPlayMode() {
+        if (typeof window.startPlayMode !== 'function') return false;
+        if (window.startPlayMode._luaxPerfWrapped) return true;
+        const original = window.startPlayMode;
+        window.startPlayMode = async function () {
+            const result = await original.apply(this, arguments);
+            // Shim + main.lua already ran inside original; inject helpers now
+            injectLuaHelpers();
+            exposeSys();
+            installRaycastQuality();
+            return result;
+        };
+        window.startPlayMode._luaxPerfWrapped = true;
+        return true;
+    }
+
+    wrapStartPlayMode();
+    // play-mode may assign startPlayMode again at the end — retry shortly
+    setTimeout(wrapStartPlayMode, 0);
+    setTimeout(wrapStartPlayMode, 50);
+
     window.setRenderQuality = setRenderQuality;
     window.getRenderQuality = function () { return renderQuality; };
-
-    // Tighter dt: wrap setLuaGlobal for 'dt' if available once playing
-    // Patch gameLoop via intercepting requestAnimationFrame is too broad.
-    // Instead re-clamp inside a proxy of callLua for _update — skip for safety.
 
     console.info('[LuaX] perf-tune active · quality=' + renderQuality.toFixed(2));
 })();
