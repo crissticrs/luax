@@ -410,12 +410,36 @@ async function handleStatus(request, env, url) {
   } catch (_) {
     return json({ active: false, reason: 'bad_kv', email });
   }
+
+  let active = !!data.active;
+  const activeUntil = data.activeUntil || null;
+  // Never report active after the period/trial end
+  if (active && activeUntil) {
+    const end = Date.parse(activeUntil);
+    if (!isNaN(end) && Date.now() > end) {
+      active = false;
+      // Persist so later reads stay consistent
+      try {
+        await putSub(env, email, {
+          active: false,
+          activeUntil: activeUntil,
+          trial: false,
+          status: 'expired',
+          cancelAtPeriodEnd: false,
+          lastEvent: 'status_expired',
+        });
+      } catch (_) {}
+    }
+  }
+
   return json({
-    active: !!data.active,
-    activeUntil: data.activeUntil || null,
-    trial: !!data.trial,
+    active: active,
+    activeUntil: activeUntil,
+    trial: active ? !!data.trial : false,
     trialUsed: !!data.trialUsed || !!data.trial,
-    status: data.status || (data.trial ? 'trialing' : data.active ? 'active' : 'inactive'),
+    status: active
+      ? (data.status || (data.trial ? 'trialing' : 'active'))
+      : (data.status === 'canceled' ? 'canceled' : 'expired'),
     cancelAtPeriodEnd: !!data.cancelAtPeriodEnd,
     email,
   });
