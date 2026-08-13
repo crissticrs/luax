@@ -28,6 +28,17 @@
       tb.appendChild(b);
     }
 
+    // Upgrade filters if panel already exists without Scenes
+    var filters = document.querySelector('.assets-filters');
+    if (filters && !filters.querySelector('[data-assets-filter="scenes"]')) {
+      var sb = document.createElement('button');
+      sb.type = 'button';
+      sb.className = 'assets-filter';
+      sb.setAttribute('data-assets-filter', 'scenes');
+      sb.textContent = 'Scenes';
+      filters.appendChild(sb);
+    }
+
     if (document.getElementById('editor-workspace')) return true;
 
     var ed = document.getElementById('editor');
@@ -64,6 +75,7 @@
       '<button type="button" class="assets-filter active" data-assets-filter="all">All</button>' +
       '<button type="button" class="assets-filter" data-assets-filter="sprites">Sprites</button>' +
       '<button type="button" class="assets-filter" data-assets-filter="music">Music</button>' +
+      '<button type="button" class="assets-filter" data-assets-filter="scenes">Scenes</button>' +
       '</div></div>' +
       '<div id="assets-panel-body" class="assets-panel-body"></div>' +
       '<div id="assets-preview" class="assets-preview"></div>';
@@ -104,7 +116,6 @@
     setTimeout(boot, 50);
   }
 
-  // Retry a few times in case editor mounts late
   var tries = 0;
   var t = setInterval(function () {
     tries++;
