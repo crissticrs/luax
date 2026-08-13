@@ -427,9 +427,14 @@
     }
 
     function closeSceneEditor() {
-        // Auto-save if dirty — avoids blocking confirm() freezes on mobile Safari
         if (dirty) {
-            try { saveSceneFromEditor(); } catch (_) {}
+            var leave = false;
+            try {
+                leave = confirm('Unsaved scene changes.\n\nOK = discard and leave\nCancel = stay');
+            } catch (_) {
+                leave = true;
+            }
+            if (!leave) return;
         }
         dirty = false;
         dragState = null;
