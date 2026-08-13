@@ -1,11 +1,12 @@
-// src/scene-editor.js — 2D scene editor
-// Left panel (paint + sprites) · full canvas · pinch zoom · scale · shapes
+// src/scene-editor.js — 2D scene editor (full pixel grid)
+// Brush paints one cell · shapes place as 1 cell · sprite spectrum colors
 
 (function () {
     'use strict';
 
     const SCENES_KEY = 'luax_project_scenes';
-    const SCN_PALETTE = [
+    const CELL = 16;
+    const SCN_PRESETS = [
         '#000000', '#7f7f7f', '#880015', '#ed1c24', '#ff7f27', '#fff200',
         '#22b14c', '#00a2e8', '#3f48cc', '#a349a4', '#ffffff', '#c3c3c3', '#b97a57',
         '#ffaec9', '#ffc90e', '#efe4b0', '#b5e61d', '#99d9ea', '#7092be', '#c8bfe7',
@@ -24,10 +25,9 @@
     let dirty = false;
     let tool = 'select';
     let paintColor = '#22b14c';
-    let brushSize = 16;
     let placeSpriteName = null;
-    let shapeStart = null;
     let pinch = null;
+    const spectrum = { h: 120, s: 0.7, v: 0.7 };
 
     function $(id) { return document.getElementById(id); }
 
@@ -54,13 +54,99 @@
         if (!projectScenes[name]) projectScenes[name] = {};
         return projectScenes[name];
     }
-    function emptyScene() { return { w: 640, h: 360, objects: [] }; }
+    function emptyScene() {
+        return { w: 40 * CELL, h: 22 * CELL, cell: CELL, objects: [] };
+    }
 
     function escapeHtml(s) {
         return String(s).replace(/&/g, '&').replace(/</g, '<').replace(/"/g, '"');
     }
     function escapeAttr(s) {
         return String(s).replace(/&/g, '&').replace(/"/g, '"');
+    }
+
+    function normalizeHex(v) {
+        if (!v) return null;
+        let h = String(v).trim();
+        if (h[0] !== '#') h = '#' + h;
+        if (/^#[0-9a-fA-F]{3}$/.test(h)) {
+            h = '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+        }
+        if (!/^#[0-9a-fA-F]{6}$/.test(h)) return null;
+        return h.toLowerCase();
+    }
+
+    function rgbToHsv(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        const d = max - min;
+        let h = 0;
+        if (d !== 0) {
+            if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+            else if (max === g) h = ((b - r) / d + 2) / 6;
+            else h = ((r - g) / d + 4) / 6;
+        }
+        return { h: h * 360, s: max === 0 ? 0 : d / max, v: max };
+    }
+    function hsvToRgb(h, s, v) {
+        h = ((h % 360) + 360) % 360;
+        const c = v * s;
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        const m = v - c;
+        let r = 0, g = 0, b = 0;
+        if (h < 60) { r = c; g = x; }
+        else if (h < 120) { r = x; g = c; }
+        else if (h < 180) { g = c; b = x; }
+        else if (h < 240) { g = x; b = c; }
+        else if (h < 300) { r = x; b = c; }
+        else { r = c; b = x; }
+        return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+    }
+    function hsvToHex(h, s, v) {
+        const [r, g, b] = hsvToRgb(h, s, v);
+        const p = (n) => n.toString(16).padStart(2, '0');
+        return '#' + p(r) + p(g) + p(b);
+    }
+
+    function setPaintColor(hex) {
+        const n = normalizeHex(hex) || '#000000';
+        paintColor = n;
+        const m = n.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+        if (m) {
+            const hsv = rgbToHsv(parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16));
+            spectrum.h = hsv.h; spectrum.s = hsv.s; spectrum.v = hsv.v;
+        }
+        updateColorUI();
+    }
+
+    function applySpectrumColor() {
+        paintColor = hsvToHex(spectrum.h, spectrum.s, spectrum.v);
+        updateColorUI();
+    }
+
+    function updateColorUI() {
+        const active = $('scn-color-active');
+        if (active) active.style.background = paintColor;
+        const hexInput = $('scn-hex-input');
+        if (hexInput && document.activeElement !== hexInput) hexInput.value = paintColor;
+        const preview = $('scn-spectrum-preview');
+        if (preview) preview.style.background = paintColor;
+        const sv = $('scn-sv');
+        if (sv) {
+            const [hr, hg, hb] = hsvToRgb(spectrum.h, 1, 1);
+            sv.style.background =
+                'linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, rgb(' + hr + ',' + hg + ',' + hb + '))';
+            const cursor = $('scn-sv-cursor');
+            if (cursor) {
+                cursor.style.left = (spectrum.s * 100) + '%';
+                cursor.style.top = ((1 - spectrum.v) * 100) + '%';
+            }
+        }
+        const hue = $('scn-hue');
+        if (hue) hue.value = String(Math.round(spectrum.h));
+        document.querySelectorAll('.scn-swatch').forEach(s => {
+            s.classList.toggle('active', normalizeHex(s.title) === paintColor);
+        });
     }
 
     function ensureSceneDom() {
@@ -83,32 +169,37 @@
             '<span class="spr-title" id="scene-editor-title">Scene</span>' +
             '<button type="button" class="btn btn-sm" id="scn-delete-obj">Delete</button>' +
             '<button type="button" class="btn btn-primary btn-sm" id="scn-save">Save</button></div>' +
-            '<div class="scn-body">' +
-            '<aside class="scn-palette">' +
+            '<div class="scn-body"><aside class="scn-palette">' +
             '<div class="scn-tabs">' +
             '<button type="button" class="scn-tab active" data-scn-tab="paint">Paint</button>' +
             '<button type="button" class="scn-tab" data-scn-tab="sprites">Sprites</button></div>' +
             '<div class="scn-panel active" id="scn-panel-paint">' +
-            '<div class="scn-section-label">Tool</div>' +
+            '<div class="scn-section-label">Tool (1 cell)</div>' +
             '<div class="scn-tool-row" id="scn-tools">' +
             '<button type="button" class="scn-tool active" data-tool="select">↖</button>' +
             '<button type="button" class="scn-tool" data-tool="brush">Brush</button>' +
             '<button type="button" class="scn-tool" data-tool="rect">□</button>' +
             '<button type="button" class="scn-tool" data-tool="tri">△</button>' +
-            '<button type="button" class="scn-tool" data-tool="circle">○</button></div>' +
+            '<button type="button" class="scn-tool" data-tool="circle">○</button>' +
+            '<button type="button" class="scn-tool" data-tool="eraser">⌫</button></div>' +
             '<div class="scn-section-label">Color</div>' +
             '<div class="scn-color-active" id="scn-color-active"></div>' +
+            '<div class="scn-spectrum-box">' +
+            '<div class="scn-sv" id="scn-sv"><div class="scn-sv-cursor" id="scn-sv-cursor"></div></div>' +
+            '<input type="range" id="scn-hue" class="scn-hue" min="0" max="360" value="120">' +
+            '<div class="scn-hex-row">' +
+            '<div class="scn-spectrum-preview" id="scn-spectrum-preview"></div>' +
+            '<input type="text" id="scn-hex-input" class="scn-hex-input" maxlength="7" value="#22b14c">' +
+            '</div></div>' +
+            '<div class="scn-section-label">Presets</div>' +
             '<div class="scn-paint-grid" id="scn-paint-grid"></div>' +
-            '<div class="scn-section-label">Brush size</div>' +
-            '<div class="scn-scale-row">' +
-            '<input type="range" id="scn-brush-size" min="4" max="64" step="4" value="16">' +
-            '<span id="scn-brush-label">16</span></div>' +
             '<div class="scn-section-label">Selected scale</div>' +
             '<div class="scn-scale-row">' +
-            '<input type="range" id="scn-obj-scale" min="0.25" max="8" step="0.25" value="1">' +
-            '<span id="scn-scale-label">1×</span></div></div>' +
+            '<input type="range" id="scn-obj-scale" min="1" max="8" step="1" value="1">' +
+            '<span id="scn-scale-label">1×</span></div>' +
+            '<p class="scn-grid-note">Grid ' + CELL + 'px · click places 1 cell</p></div>' +
             '<div class="scn-panel" id="scn-panel-sprites">' +
-            '<div class="scn-section-label">Tap to place</div>' +
+            '<div class="scn-section-label">Tap sprite, then cell</div>' +
             '<div id="scn-palette-list"></div></div></aside>' +
             '<div class="scn-stage-wrap" id="scn-stage-wrap">' +
             '<canvas id="scene-canvas" width="640" height="360"></canvas></div></div>' +
@@ -116,7 +207,7 @@
             '<button type="button" class="btn btn-sm" id="scn-zoom-out">−</button>' +
             '<button type="button" class="btn btn-sm" id="scn-zoom-reset">100%</button>' +
             '<button type="button" class="btn btn-sm" id="scn-zoom-in">+</button>' +
-            '<span class="scn-sel-info" id="scn-sel-info">Paint shapes or place sprites · pinch to zoom</span>' +
+            '<span class="scn-sel-info" id="scn-sel-info">Pixel grid · one cell per click</span>' +
             '<span class="scn-hint">2D</span></div>';
 
         const music = $('music-editor-view');
@@ -129,7 +220,7 @@
         $('scn-back').onclick = () => closeSceneEditor();
         $('scn-save').onclick = () => saveSceneFromEditor();
         $('scn-delete-obj').onclick = () => deleteSelectedObject();
-        $('scn-zoom-in').onclick = () => { viewScale = Math.min(4, viewScale * 1.25); drawScene(); updateZoomLabel(); };
+        $('scn-zoom-in').onclick = () => { viewScale = Math.min(6, viewScale * 1.25); drawScene(); updateZoomLabel(); };
         $('scn-zoom-out').onclick = () => { viewScale = Math.max(0.25, viewScale / 1.25); drawScene(); updateZoomLabel(); };
         $('scn-zoom-reset').onclick = () => { viewScale = 1; panX = 0; panY = 0; drawScene(); updateZoomLabel(); };
 
@@ -148,7 +239,7 @@
         });
 
         const grid = $('scn-paint-grid');
-        SCN_PALETTE.forEach(c => {
+        SCN_PRESETS.forEach(c => {
             const b = document.createElement('button');
             b.type = 'button';
             b.className = 'scn-swatch';
@@ -157,21 +248,50 @@
             b.onclick = () => setPaintColor(c);
             grid.appendChild(b);
         });
-        setPaintColor(paintColor);
 
-        const brush = $('scn-brush-size');
-        if (brush) brush.oninput = () => {
-            brushSize = parseInt(brush.value, 10) || 16;
-            const lab = $('scn-brush-label');
-            if (lab) lab.textContent = String(brushSize);
+        const sv = $('scn-sv');
+        if (sv) {
+            const pickSV = (e) => {
+                const r = sv.getBoundingClientRect();
+                const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+                const y = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+                spectrum.s = x;
+                spectrum.v = 1 - y;
+                applySpectrumColor();
+            };
+            sv.addEventListener('pointerdown', (e) => {
+                sv.setPointerCapture(e.pointerId);
+                pickSV(e);
+                const move = (ev) => pickSV(ev);
+                const up = () => {
+                    sv.removeEventListener('pointermove', move);
+                    sv.removeEventListener('pointerup', up);
+                };
+                sv.addEventListener('pointermove', move);
+                sv.addEventListener('pointerup', up);
+            });
+        }
+        const hue = $('scn-hue');
+        if (hue) hue.oninput = () => {
+            spectrum.h = parseFloat(hue.value) || 0;
+            applySpectrumColor();
         };
+        const hexInput = $('scn-hex-input');
+        if (hexInput) hexInput.onchange = () => {
+            const n = normalizeHex(hexInput.value);
+            if (n) setPaintColor(n);
+            else updateColorUI();
+        };
+
         const scale = $('scn-obj-scale');
         if (scale) scale.oninput = () => {
-            const v = parseFloat(scale.value) || 1;
+            const v = parseInt(scale.value, 10) || 1;
             const lab = $('scn-scale-label');
             if (lab) lab.textContent = v + '×';
             applyScaleToSelected(v);
         };
+
+        setPaintColor(paintColor);
 
         const canvas = $('scene-canvas');
         canvas.addEventListener('pointerdown', onPointerDown);
@@ -196,17 +316,12 @@
             b.classList.toggle('active', b.getAttribute('data-tool') === tool);
         });
         const canvas = $('scene-canvas');
-        if (canvas) canvas.style.cursor = tool === 'select' ? 'default' : 'crosshair';
+        if (canvas) canvas.style.cursor = (tool === 'select') ? 'default' : 'crosshair';
         updateSelInfo();
     }
 
-    function setPaintColor(c) {
-        paintColor = c;
-        const active = $('scn-color-active');
-        if (active) active.style.background = c;
-        document.querySelectorAll('.scn-swatch').forEach(s => {
-            s.classList.toggle('active', s.title === c);
-        });
+    function cellOf(wx, wy) {
+        return { cx: Math.floor(wx / CELL), cy: Math.floor(wy / CELL) };
     }
 
     function applyScaleToSelected(v) {
@@ -214,18 +329,6 @@
         const o = sceneData.objects.find(x => x.id === selectedId);
         if (!o) return;
         if (o.kind === 'sprite' || o.sprite) {
-            o.scale = v;
-            dirty = true;
-            drawScene();
-            updateSelInfo();
-        } else if (o.kind === 'shape') {
-            const cx = o.x + o.w / 2;
-            const cy = o.y + o.h / 2;
-            if (!o._baseW) { o._baseW = o.w; o._baseH = o.h; }
-            o.w = Math.max(4, Math.round(o._baseW * v));
-            o.h = Math.max(4, Math.round(o._baseH * v));
-            o.x = Math.round(cx - o.w / 2);
-            o.y = Math.round(cy - o.h / 2);
             o.scale = v;
             dirty = true;
             drawScene();
@@ -271,8 +374,9 @@
         sceneData.objects.forEach(o => {
             if (!o.kind) o.kind = o.sprite ? 'sprite' : 'shape';
         });
-        sceneData.w = sceneData.w || 640;
-        sceneData.h = sceneData.h || 360;
+        sceneData.w = sceneData.w || 40 * CELL;
+        sceneData.h = sceneData.h || 22 * CELL;
+        sceneData.cell = CELL;
         nextObjId = 1;
         sceneData.objects.forEach(o => { if (o.id >= nextObjId) nextObjId = o.id + 1; });
         selectedId = null;
@@ -366,13 +470,12 @@
             el.onclick = () => {
                 placeSpriteName = el.getAttribute('data-sprite');
                 tool = 'place-sprite';
+                document.querySelectorAll('#scn-tools .scn-tool').forEach(b => b.classList.remove('active'));
                 const info = $('scn-sel-info');
-                if (info) info.textContent = 'Tap canvas to place “' + placeSpriteName + '”';
+                if (info) info.textContent = 'Tap a grid cell to place “' + placeSpriteName + '”';
             };
         });
     }
-
-    function snap(v) { return Math.round(v / 4) * 4; }
 
     function deleteSelectedObject() {
         if (!sceneData || selectedId == null) return;
@@ -388,19 +491,21 @@
         if (!info || !sceneData) return;
         const o = sceneData.objects.find(x => x.id === selectedId);
         if (!o) {
-            info.textContent = tool === 'place-sprite' && placeSpriteName
-                ? ('Tap canvas to place “' + placeSpriteName + '”')
-                : 'Paint shapes or place sprites · pinch to zoom';
+            if (tool === 'place-sprite' && placeSpriteName) info.textContent = 'Tap a grid cell to place “' + placeSpriteName + '”';
+            else if (tool === 'brush') info.textContent = 'Brush · paints 1 grid cell';
+            else if (tool === 'rect' || tool === 'tri' || tool === 'circle') info.textContent = 'Tap cell → places 1 ' + tool;
+            else if (tool === 'eraser') info.textContent = 'Eraser · tap cell to clear';
+            else info.textContent = 'Pixel grid · one cell per click';
             return;
         }
         if (o.kind === 'sprite' || o.sprite) {
-            info.textContent = (o.sprite || 'sprite') + ' @ ' + o.x + ',' + o.y + ' · ' + (o.scale || 1) + '×';
+            info.textContent = (o.sprite || 'sprite') + ' cell ' + o.cx + ',' + o.cy + ' · ' + (o.scale || 1) + '×';
             const scale = $('scn-obj-scale');
             const lab = $('scn-scale-label');
             if (scale) scale.value = String(o.scale || 1);
             if (lab) lab.textContent = (o.scale || 1) + '×';
         } else {
-            info.textContent = (o.shape || 'shape') + ' ' + (o.color || '') + ' @ ' + o.x + ',' + o.y;
+            info.textContent = (o.shape || 'cell') + ' ' + (o.color || '') + ' @ ' + o.cx + ',' + o.cy;
         }
     }
 
@@ -434,13 +539,13 @@
         if (o.kind === 'sprite' || o.sprite) {
             const img = imgCache[o.sprite];
             const sc = o.scale || 1;
-            return {
-                x: o.x, y: o.y,
-                w: (img ? img.naturalWidth : 16) * sc,
-                h: (img ? img.naturalHeight : 16) * sc
-            };
+            const x = (o.cx != null ? o.cx * CELL : o.x) || 0;
+            const y = (o.cy != null ? o.cy * CELL : o.y) || 0;
+            return { x: x, y: y, w: (img ? img.naturalWidth : CELL) * sc, h: (img ? img.naturalHeight : CELL) * sc };
         }
-        return { x: o.x, y: o.y, w: o.w || 16, h: o.h || 16 };
+        const x = o.cx != null ? o.cx * CELL : o.x;
+        const y = o.cy != null ? o.cy * CELL : o.y;
+        return { x: x, y: y, w: CELL, h: CELL };
     }
 
     function hitTest(wx, wy) {
@@ -448,26 +553,37 @@
         for (let i = sceneData.objects.length - 1; i >= 0; i--) {
             const o = sceneData.objects[i];
             const b = objBounds(o);
-            if (wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h) return o;
+            if (wx >= b.x && wx < b.x + b.w && wy >= b.y && wy < b.y + b.h) return o;
         }
         return null;
     }
 
-    function drawShape(ctx, o) {
+    function findShapeAtCell(cx, cy) {
+        if (!sceneData) return null;
+        for (let i = sceneData.objects.length - 1; i >= 0; i--) {
+            const o = sceneData.objects[i];
+            if (o.kind === 'shape' && o.cx === cx && o.cy === cy) return o;
+        }
+        return null;
+    }
+
+    function drawShapeCell(ctx, o) {
         const color = o.color || '#fff';
+        const x = o.cx * CELL;
+        const y = o.cy * CELL;
         ctx.fillStyle = color;
-        const x = o.x, y = o.y, w = o.w || 16, h = o.h || 16;
-        if (o.shape === 'rect' || o.shape === 'brush') {
-            ctx.fillRect(x, y, w, h);
-        } else if (o.shape === 'circle') {
+        const shape = o.shape || 'rect';
+        if (shape === 'rect' || shape === 'brush') {
+            ctx.fillRect(x, y, CELL, CELL);
+        } else if (shape === 'circle') {
             ctx.beginPath();
-            ctx.ellipse(x + w / 2, y + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, Math.PI * 2);
+            ctx.arc(x + CELL / 2, y + CELL / 2, CELL / 2 - 0.5, 0, Math.PI * 2);
             ctx.fill();
-        } else if (o.shape === 'tri') {
+        } else if (shape === 'tri') {
             ctx.beginPath();
-            ctx.moveTo(x + w / 2, y);
-            ctx.lineTo(x + w, y + h);
-            ctx.lineTo(x, y + h);
+            ctx.moveTo(x + CELL / 2, y + 1);
+            ctx.lineTo(x + CELL - 1, y + CELL - 1);
+            ctx.lineTo(x + 1, y + CELL - 1);
             ctx.closePath();
             ctx.fill();
         }
@@ -483,59 +599,100 @@
         ctx.translate(panX, panY);
         ctx.scale(viewScale, viewScale);
 
-        ctx.fillStyle = 'rgba(28, 32, 48, 0.95)';
+        ctx.fillStyle = 'rgba(20, 24, 36, 0.98)';
         ctx.fillRect(0, 0, sceneData.w, sceneData.h);
-        ctx.strokeStyle = 'rgba(167, 139, 250, 0.5)';
+
+        const cols = Math.ceil(sceneData.w / CELL);
+        const rows = Math.ceil(sceneData.h / CELL);
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+        ctx.lineWidth = 1 / viewScale;
+        for (let c = 0; c <= cols; c++) {
+            const x = c * CELL;
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, sceneData.h); ctx.stroke();
+        }
+        for (let r = 0; r <= rows; r++) {
+            const y = r * CELL;
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(sceneData.w, y); ctx.stroke();
+        }
+        ctx.strokeStyle = 'rgba(167, 139, 250, 0.55)';
         ctx.lineWidth = 2 / viewScale;
         ctx.strokeRect(0, 0, sceneData.w, sceneData.h);
 
-        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-        ctx.lineWidth = 1 / viewScale;
-        for (let x = 0; x <= sceneData.w; x += 16) {
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, sceneData.h); ctx.stroke();
-        }
-        for (let y = 0; y <= sceneData.h; y += 16) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(sceneData.w, y); ctx.stroke();
-        }
-
+        sceneData.objects.forEach(o => {
+            if (o.kind === 'shape') drawShapeCell(ctx, o);
+        });
         sceneData.objects.forEach(o => {
             if (o.kind === 'sprite' || o.sprite) {
                 const img = imgCache[o.sprite];
                 const sc = o.scale || 1;
-                const w = (img ? img.naturalWidth : 16) * sc;
-                const h = (img ? img.naturalHeight : 16) * sc;
+                const x = o.cx != null ? o.cx * CELL : o.x;
+                const y = o.cy != null ? o.cy * CELL : o.y;
+                const w = (img ? img.naturalWidth : CELL) * sc;
+                const h = (img ? img.naturalHeight : CELL) * sc;
                 if (img && img.complete) {
                     ctx.imageSmoothingEnabled = false;
-                    ctx.drawImage(img, o.x, o.y, w, h);
+                    ctx.drawImage(img, x, y, w, h);
                 } else {
                     ctx.fillStyle = '#555';
-                    ctx.fillRect(o.x, o.y, w, h);
+                    ctx.fillRect(x, y, w, h);
                 }
-            } else {
-                drawShape(ctx, o);
             }
             if (o.id === selectedId) {
                 const b = objBounds(o);
                 ctx.strokeStyle = '#ffea00';
                 ctx.lineWidth = 2 / viewScale;
-                ctx.strokeRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2);
+                ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
             }
         });
 
-        if (shapeStart && dragState && dragState.mode === 'shape') {
-            const preview = {
-                kind: 'shape', shape: dragState.shape, color: paintColor,
-                x: Math.min(shapeStart.x, dragState.wx),
-                y: Math.min(shapeStart.y, dragState.wy),
-                w: Math.abs(dragState.wx - shapeStart.x) || 4,
-                h: Math.abs(dragState.wy - shapeStart.y) || 4
-            };
-            ctx.globalAlpha = 0.55;
-            drawShape(ctx, preview);
-            ctx.globalAlpha = 1;
-        }
         ctx.restore();
         updateZoomLabel();
+    }
+
+    function paintCell(cx, cy, shape) {
+        if (!sceneData) return;
+        const maxC = Math.floor(sceneData.w / CELL);
+        const maxR = Math.floor(sceneData.h / CELL);
+        if (cx < 0 || cy < 0 || cx >= maxC || cy >= maxR) return;
+        const existing = findShapeAtCell(cx, cy);
+        if (existing) {
+            existing.shape = shape;
+            existing.color = paintColor;
+            selectedId = existing.id;
+            dirty = true;
+            return;
+        }
+        const id = nextObjId++;
+        sceneData.objects.push({
+            id: id, kind: 'shape', shape: shape, color: paintColor,
+            cx: cx, cy: cy, x: cx * CELL, y: cy * CELL, w: CELL, h: CELL
+        });
+        selectedId = id;
+        dirty = true;
+    }
+
+    function eraseCell(cx, cy) {
+        if (!sceneData) return;
+        const before = sceneData.objects.length;
+        sceneData.objects = sceneData.objects.filter(o => {
+            if (o.kind !== 'shape') return true;
+            return !(o.cx === cx && o.cy === cy);
+        });
+        if (sceneData.objects.length !== before) {
+            selectedId = null;
+            dirty = true;
+        }
+    }
+
+    function addSpriteAtCell(sprite, cx, cy) {
+        if (!sceneData) return;
+        const id = nextObjId++;
+        sceneData.objects.push({
+            id: id, kind: 'sprite', sprite: sprite,
+            cx: cx, cy: cy, x: cx * CELL, y: cy * CELL, scale: 1
+        });
+        selectedId = id;
+        dirty = true;
     }
 
     function onPointerDown(e) {
@@ -544,30 +701,47 @@
         if (!canvas || !sceneData) return;
         try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
         const world = screenToWorld(e.clientX, e.clientY);
+        const { cx, cy } = cellOf(world.x, world.y);
 
         if (tool === 'place-sprite' && placeSpriteName) {
-            addSprite(placeSpriteName, world.x, world.y);
+            addSpriteAtCell(placeSpriteName, cx, cy);
             placeSpriteName = null;
             setTool('select');
+            drawScene();
+            updateSelInfo();
             return;
         }
         if (tool === 'brush') {
-            const s = brushSize;
-            addShape('brush', snap(world.x - s / 2), snap(world.y - s / 2), s, s);
-            dragState = { mode: 'brush', pointerId: e.pointerId };
+            paintCell(cx, cy, 'brush');
+            dragState = { mode: 'paint', shape: 'brush', lastCx: cx, lastCy: cy, pointerId: e.pointerId };
+            drawScene();
+            updateSelInfo();
             return;
         }
         if (tool === 'rect' || tool === 'tri' || tool === 'circle') {
-            shapeStart = { x: snap(world.x), y: snap(world.y) };
-            dragState = { mode: 'shape', shape: tool, wx: world.x, wy: world.y, pointerId: e.pointerId };
+            paintCell(cx, cy, tool);
+            dragState = { mode: 'paint', shape: tool, lastCx: cx, lastCy: cy, pointerId: e.pointerId };
             drawScene();
+            updateSelInfo();
+            return;
+        }
+        if (tool === 'eraser') {
+            eraseCell(cx, cy);
+            dragState = { mode: 'erase', lastCx: cx, lastCy: cy, pointerId: e.pointerId };
+            drawScene();
+            updateSelInfo();
             return;
         }
 
         const hit = hitTest(world.x, world.y);
         if (hit) {
             selectedId = hit.id;
-            dragState = { mode: 'move', id: hit.id, ox: world.x - hit.x, oy: world.y - hit.y, pointerId: e.pointerId };
+            dragState = {
+                mode: 'move', id: hit.id, pointerId: e.pointerId,
+                startCx: cx, startCy: cy,
+                origCx: hit.cx != null ? hit.cx : Math.floor((hit.x || 0) / CELL),
+                origCy: hit.cy != null ? hit.cy : Math.floor((hit.y || 0) / CELL)
+            };
             const scale = $('scn-obj-scale');
             const lab = $('scn-scale-label');
             if (scale) scale.value = String(hit.scale || 1);
@@ -586,11 +760,31 @@
         if (pinch || !dragState || !sceneData) return;
         if (dragState.pointerId != null && e.pointerId !== dragState.pointerId) return;
         const world = screenToWorld(e.clientX, e.clientY);
-        if (dragState.mode === 'move') {
+        const { cx, cy } = cellOf(world.x, world.y);
+
+        if (dragState.mode === 'paint') {
+            if (cx !== dragState.lastCx || cy !== dragState.lastCy) {
+                paintCell(cx, cy, dragState.shape);
+                dragState.lastCx = cx;
+                dragState.lastCy = cy;
+                drawScene();
+            }
+        } else if (dragState.mode === 'erase') {
+            if (cx !== dragState.lastCx || cy !== dragState.lastCy) {
+                eraseCell(cx, cy);
+                dragState.lastCx = cx;
+                dragState.lastCy = cy;
+                drawScene();
+            }
+        } else if (dragState.mode === 'move') {
             const o = sceneData.objects.find(x => x.id === dragState.id);
             if (!o) return;
-            o.x = snap(world.x - dragState.ox);
-            o.y = snap(world.y - dragState.oy);
+            const dx = cx - dragState.startCx;
+            const dy = cy - dragState.startCy;
+            o.cx = dragState.origCx + dx;
+            o.cy = dragState.origCy + dy;
+            o.x = o.cx * CELL;
+            o.y = o.cy * CELL;
             dirty = true;
             updateSelInfo();
             drawScene();
@@ -598,63 +792,18 @@
             panX = e.clientX - dragState.ox;
             panY = e.clientY - dragState.oy;
             drawScene();
-        } else if (dragState.mode === 'brush') {
-            const s = brushSize;
-            addShape('brush', snap(world.x - s / 2), snap(world.y - s / 2), s, s, true);
-            drawScene();
-        } else if (dragState.mode === 'shape') {
-            dragState.wx = world.x;
-            dragState.wy = world.y;
-            drawScene();
         }
     }
 
     function onPointerUp(e) {
-        if (dragState && dragState.mode === 'shape' && shapeStart) {
-            const wx = dragState.wx, wy = dragState.wy;
-            const x = Math.min(shapeStart.x, snap(wx));
-            const y = Math.min(shapeStart.y, snap(wy));
-            const w = Math.max(4, Math.abs(snap(wx) - shapeStart.x));
-            const h = Math.max(4, Math.abs(snap(wy) - shapeStart.y));
-            addShape(dragState.shape, x, y, w, h);
-            shapeStart = null;
-        }
         dragState = null;
-        shapeStart = null;
         try { e.target.releasePointerCapture(e.pointerId); } catch (_) {}
-        drawScene();
-    }
-
-    function addSprite(sprite, x, y) {
-        if (!sceneData) return;
-        const id = nextObjId++;
-        sceneData.objects.push({ id: id, kind: 'sprite', sprite: sprite, x: snap(x), y: snap(y), scale: 1 });
-        selectedId = id;
-        dirty = true;
-        drawScene();
-        updateSelInfo();
-    }
-
-    function addShape(shape, x, y, w, h, mergeBrush) {
-        if (!sceneData) return;
-        if (mergeBrush && shape === 'brush' && sceneData.objects.length) {
-            const last = sceneData.objects[sceneData.objects.length - 1];
-            if (last.kind === 'shape' && last.shape === 'brush' && last.x === x && last.y === y) return;
-        }
-        const id = nextObjId++;
-        sceneData.objects.push({
-            id: id, kind: 'shape', shape: shape, color: paintColor,
-            x: x, y: y, w: w, h: h, scale: 1, _baseW: w, _baseH: h
-        });
-        if (!mergeBrush) selectedId = id;
-        dirty = true;
-        if (!mergeBrush) { drawScene(); updateSelInfo(); }
     }
 
     function onWheel(e) {
         e.preventDefault();
         const worldBefore = screenToWorld(e.clientX, e.clientY);
-        viewScale = Math.min(4, Math.max(0.25, viewScale * (e.deltaY > 0 ? 0.9 : 1.1)));
+        viewScale = Math.min(6, Math.max(0.25, viewScale * (e.deltaY > 0 ? 0.9 : 1.1)));
         const canvas = $('scene-canvas');
         const rect = canvas.getBoundingClientRect();
         const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
@@ -671,7 +820,7 @@
     function onTouchStart(e) {
         if (e.touches.length === 2) {
             e.preventDefault();
-            dragState = null; shapeStart = null;
+            dragState = null;
             pinch = {
                 dist: touchDist(e.touches[0], e.touches[1]),
                 scale: viewScale, panX: panX, panY: panY,
@@ -686,7 +835,7 @@
             const d = touchDist(e.touches[0], e.touches[1]);
             const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
             const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-            viewScale = Math.min(4, Math.max(0.25, pinch.scale * (d / pinch.dist)));
+            viewScale = Math.min(6, Math.max(0.25, pinch.scale * (d / pinch.dist)));
             panX = pinch.panX + (midX - pinch.midX);
             panY = pinch.panY + (midY - pinch.midY);
             drawScene();
