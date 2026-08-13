@@ -1,7 +1,7 @@
 /* LuaX service worker — caches app shell + vendor CDNs for faster loads / offline.
  * Deployed under https://crissticrs.github.io/luax/ so all paths are relative to SW scope.
  */
-const CACHE_VERSION = 'luax-v8';
+const CACHE_VERSION = 'luax-v9';
 const SHELL_CACHE = CACHE_VERSION + '-shell';
 const CDN_CACHE = CACHE_VERSION + '-cdn';
 
@@ -46,7 +46,6 @@ const CDN_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const shell = await caches.open(SHELL_CACHE);
-    // addAll fails the whole install if one URL 404s — cache what we can
     await Promise.all(
       SHELL_URLS.map((url) =>
         shell.add(url).catch(() => { /* optional file */ })
@@ -100,7 +99,6 @@ function isCdn(url) {
   }
 }
 
-// Never intercept Google auth / Stripe / API calls
 function shouldBypass(url) {
   try {
     const u = new URL(url);
@@ -122,7 +120,6 @@ self.addEventListener('fetch', (event) => {
   const url = req.url;
   if (shouldBypass(url)) return;
 
-  // Navigation / HTML → network-first, fall back to cached shell
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     event.respondWith((async () => {
       try {
@@ -145,7 +142,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin assets → stale-while-revalidate
   if (isSameOrigin(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(SHELL_CACHE);
@@ -167,7 +163,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // CDN → cache-first (version-pinned URLs are immutable)
   if (isCdn(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(CDN_CACHE);
