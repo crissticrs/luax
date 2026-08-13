@@ -1,4 +1,4 @@
-// Temporary bootstrap: restore app shell from last good commit + load Assets panel.
+// Bootstrap: restore app shell + Assets panel
 (function () {
   function loadScript(src, onload) {
     var s = document.createElement('script');
@@ -19,7 +19,8 @@
         };
       }
     } catch (_) {}
-    // Assets panel module (DOM injection + drag/insert)
-    loadScript('src/assets-panel.js');
+    loadScript('src/assets-panel.js', function () {
+      loadScript('src/assets-panel-boot.js');
+    });
   });
 })();
