@@ -235,7 +235,7 @@ async function cloudSyncOnSignIn(opts) {
                         try { snap[name] = JSON.stringify(projects[name]); } catch (_) { snap[name] = ''; }
                     });
                     _lastProjectsSnapshotStr = snap;
-                    renderProjects();
+                    try { if (typeof window.renderProjects === "function") window.renderProjects(); else if (typeof renderProjects === "function") void (typeof window.renderProjects === "function" && window.renderProjects()); } catch (_) {}
                 }
             }
         }

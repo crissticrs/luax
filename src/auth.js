@@ -189,7 +189,7 @@ function applyAuthGate() {
         if (!any) {
             document.getElementById('projects-view')?.classList.add('active');
         }
-        renderProjects();
+        void (typeof window.renderProjects === "function" && window.renderProjects());
         verifySubscriptionOnAccess().catch(() => {});
     }
     updateProfileUI();
@@ -373,7 +373,7 @@ function ensureGoogleTokenClient(silent) {
                     if (!document.querySelector('.view.active:not(#login-view)')) {
                         document.getElementById('projects-view')?.classList.add('active');
                     }
-                    renderProjects();
+                    void (typeof window.renderProjects === "function" && window.renderProjects());
                 }
                 const shared = tryLoadSharedPlay();
                 if (shared && isAuthed()) {
