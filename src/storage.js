@@ -119,6 +119,7 @@ function loadProjectSettings() {
 
 // Start empty — user creates their first project (no DemoGame seed)
 let projects = loadProjectsFromStorage() || {};
+try { window.projects = projects; } catch (_) {}
 
 /** Per-project sync metadata — see PROJECT_META_KEY above */
 let projectMeta = loadProjectMeta() || {};

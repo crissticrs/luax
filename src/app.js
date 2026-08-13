@@ -52,43 +52,86 @@ function switchView(id) {
 // ============================================================
 let selectedTemplate = 'empty';
 function renderProjects() {
-    const list = document.getElementById('projects-list');
-    if (!list) return;
-    list.innerHTML = '';
-    const q = ((document.getElementById('project-search') || {}).value || '').trim().toLowerCase();
-    let names = Object.keys(projects).sort();
-    if (q) names = names.filter(n => n.toLowerCase().includes(q));
+    try {
+        const list = document.getElementById('projects-list');
+        if (!list) return;
+        list.innerHTML = '';
+        const q = ((document.getElementById('project-search') || {}).value || '').trim().toLowerCase();
+        let proj = (typeof projects !== 'undefined' && projects) ? projects : (window.projects || {});
+        let names = [];
+        try { names = Object.keys(proj).sort(); } catch (_) { names = []; }
+        if (q) names = names.filter(function (n) { return n.toLowerCase().indexOf(q) >= 0; });
 
-    if (!names.length) {
-        list.innerHTML = `
-            <div class="lx-empty">
-                <div class="item-icon-svg" style="width:80px;height:80px;margin-bottom:12px">${LX_SVG.folderLg}</div>
-                <h3>${q ? 'No matches' : 'Your projects will appear here'}</h3>
-                <p>${q ? 'Try a different search.' : 'Create or import your first project to get started.'}</p>
-                ${!q ? '<button type="button" class="btn btn-primary" data-action="new-project" onclick="promptNewProject()">+ New Project</button>' : ''}
-            </div>`;
-        return;
+        if (!names.length) {
+            const icon = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.folderLg) ? LX_SVG.folderLg : '📁';
+            list.innerHTML =
+                '<div class="lx-empty" style="min-height:240px;padding:32px 20px">' +
+                '<div class="item-icon-svg" style="width:80px;height:80px;margin-bottom:12px">' + icon + '</div>' +
+                '<h3 style="color:var(--text-color,#e8e6f0)">' + (q ? 'No matches' : 'Your projects will appear here') + '</h3>' +
+                '<p>' + (q ? 'Try a different search.' : 'Create or import your first project to get started.') + '</p>' +
+                (!q
+                    ? '<button type="button" class="btn btn-primary" data-action="new-project" id="lx-empty-new-btn">+ New Project</button>'
+                    : '') +
+                '</div>';
+            const btn = document.getElementById('lx-empty-new-btn');
+            if (btn) {
+                btn.onclick = function (e) {
+                    e.preventDefault();
+                    try { promptNewProject(); } catch (err) { alert(String(err && err.message || err)); }
+                };
+            }
+            return;
+        }
+
+        const folderIcon = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.folder) ? LX_SVG.folder : '📁';
+        const chevron = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.chevron) ? LX_SVG.chevron : '›';
+        const trash = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.trash) ? LX_SVG.trash : '🗑';
+
+        names.forEach(function (name) {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            let gpOn = true;
+            try { gpOn = getProjectGamepad(name); } catch (_) {}
+            const safeName = (typeof escapeHtml === 'function') ? escapeHtml(name) : String(name).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+            const escName = (typeof esc === 'function') ? esc(name) : String(name).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+            div.innerHTML =
+                '<div class="item-title" data-open-project="' + safeName + '">' +
+                '<span class="item-icon-svg">' + folderIcon + '</span>' +
+                '<span>' + safeName + '</span>' +
+                '<span class="item-badge">Lua</span></div>' +
+                '<div class="item-actions">' +
+                '<button type="button" class="btn-gamepad-emoji' + (gpOn ? '' : ' off') + '" data-gp="' + escName + '">🎮</button>' +
+                '<button type="button" class="btn-icon-sm" data-rename="' + escName + '">✎</button>' +
+                '<button type="button" class="btn-icon-sm" data-dup="' + escName + '">⧉</button>' +
+                '<span class="item-chevron" data-open-project="' + safeName + '">' + chevron + '</span>' +
+                '<button type="button" class="btn btn-delete" data-del="' + escName + '">' + trash + '</button>' +
+                '</div>';
+            // wire events without inline handlers (more reliable on mobile)
+            div.querySelectorAll('[data-open-project]').forEach(function (el) {
+                el.onclick = function () { openProject(name); };
+            });
+            const gpBtn = div.querySelector('[data-gp]');
+            if (gpBtn) gpBtn.onclick = function (e) { e.stopPropagation(); try { toggleProjectGamepadFor(name); } catch (_) {} };
+            const ren = div.querySelector('[data-rename]');
+            if (ren) ren.onclick = function (e) { e.stopPropagation(); try { promptRenameProject(name); } catch (_) {} };
+            const dup = div.querySelector('[data-dup]');
+            if (dup) dup.onclick = function (e) { e.stopPropagation(); try { duplicateProject(name); } catch (_) {} };
+            const del = div.querySelector('[data-del]');
+            if (del) del.onclick = function (e) { e.stopPropagation(); try { deleteProject(e, name); } catch (_) {} };
+            list.appendChild(div);
+        });
+    } catch (err) {
+        console.error('renderProjects', err);
+        const list = document.getElementById('projects-list');
+        if (list) {
+            list.innerHTML = '<div class="lx-empty" style="min-height:200px;padding:24px">' +
+                '<h3 style="color:#fff">Could not load project list</h3>' +
+                '<p style="opacity:0.8">' + String(err && err.message || err) + '</p>' +
+                '<button type="button" class="btn btn-primary" id="lx-empty-new-btn">+ New Project</button></div>';
+            const btn = document.getElementById('lx-empty-new-btn');
+            if (btn) btn.onclick = function () { try { promptNewProject(); } catch (e2) { alert(String(e2)); } };
+        }
     }
-    names.forEach(name => {
-        const div = document.createElement('div');
-        div.className = 'list-item';
-        const gpOn = getProjectGamepad(name);
-        div.innerHTML = `
-            <div class="item-title" onclick="openProject('${esc(name)}')">
-                <span class="item-icon-svg">${LX_SVG.folder}</span>
-                <span>${escapeHtml(name)}</span>
-                <span class="item-badge">Lua</span>
-            </div>
-            <div class="item-actions">
-                <button type="button" class="btn-gamepad-emoji${gpOn ? '' : ' off'}" title="${gpOn ? 'Gamepad ON' : 'Gamepad OFF'}" aria-label="${gpOn ? 'Gamepad ON' : 'Gamepad OFF'}, ${escapeHtml(name)}"
-                    onclick="event.stopPropagation();toggleProjectGamepadFor('${esc(name)}')">🎮</button>
-                <button class="btn-icon-sm" title="Rename" aria-label="Rename ${escapeHtml(name)}" onclick="event.stopPropagation();promptRenameProject('${esc(name)}')">✎</button>
-                <button class="btn-icon-sm" title="Duplicate" aria-label="Duplicate ${escapeHtml(name)}" onclick="event.stopPropagation();duplicateProject('${esc(name)}')">⧉</button>
-                <span class="item-chevron" aria-hidden="true" onclick="openProject('${esc(name)}')">${LX_SVG.chevron}</span>
-                <button class="btn btn-delete" aria-label="Delete ${escapeHtml(name)}" onclick="deleteProject(event,'${esc(name)}')">${LX_SVG.trash}</button>
-            </div>`;
-        list.appendChild(div);
-    });
 }
 
 function promptRenameProject(oldName) {
@@ -203,6 +246,12 @@ function lxNav(name) {
 
 function promptNewProject() {
     try {
+        // Remove prior overlay if any
+        try {
+            var old = document.getElementById('luax-new-project-overlay');
+            if (old) old.remove();
+        } catch (_) {}
+
         if (typeof TEMPLATES === 'undefined' || !TEMPLATES) {
             alert('Templates still loading. Wait a second and try again.');
             return;
@@ -210,94 +259,144 @@ function promptNewProject() {
         if (typeof selectedTemplate === 'undefined' || !TEMPLATES[selectedTemplate]) {
             selectedTemplate = 'empty';
         }
-        const keys = Object.keys(TEMPLATES);
+        var keys = Object.keys(TEMPLATES);
         if (!keys.length) {
             alert('No templates available.');
             return;
         }
-        const tplHtml = keys.map(function (k) {
-            const sel = k === selectedTemplate ? ' selected' : '';
-            return '<button type="button" class="template-btn' + sel + '" data-tpl="' + k +
-                '" onclick="selectTemplate(\'' + k + '\')">' + TEMPLATES[k].name + '</button>';
-        }).join('');
 
-        const mobile = (typeof isMobileDevice !== 'undefined') ? !!isMobileDevice : false;
-        const gpHtml = mobile
-            ? '<label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;cursor:pointer;user-select:none;margin-top:4px">' +
-              '<input type="checkbox" id="modal-gamepad" checked style="width:18px;height:18px;accent-color:var(--accent-color)">' +
-              'On-screen gamepad (joystick + buttons)</label>' +
-              '<div style="font-size:0.75rem;color:#666;margin-top:4px">Touch controls for phones / tablets</div>'
-            : '<div style="font-size:0.75rem;color:#666;margin-top:8px">Desktop: keyboard (WASD) + mouse look — no on-screen gamepad</div>';
+        var overlay = document.createElement('div');
+        overlay.id = 'luax-new-project-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';
 
-        function createProject(name) {
-            name = String(name || '').trim();
-            if (!name) {
-                alert('Enter a name');
-                return false;
-            }
-            if (typeof projects === 'undefined' || !projects) {
-                alert('Projects storage not ready.');
-                return false;
-            }
-            if (projects[name]) {
-                alert('Already exists');
-                return false;
-            }
-            const tpl = TEMPLATES[selectedTemplate] || TEMPLATES.empty || TEMPLATES[keys[0]];
-            projects[name] = JSON.parse(JSON.stringify(tpl.files));
-            if (typeof setProjectGamepad === 'function') {
-                if (mobile) {
-                    const gp = document.getElementById('modal-gamepad');
-                    setProjectGamepad(name, gp ? gp.checked : true);
-                } else {
-                    setProjectGamepad(name, false);
+        var card = document.createElement('div');
+        card.style.cssText = 'width:min(400px,100%);max-height:90vh;overflow:auto;background:var(--panel-color,#1a1625);color:var(--text-color,#e8e6f0);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.12);box-shadow:0 16px 48px rgba(0,0,0,0.5)';
+
+        var h = document.createElement('h2');
+        h.textContent = 'New Project';
+        h.style.cssText = 'margin:0 0 12px;font-size:1.15rem';
+        card.appendChild(h);
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'lx-new-project-name';
+        input.placeholder = 'Project name';
+        input.autocomplete = 'off';
+        input.style.cssText = 'width:100%;padding:12px;border-radius:8px;border:1px solid #333;background:#0f1115;color:#fff;font-size:1rem;margin-bottom:12px;box-sizing:border-box;outline:none';
+        card.appendChild(input);
+
+        var lab = document.createElement('div');
+        lab.textContent = 'Template';
+        lab.style.cssText = 'font-size:0.85rem;color:#888;margin-bottom:6px';
+        card.appendChild(lab);
+
+        var tplWrap = document.createElement('div');
+        tplWrap.className = 'template-list';
+        tplWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px';
+
+        function markSelected() {
+            Array.prototype.forEach.call(tplWrap.querySelectorAll('button'), function (b) {
+                var on = b.getAttribute('data-tpl') === selectedTemplate;
+                b.style.outline = on ? '2px solid var(--accent-color,#8b5cf6)' : 'none';
+                b.style.opacity = on ? '1' : '0.75';
+            });
+        }
+
+        keys.forEach(function (k) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.setAttribute('data-tpl', k);
+            b.textContent = TEMPLATES[k].name || k;
+            b.style.cssText = 'padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:inherit;cursor:pointer;font-size:0.85rem';
+            b.onclick = function () {
+                selectedTemplate = k;
+                markSelected();
+            };
+            tplWrap.appendChild(b);
+        });
+        card.appendChild(tplWrap);
+        markSelected();
+
+        var mobile = (typeof isMobileDevice !== 'undefined') ? !!isMobileDevice : /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || '');
+        var gpCheck = null;
+        if (mobile) {
+            var gpLabel = document.createElement('label');
+            gpLabel.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:0.9rem;margin:8px 0;cursor:pointer';
+            gpCheck = document.createElement('input');
+            gpCheck.type = 'checkbox';
+            gpCheck.checked = true;
+            gpCheck.style.cssText = 'width:18px;height:18px';
+            gpLabel.appendChild(gpCheck);
+            gpLabel.appendChild(document.createTextNode('On-screen gamepad'));
+            card.appendChild(gpLabel);
+        } else {
+            var d = document.createElement('div');
+            d.textContent = 'Desktop: keyboard (WASD) + mouse';
+            d.style.cssText = 'font-size:0.75rem;color:#666;margin:8px 0';
+            card.appendChild(d);
+        }
+
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:8px;margin-top:14px';
+
+        var cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.textContent = 'Cancel';
+        cancel.className = 'btn';
+        cancel.style.cssText = 'flex:1;padding:12px;cursor:pointer';
+        cancel.onclick = function () { try { overlay.remove(); } catch (_) {} };
+
+        var create = document.createElement('button');
+        create.type = 'button';
+        create.textContent = 'Create';
+        create.className = 'btn btn-primary';
+        create.style.cssText = 'flex:1;padding:12px;cursor:pointer;font-weight:600;background:var(--accent-color,#8b5cf6);border:none;border-radius:8px;color:#fff';
+        create.onclick = function () {
+            try {
+                var name = (input.value || '').trim();
+                if (!name) { alert('Enter a name'); return; }
+                var proj = (typeof projects !== 'undefined' && projects) ? projects : window.projects;
+                if (!proj) { alert('Projects storage not ready'); return; }
+                if (proj[name]) { alert('Already exists'); return; }
+                var tpl = TEMPLATES[selectedTemplate] || TEMPLATES.empty || TEMPLATES[keys[0]];
+                proj[name] = JSON.parse(JSON.stringify(tpl.files));
+                if (typeof projects === 'undefined') window.projects = proj;
+                if (typeof setProjectGamepad === 'function') {
+                    setProjectGamepad(name, mobile ? !!(gpCheck && gpCheck.checked) : false);
                 }
+                if (typeof saveState === 'function') saveState();
+                try { overlay.remove(); } catch (_) {}
+                if (typeof renderProjects === 'function') renderProjects();
+                if (typeof openProject === 'function') openProject(name);
+            } catch (err) {
+                console.error(err);
+                alert('Create failed: ' + (err && err.message ? err.message : err));
             }
+        };
+
+        row.appendChild(cancel);
+        row.appendChild(create);
+        card.appendChild(row);
+        overlay.appendChild(card);
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) { try { overlay.remove(); } catch (_) {} }
+        });
+        document.body.appendChild(overlay);
+        setTimeout(function () { try { input.focus(); } catch (_) {} }, 50);
+    } catch (err) {
+        console.error('promptNewProject', err);
+        var name = window.prompt('New project name:');
+        if (!name || !name.trim()) return;
+        try {
+            name = name.trim();
+            if (projects[name]) return alert('Already exists');
+            var tpl = TEMPLATES.empty || TEMPLATES[Object.keys(TEMPLATES)[0]];
+            projects[name] = JSON.parse(JSON.stringify(tpl.files));
             if (typeof saveState === 'function') saveState();
             if (typeof renderProjects === 'function') renderProjects();
             if (typeof openProject === 'function') openProject(name);
-            return true;
-        }
-
-        if (typeof openModal !== 'function' || !document.getElementById('custom-modal')) {
-            const name = window.prompt('New project name:');
-            if (name) createProject(name);
-            return;
-        }
-
-        openModal(
-            'New Project',
-            '<input type="text" id="modal-input" placeholder="Project name" autocomplete="off">' +
-            '<div style="font-size:0.85rem;color:#888;margin-bottom:6px">Template</div>' +
-            '<div class="template-list">' + tplHtml + '</div>' +
-            gpHtml,
-            'Create',
-            function () {
-                try {
-                    const input = document.getElementById('modal-input');
-                    const name = input ? input.value : '';
-                    createProject(name);
-                } catch (err) {
-                    console.error(err);
-                    alert('Create failed: ' + (err && err.message ? err.message : err));
-                }
-            }
-        );
-    } catch (err) {
-        console.error('promptNewProject', err);
-        // Last resort: native prompt so user is never stuck
-        try {
-            const name = window.prompt('New project name (modal failed):');
-            if (!name || !name.trim()) return;
-            const n = name.trim();
-            if (typeof projects !== 'undefined' && projects[n]) return alert('Already exists');
-            const tpl = (typeof TEMPLATES !== 'undefined' && (TEMPLATES.empty || TEMPLATES[Object.keys(TEMPLATES)[0]])) || { files: { 'main.lua': '-- main.lua\n' } };
-            projects[n] = JSON.parse(JSON.stringify(tpl.files || tpl));
-            if (typeof saveState === 'function') saveState();
-            if (typeof renderProjects === 'function') renderProjects();
-            if (typeof openProject === 'function') openProject(n);
         } catch (err2) {
-            alert('Could not create project: ' + (err && err.message ? err.message : err));
+            alert('Could not create project: ' + (err2 && err2.message ? err2.message : err2));
         }
     }
 }
@@ -554,3 +653,20 @@ window.startPlayMode = startPlayMode;
         }
     };
 })();
+
+// Retry project list after storage/auth settle (mobile often races)
+setTimeout(function () {
+    try {
+        if (typeof isAuthed === 'function' && isAuthed() && typeof renderProjects === 'function') {
+            renderProjects();
+        }
+    } catch (e) { console.warn('boot renderProjects', e); }
+}, 500);
+setTimeout(function () {
+    try {
+        if (typeof isAuthed === 'function' && isAuthed() && typeof renderProjects === 'function') {
+            renderProjects();
+        }
+    } catch (e) {}
+}, 1500);
+
