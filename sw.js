@@ -1,11 +1,10 @@
 /* LuaX service worker — caches app shell + vendor CDNs for faster loads / offline.
  * Deployed under https://crissticrs.github.io/luax/ so all paths are relative to SW scope.
  */
-const CACHE_VERSION = 'luax-v9';
+const CACHE_VERSION = 'luax-v10';
 const SHELL_CACHE = CACHE_VERSION + '-shell';
 const CDN_CACHE = CACHE_VERSION + '-cdn';
 
-// App shell (relative to this SW file's directory)
 const SHELL_URLS = [
   './',
   './index.html',
@@ -30,7 +29,6 @@ const SHELL_URLS = [
   './src/xss-guard.js',
 ];
 
-// Vendor scripts/styles (version-pinned CDNs)
 const CDN_URLS = [
   'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/material-ocean.min.css',
@@ -46,17 +44,9 @@ const CDN_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const shell = await caches.open(SHELL_CACHE);
-    await Promise.all(
-      SHELL_URLS.map((url) =>
-        shell.add(url).catch(() => { /* optional file */ })
-      )
-    );
+    await Promise.all(SHELL_URLS.map((url) => shell.add(url).catch(() => {})));
     const cdn = await caches.open(CDN_CACHE);
-    await Promise.all(
-      CDN_URLS.map((url) =>
-        cdn.add(url).catch(() => { /* CDN blip */ })
-      )
-    );
+    await Promise.all(CDN_URLS.map((url) => cdn.add(url).catch(() => {})));
     self.skipWaiting();
   })());
 });
@@ -65,40 +55,25 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(
-      keys
-        .filter((k) => k.startsWith('luax-') && k !== SHELL_CACHE && k !== CDN_CACHE)
-        .map((k) => caches.delete(k))
+      keys.filter((k) => k.startsWith('luax-') && k !== SHELL_CACHE && k !== CDN_CACHE).map((k) => caches.delete(k))
     );
     await self.clients.claim();
   })());
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 function isSameOrigin(url) {
-  try {
-    return new URL(url, self.location.href).origin === self.location.origin;
-  } catch (_) {
-    return false;
-  }
+  try { return new URL(url, self.location.href).origin === self.location.origin; } catch (_) { return false; }
 }
-
 function isCdn(url) {
   try {
     const u = new URL(url);
-    return (
-      u.hostname === 'cdnjs.cloudflare.com' ||
-      u.hostname === 'cdn.jsdelivr.net'
-    );
-  } catch (_) {
-    return false;
-  }
+    return u.hostname === 'cdnjs.cloudflare.com' || u.hostname === 'cdn.jsdelivr.net';
+  } catch (_) { return false; }
 }
-
 function shouldBypass(url) {
   try {
     const u = new URL(url);
@@ -108,15 +83,12 @@ function shouldBypass(url) {
     if (u.hostname.endsWith('workers.dev')) return true;
     if (u.pathname.includes('/api/')) return true;
     return false;
-  } catch (_) {
-    return true;
-  }
+  } catch (_) { return true; }
 }
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
-
   const url = req.url;
   if (shouldBypass(url)) return;
 
@@ -129,14 +101,8 @@ self.addEventListener('fetch', (event) => {
         return fresh;
       } catch (_) {
         const cache = await caches.open(SHELL_CACHE);
-        return (
-          (await cache.match('./index.html')) ||
-          (await cache.match('./')) ||
-          new Response('LuaX offline — open once online to cache the app.', {
-            status: 503,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          })
-        );
+        return (await cache.match('./index.html')) || (await cache.match('./')) ||
+          new Response('LuaX offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
       }
     })());
     return;
@@ -146,19 +112,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(SHELL_CACHE);
       const cached = await cache.match(req);
-      const networkPromise = fetch(req)
-        .then((res) => {
-          if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
-          return res;
-        })
-        .catch(() => null);
-      if (cached) {
-        networkPromise.catch(() => {});
-        return cached;
-      }
+      const networkPromise = fetch(req).then((res) => {
+        if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
+        return res;
+      }).catch(() => null);
+      if (cached) { networkPromise.catch(() => {}); return cached; }
       const net = await networkPromise;
-      if (net) return net;
-      return new Response('', { status: 504 });
+      return net || new Response('', { status: 504 });
     })());
     return;
   }
@@ -172,9 +132,7 @@ self.addEventListener('fetch', (event) => {
         const res = await fetch(req);
         if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
-      } catch (_) {
-        return new Response('', { status: 504 });
-      }
+      } catch (_) { return new Response('', { status: 504 }); }
     })());
   }
 });
