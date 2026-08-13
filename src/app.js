@@ -16,6 +16,22 @@ document.addEventListener('click', function (e) {
     }
 }, true);
 
+// + New Project — capture-phase so it always works even if later code fails
+document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest && e.target.closest('[data-action="new-project"]');
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+        if (typeof window.promptNewProject === 'function') window.promptNewProject();
+        else if (typeof promptNewProject === 'function') promptNewProject();
+        else alert('App still loading — try again in a second.');
+    } catch (err) {
+        console.error(err);
+        alert('New Project failed: ' + (err && err.message ? err.message : err));
+    }
+}, true);
+
 
 // ============================================================
 // NAV
@@ -34,6 +50,7 @@ function switchView(id) {
 // ============================================================
 // PROJECTS UI
 // ============================================================
+let selectedTemplate = 'empty';
 function renderProjects() {
     const list = document.getElementById('projects-list');
     if (!list) return;
@@ -48,7 +65,7 @@ function renderProjects() {
                 <div class="item-icon-svg" style="width:80px;height:80px;margin-bottom:12px">${LX_SVG.folderLg}</div>
                 <h3>${q ? 'No matches' : 'Your projects will appear here'}</h3>
                 <p>${q ? 'Try a different search.' : 'Create or import your first project to get started.'}</p>
-                ${!q ? '<button class="btn btn-primary" onclick="promptNewProject()">+ New Project</button>' : ''}
+                ${!q ? '<button type="button" class="btn btn-primary" data-action="new-project" onclick="promptNewProject()">+ New Project</button>' : ''}
             </div>`;
         return;
     }
@@ -185,41 +202,104 @@ function lxNav(name) {
 }
 
 function promptNewProject() {
-    if (!TEMPLATES[selectedTemplate]) selectedTemplate = 'empty';
-    const tplHtml = Object.keys(TEMPLATES).map(k =>
-        `<button type="button" class="template-btn${k===selectedTemplate?' selected':''}" data-tpl="${k}" onclick="selectTemplate('${k}')">${TEMPLATES[k].name}</button>`
-    ).join('');
-    // Gamepad option only on mobile — desktop uses keyboard/mouse only
-    const mobile = typeof isMobileDevice !== 'undefined' ? isMobileDevice : false;
-    const gpHtml = mobile
-        ? `<label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;cursor:pointer;user-select:none;margin-top:4px">
-             <input type="checkbox" id="modal-gamepad" checked style="width:18px;height:18px;accent-color:var(--accent-color)">
-             On-screen gamepad (joystick + buttons)
-           </label>
-           <div style="font-size:0.75rem;color:#666;margin-top:4px">Touch controls for phones / tablets</div>`
-        : `<div style="font-size:0.75rem;color:#666;margin-top:8px">Desktop: keyboard (WASD) + mouse look — no on-screen gamepad</div>`;
-    openModal('New Project',
-        `<input type="text" id="modal-input" placeholder="Project name" autocomplete="off">
-         <div style="font-size:0.85rem;color:#888;margin-bottom:6px">Template</div>
-         <div class="template-list">${tplHtml}</div>
-         ${gpHtml}`,
-        'Create',
-        () => {
-            const name = (document.getElementById('modal-input').value || '').trim();
-            if (!name) return alert('Enter a name');
-            if (projects[name]) return alert('Already exists');
-            projects[name] = JSON.parse(JSON.stringify(TEMPLATES[selectedTemplate].files));
-            if (mobile) {
-                const gp = document.getElementById('modal-gamepad');
-                setProjectGamepad(name, gp ? gp.checked : true);
-            } else {
-                setProjectGamepad(name, false);
-            }
-            saveState();
-            renderProjects();
-            openProject(name);
+    try {
+        if (typeof TEMPLATES === 'undefined' || !TEMPLATES) {
+            alert('Templates still loading. Wait a second and try again.');
+            return;
         }
-    );
+        if (typeof selectedTemplate === 'undefined' || !TEMPLATES[selectedTemplate]) {
+            selectedTemplate = 'empty';
+        }
+        const keys = Object.keys(TEMPLATES);
+        if (!keys.length) {
+            alert('No templates available.');
+            return;
+        }
+        const tplHtml = keys.map(function (k) {
+            const sel = k === selectedTemplate ? ' selected' : '';
+            return '<button type="button" class="template-btn' + sel + '" data-tpl="' + k +
+                '" onclick="selectTemplate(\'' + k + '\')">' + TEMPLATES[k].name + '</button>';
+        }).join('');
+
+        const mobile = (typeof isMobileDevice !== 'undefined') ? !!isMobileDevice : false;
+        const gpHtml = mobile
+            ? '<label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;cursor:pointer;user-select:none;margin-top:4px">' +
+              '<input type="checkbox" id="modal-gamepad" checked style="width:18px;height:18px;accent-color:var(--accent-color)">' +
+              'On-screen gamepad (joystick + buttons)</label>' +
+              '<div style="font-size:0.75rem;color:#666;margin-top:4px">Touch controls for phones / tablets</div>'
+            : '<div style="font-size:0.75rem;color:#666;margin-top:8px">Desktop: keyboard (WASD) + mouse look — no on-screen gamepad</div>';
+
+        function createProject(name) {
+            name = String(name || '').trim();
+            if (!name) {
+                alert('Enter a name');
+                return false;
+            }
+            if (typeof projects === 'undefined' || !projects) {
+                alert('Projects storage not ready.');
+                return false;
+            }
+            if (projects[name]) {
+                alert('Already exists');
+                return false;
+            }
+            const tpl = TEMPLATES[selectedTemplate] || TEMPLATES.empty || TEMPLATES[keys[0]];
+            projects[name] = JSON.parse(JSON.stringify(tpl.files));
+            if (typeof setProjectGamepad === 'function') {
+                if (mobile) {
+                    const gp = document.getElementById('modal-gamepad');
+                    setProjectGamepad(name, gp ? gp.checked : true);
+                } else {
+                    setProjectGamepad(name, false);
+                }
+            }
+            if (typeof saveState === 'function') saveState();
+            if (typeof renderProjects === 'function') renderProjects();
+            if (typeof openProject === 'function') openProject(name);
+            return true;
+        }
+
+        if (typeof openModal !== 'function' || !document.getElementById('custom-modal')) {
+            const name = window.prompt('New project name:');
+            if (name) createProject(name);
+            return;
+        }
+
+        openModal(
+            'New Project',
+            '<input type="text" id="modal-input" placeholder="Project name" autocomplete="off">' +
+            '<div style="font-size:0.85rem;color:#888;margin-bottom:6px">Template</div>' +
+            '<div class="template-list">' + tplHtml + '</div>' +
+            gpHtml,
+            'Create',
+            function () {
+                try {
+                    const input = document.getElementById('modal-input');
+                    const name = input ? input.value : '';
+                    createProject(name);
+                } catch (err) {
+                    console.error(err);
+                    alert('Create failed: ' + (err && err.message ? err.message : err));
+                }
+            }
+        );
+    } catch (err) {
+        console.error('promptNewProject', err);
+        // Last resort: native prompt so user is never stuck
+        try {
+            const name = window.prompt('New project name (modal failed):');
+            if (!name || !name.trim()) return;
+            const n = name.trim();
+            if (typeof projects !== 'undefined' && projects[n]) return alert('Already exists');
+            const tpl = (typeof TEMPLATES !== 'undefined' && (TEMPLATES.empty || TEMPLATES[Object.keys(TEMPLATES)[0]])) || { files: { 'main.lua': '-- main.lua\n' } };
+            projects[n] = JSON.parse(JSON.stringify(tpl.files || tpl));
+            if (typeof saveState === 'function') saveState();
+            if (typeof renderProjects === 'function') renderProjects();
+            if (typeof openProject === 'function') openProject(n);
+        } catch (err2) {
+            alert('Could not create project: ' + (err && err.message ? err.message : err));
+        }
+    }
 }
 
 function selectTemplate(k) {
