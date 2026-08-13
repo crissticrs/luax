@@ -1,5 +1,5 @@
 // src/swipe-list.js — WhatsApp-style swipe on project/file rows
-// Swipe right → pin / gamepad · Swipe left → rename / delete
+// Swipe right → pin · Swipe left → rename / delete
 
 const SWIPE_THRESHOLD = 36;
 const SWIPE_OPEN_PX = 72;
@@ -13,6 +13,7 @@ let swipeStartX = 0, swipeStartY = 0, swipeStartTx = 0;
 let swipeTracking = false, swipeAxis = null, swipeMoved = false;
 let swipeLastX = 0, swipeLastT = 0, swipeVelocity = 0;
 let swipeIsTouch = false;
+let filesEnhanceTimer = null;
 
 function loadPinnedProjects() {
     try {
@@ -32,7 +33,8 @@ function toggleProjectPin(name) {
     if (i >= 0) list.splice(i, 1);
     else list.unshift(name);
     savePinnedProjects(list);
-    try { if (typeof renderProjects === 'function') renderProjects(); } catch (_) {}
+    try { if (typeof window.renderProjects === 'function') window.renderProjects();
+    else if (typeof renderProjects === 'function') renderProjects(); } catch (_) {}
 }
 
 function loadPinnedFilesMap() {
@@ -44,22 +46,22 @@ function loadPinnedFilesMap() {
 function savePinnedFilesMap(map) {
     try { localStorage.setItem(PINNED_FILES_KEY, JSON.stringify(map)); } catch (_) {}
 }
-function currentProjectName() {
+function getActiveProjectName() {
     try {
-        if (typeof currentProject !== 'undefined' && currentProject) return currentProject;
-        if (window.currentProject) return window.currentProject;
+        if (typeof window.currentProjectName === 'string' && window.currentProjectName) return window.currentProjectName;
+        if (typeof currentProjectName === 'string' && currentProjectName) return currentProjectName;
     } catch (_) {}
     return '';
 }
 function isFilePinned(fileName) {
-    const proj = currentProjectName();
+    const proj = getActiveProjectName();
     if (!proj) return false;
     const map = loadPinnedFilesMap();
     const arr = map[proj];
     return Array.isArray(arr) && arr.indexOf(fileName) >= 0;
 }
 function toggleFilePin(fileName) {
-    const proj = currentProjectName();
+    const proj = getActiveProjectName();
     if (!proj || !fileName) return;
     const map = loadPinnedFilesMap();
     const arr = Array.isArray(map[proj]) ? map[proj].slice() : [];
@@ -68,7 +70,10 @@ function toggleFilePin(fileName) {
     else arr.unshift(fileName);
     map[proj] = arr;
     savePinnedFilesMap(map);
-    try { if (typeof renderFiles === 'function') renderFiles(); } catch (_) {}
+    try {
+        if (typeof window.renderFiles === 'function') window.renderFiles();
+        else if (typeof renderFiles === 'function') renderFiles();
+    } catch (_) {}
 }
 
 function closeAllSwipeRows(except) {
@@ -281,9 +286,8 @@ function onSwipePointerUp(e) {
 
     if (!row) { swipeIsTouch = false; return; }
 
-    if (axis === 'x' && wasMoved) {
-        snapSwipeRow(row);
-    } else if ((row._swipeTx || 0) !== 0 && !wasMoved) {
+    if (axis === 'x' && wasMoved) snapSwipeRow(row);
+    else if ((row._swipeTx || 0) !== 0 && !wasMoved) {
         setSwipeOffset(row, 0, true);
         row.classList.remove('open', 'open-left', 'open-right');
         swipeActiveRow = null;
@@ -305,10 +309,60 @@ function wireSwipeListeners() {
     document.addEventListener('mouseup', onSwipePointerUp, true);
 }
 
+function directListItems(list) {
+    const out = [];
+    if (!list) return out;
+    for (let i = 0; i < list.children.length; i++) {
+        const el = list.children[i];
+        if (el.classList && el.classList.contains('list-item') && !el.classList.contains('swipe-content')) {
+            out.push(el);
+        }
+    }
+    return out;
+}
+
+function extractFileName(el, html) {
+    const patterns = [
+        /openFile\('([^']+)'\)/,
+        /openSpriteEditor\('([^']+)'\)/,
+        /openMusicEditor\('([^']+)'\)/,
+        /promptRenameFile\('([^']+)'\)/,
+        /deleteFile\([^,]*,\s*'([^']+)'\)/,
+        /deleteAsset\([^,]*,\s*'([^']+)'\)/,
+        /deleteMusicPattern\([^,]*,\s*'([^']+)'\)/
+    ];
+    for (let i = 0; i < patterns.length; i++) {
+        const m = html.match(patterns[i]);
+        if (m) return m[1].replace(/\\'/g, "'");
+    }
+    const title = el.querySelector('.item-title');
+    if (title) {
+        const spans = title.querySelectorAll('span');
+        for (let i = 0; i < spans.length; i++) {
+            const s = spans[i];
+            if (s.classList.contains('item-badge') || s.classList.contains('item-icon-svg')) continue;
+            const t = (s.textContent || '').trim();
+            if (t && t.length < 80) return t;
+        }
+    }
+    return '';
+}
+
+function detectFileKind(html) {
+    if (/deleteAsset|openSpriteEditor|item-badge">IMG|>IMG</.test(html)) return 'sprite';
+    if (/deleteMusic|openMusicEditor|MUSIC/.test(html)) return 'music';
+    return 'file';
+}
+
 function enhanceProjectsListSwipe() {
     const list = document.getElementById('projects-list');
     if (!list || list.querySelector('.lx-empty')) return;
-    const items = Array.from(list.querySelectorAll(':scope > .list-item, :scope > .swipe-row'));
+
+    const items = [];
+    for (let i = 0; i < list.children.length; i++) {
+        const el = list.children[i];
+        if (el.classList.contains('swipe-row') || el.classList.contains('list-item')) items.push(el);
+    }
     if (!items.length) return;
     const rows = [];
 
@@ -340,7 +394,10 @@ function enhanceProjectsListSwipe() {
                   cls: 'swipe-gamepad' + (gpOn ? '' : ' off'),
                   onClick: () => {
                       try { toggleProjectGamepadFor(name); } catch (_) {}
-                      try { if (typeof renderProjects === 'function') renderProjects(); } catch (_) {}
+                      try {
+                          if (typeof window.renderProjects === 'function') window.renderProjects();
+                          else if (typeof renderProjects === 'function') renderProjects();
+                      } catch (_) {}
                   } }
             ],
             rightActions: [
@@ -380,28 +437,20 @@ function enhanceProjectsListSwipe() {
 function enhanceFilesListSwipe() {
     const list = document.getElementById('files-list');
     if (!list) return;
-    const items = Array.from(list.querySelectorAll(':scope > .list-item'));
+
+    const items = directListItems(list);
     if (!items.length) return;
 
     items.forEach(el => {
-        const title = el.querySelector('.item-title');
-        const html = el.innerHTML;
-        const mOpen = html.match(/openFile\('([^']+)'\)/) ||
-            html.match(/openSpriteEditor\('([^']+)'\)/) ||
-            html.match(/openMusicEditor\('([^']+)'\)/);
-        let name = mOpen ? mOpen[1].replace(/\\'/g, "'") : '';
-        if (!name) {
-            const ns = title && title.querySelector('span:not(.item-badge):not(.item-icon-svg)');
-            name = ns ? ns.textContent.trim() : '';
-        }
+        if (el.dataset && el.dataset.swipeSkip === '1') return;
+        const html = el.innerHTML || '';
+        const name = extractFileName(el, html);
         if (!name) return;
 
-        let kind = 'file';
-        if (html.indexOf('deleteAsset') >= 0 || html.indexOf('IMG') >= 0) kind = 'sprite';
-        else if (html.indexOf('deleteMusic') >= 0 || html.indexOf('MUSIC') >= 0) kind = 'music';
-
+        const kind = detectFileKind(html);
         const pinnedOn = isFilePinned(name);
-        let inner = title ? title.outerHTML : el.innerHTML;
+        const title = el.querySelector('.item-title');
+        let inner = title ? title.outerHTML : html;
         if (pinnedOn && title) {
             inner = inner.replace('</div>', '<span class="item-pin-badge" title="Pinned">📌</span></div>');
         }
@@ -460,12 +509,16 @@ function enhanceFilesListSwipe() {
 
     if (swipeTracking) return;
     const map = loadPinnedFilesMap();
-    const proj = currentProjectName();
+    const proj = getActiveProjectName();
     const pinned = (proj && Array.isArray(map[proj])) ? map[proj] : [];
     if (!pinned.length) return;
     const pinnedSet = {};
     pinned.forEach(n => { pinnedSet[n] = true; });
-    const all = Array.from(list.querySelectorAll(':scope > .swipe-row'));
+    const all = [];
+    for (let i = 0; i < list.children.length; i++) {
+        const r = list.children[i];
+        if (r.classList && r.classList.contains('swipe-row')) all.push(r);
+    }
     const top = [], rest = [];
     all.forEach(r => {
         const n = r.dataset && r.dataset.name;
@@ -475,6 +528,14 @@ function enhanceFilesListSwipe() {
     top.concat(rest).forEach(r => list.appendChild(r));
 }
 
+function scheduleEnhanceFiles() {
+    if (filesEnhanceTimer) clearTimeout(filesEnhanceTimer);
+    filesEnhanceTimer = setTimeout(() => {
+        filesEnhanceTimer = null;
+        try { enhanceFilesListSwipe(); } catch (e) { console.warn('swipe files', e); }
+    }, 30);
+}
+
 function enhanceAllSwipeLists() {
     try { enhanceProjectsListSwipe(); } catch (e) { console.warn('swipe projects', e); }
     try { enhanceFilesListSwipe(); } catch (e) { console.warn('swipe files', e); }
@@ -482,28 +543,61 @@ function enhanceAllSwipeLists() {
 
 function hookSwipeIntoRenders() {
     try {
-        if (typeof renderProjects === 'function' && !renderProjects._luaxSwipe) {
-            const _rp = renderProjects;
-            renderProjects = function () {
+        const rp = typeof window.renderProjects === 'function' ? window.renderProjects
+            : (typeof renderProjects === 'function' ? renderProjects : null);
+        if (rp && !rp._luaxSwipe) {
+            const _rp = rp;
+            const wrapped = function () {
                 const r = _rp.apply(this, arguments);
                 setTimeout(enhanceProjectsListSwipe, 0);
                 return r;
             };
-            renderProjects._luaxSwipe = true;
-            window.renderProjects = renderProjects;
+            wrapped._luaxSwipe = true;
+            window.renderProjects = wrapped;
+            try { renderProjects = wrapped; } catch (_) {}
         }
     } catch (_) {}
+
     try {
-        if (typeof renderFiles === 'function' && !renderFiles._luaxSwipe) {
-            const _rf = renderFiles;
-            renderFiles = function () {
+        const rf = typeof window.renderFiles === 'function' ? window.renderFiles
+            : (typeof renderFiles === 'function' ? renderFiles : null);
+        if (rf && !rf._luaxSwipe) {
+            const _rf = rf;
+            const wrapped = function () {
                 const r = _rf.apply(this, arguments);
-                setTimeout(enhanceFilesListSwipe, 0);
+                scheduleEnhanceFiles();
                 return r;
             };
-            renderFiles._luaxSwipe = true;
+            wrapped._luaxSwipe = true;
+            window.renderFiles = wrapped;
+            try { renderFiles = wrapped; } catch (_) {}
         }
     } catch (_) {}
+
+    try {
+        if (typeof window.openProject === 'function' && !window.openProject._luaxSwipe) {
+            const _op = window.openProject;
+            window.openProject = function () {
+                const r = _op.apply(this, arguments);
+                scheduleEnhanceFiles();
+                setTimeout(scheduleEnhanceFiles, 120);
+                return r;
+            };
+            window.openProject._luaxSwipe = true;
+            try { openProject = window.openProject; } catch (_) {}
+        }
+    } catch (_) {}
+}
+
+function observeFilesList() {
+    if (window._luaxFilesSwipeObs) return;
+    const list = document.getElementById('files-list');
+    if (!list) return;
+    window._luaxFilesSwipeObs = true;
+    const obs = new MutationObserver(() => {
+        if (directListItems(list).length) scheduleEnhanceFiles();
+    });
+    obs.observe(list, { childList: true });
 }
 
 function initSwipeList() {
@@ -516,13 +610,18 @@ function initSwipeList() {
     }
     wireSwipeListeners();
     hookSwipeIntoRenders();
+    observeFilesList();
     enhanceAllSwipeLists();
+
     let tries = 0;
     const t = setInterval(() => {
         tries++;
         hookSwipeIntoRenders();
-        if (tries === 1 || tries === 5 || tries === 12) enhanceAllSwipeLists();
-        if (tries > 20) clearInterval(t);
+        observeFilesList();
+        if (tries === 1 || tries === 3 || tries === 8) enhanceAllSwipeLists();
+        const fv = document.getElementById('files-view');
+        if (fv && fv.classList.contains('active')) scheduleEnhanceFiles();
+        if (tries > 25) clearInterval(t);
     }, 400);
 }
 
