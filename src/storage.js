@@ -258,8 +258,7 @@ function toggleProjectGamepadFor(name) {
 
 var currentProjectName = null;
 var currentFileName = null;
-var modalCallback = null;
-var selectedTemplate = 'empty';
+// DO NOT redeclare modalCallback (modal.js) or selectedTemplate (app.js)
 var selectedFilePreset = 'blank';
 
 const LUA_FILE_PRESETS = {
