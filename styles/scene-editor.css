@@ -1,4 +1,4 @@
-/* 2D Scene editor — large canvas, compact bottom toolbar */
+/* 2D Scene editor — large canvas, compact toolbar, spectrum only */
 #scene-editor-view.view {
     display: none !important;
     flex-direction: column;
@@ -56,7 +56,6 @@
     flex-direction: column;
     min-height: 0;
     min-width: 0;
-    position: relative;
 }
 
 .scn-stage-wrap {
@@ -85,7 +84,7 @@
     padding: 6px 8px 8px;
     border-top: 1px solid var(--glass-border, rgba(255,255,255,0.08));
     background: var(--panel-color, #1a1c24);
-    max-height: 28vh;
+    max-height: 26vh;
     z-index: 3;
 }
 
@@ -95,7 +94,6 @@
     align-items: stretch;
     gap: 8px;
     min-width: 0;
-    min-height: 0;
 }
 
 .scn-col {
@@ -108,7 +106,7 @@
 .scn-col-tools {
     flex: 0 0 auto;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 4px;
     align-content: start;
 }
@@ -117,11 +115,12 @@
     background: var(--panel-2, #16181f);
     color: var(--text-color, #e8ecf4);
     border-radius: 8px;
-    padding: 6px 6px;
-    font-size: 0.65rem;
+    padding: 8px 6px;
+    font-size: 0.85rem;
     cursor: pointer;
     min-width: 36px;
     text-align: center;
+    line-height: 1;
 }
 .scn-tool.active {
     border-color: var(--accent-color, #a78bfa);
@@ -131,17 +130,15 @@
 
 .scn-col-spectrum {
     flex: 0 0 auto;
-    width: 120px;
-    align-items: center;
+    width: 130px;
 }
 .scn-color-active {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
     border: 2px solid #fff;
     box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
     flex-shrink: 0;
-    align-self: flex-start;
 }
 .scn-spectrum-compact {
     display: flex;
@@ -152,7 +149,7 @@
 .scn-sv {
     position: relative;
     width: 100%;
-    height: 52px;
+    height: 56px;
     border-radius: 6px;
     border: 1px solid rgba(255,255,255,0.12);
     cursor: crosshair;
@@ -216,13 +213,12 @@
 .scn-col-actions {
     flex: 1 1 auto;
     min-width: 0;
-    justify-content: flex-start;
+    justify-content: center;
 }
 .scn-scale-row {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
 }
 .scn-scale-tag {
     font-size: 0.6rem;
@@ -230,45 +226,18 @@
     text-transform: uppercase;
     color: var(--muted, #9aa3b5);
 }
-.scn-scale-row input[type="range"] { flex: 1; min-width: 48px; max-width: 120px; }
+.scn-scale-row input[type="range"] { flex: 1; min-width: 48px; max-width: 140px; }
 .scn-scale-row span {
     font-size: 0.68rem;
     color: var(--muted, #9aa3b5);
     min-width: 22px;
 }
-.scn-undo-row {
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-}
-.scn-undo-row .btn {
-    font-size: 0.65rem;
-    padding: 5px 8px;
-}
-.scn-undo-row .btn:disabled {
-    opacity: 0.35;
-    pointer-events: none;
-}
-.scn-paint-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-    max-height: 44px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-.scn-swatch {
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-    border-radius: 4px;
-    border: 1px solid rgba(255,255,255,0.12);
-    cursor: pointer;
-    padding: 0;
-}
-.scn-swatch.active {
-    outline: 2px solid #fff;
-    outline-offset: 1px;
+.scn-sel-info {
+    font-size: 0.62rem;
+    color: var(--muted, #9aa3b5);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .scn-col-tabs {
@@ -276,28 +245,22 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    justify-content: stretch;
-    width: 52px;
+    width: 44px;
 }
 .scn-tab {
     flex: 1;
     border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
     background: transparent;
     color: var(--muted, #9aa3b5);
-    font-size: 0.58rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: 8px 4px;
+    font-size: 1.15rem;
+    padding: 10px 4px;
     cursor: pointer;
-    border-radius: 8px;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    transform: rotate(180deg);
-    min-height: 56px;
+    border-radius: 10px;
+    min-height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
+    line-height: 1;
 }
 .scn-tab.active {
     color: #fff;
@@ -305,17 +268,12 @@
     border-color: var(--accent-color, #a78bfa);
 }
 
-.scn-panel {
-    display: none;
-    min-width: 0;
-}
+.scn-panel { display: none; min-width: 0; }
 .scn-panel.active { display: block; }
-#scn-panel-paint.active {
-    display: none;
-}
+#scn-panel-paint.active { display: none; }
 #scn-panel-sprites.active {
     display: block;
-    max-height: 72px;
+    max-height: 70px;
 }
 
 .scn-palette-list-h,
@@ -340,8 +298,8 @@
     cursor: pointer;
     flex-shrink: 0;
     min-width: 48px;
-    -webkit-user-select: none;
     user-select: none;
+    -webkit-user-select: none;
 }
 .scn-pal-item img {
     width: 32px;
@@ -363,30 +321,10 @@
     padding: 6px;
     font-size: 0.7rem;
     color: var(--muted, #9aa3b5);
-    white-space: nowrap;
 }
-
-.scn-editbar-footer {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-}
-.scn-sel-info {
-    font-size: 0.65rem;
-    color: var(--text-color, #e8ecf4);
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.scn-hint { font-size: 0.58rem; color: var(--muted, #9aa3b5); flex-shrink: 0; }
 
 @media (max-width: 480px) {
-    .scn-col-spectrum { width: 96px; }
-    .scn-sv { height: 44px; }
-    .scn-editbar { max-height: 32vh; }
-    .scn-col-tabs { width: 44px; }
-    .scn-tab { font-size: 0.52rem; min-height: 48px; }
+    .scn-col-spectrum { width: 110px; }
+    .scn-sv { height: 48px; }
+    .scn-editbar { max-height: 30vh; }
 }
