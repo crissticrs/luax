@@ -1,4 +1,4 @@
-// Bootstrap: app shell + assets + swipe + IDE shell
+// Bootstrap: app shell + assets + swipe + 2D scene editor
 (function () {
   function loadScript(src, onload) {
     var s = document.createElement('script');
@@ -22,7 +22,7 @@
     loadScript('src/assets-panel.js', function () {
       loadScript('src/assets-panel-boot.js', function () {
         loadScript('src/swipe-list.js', function () {
-          loadScript('src/ide-shell.js');
+          loadScript('src/scene-editor.js');
         });
       });
     });
