@@ -1,7 +1,5 @@
-/* LuaX service worker — caches app shell + vendor CDNs for faster loads / offline.
- * Deployed under https://crissticrs.github.io/luax/ so all paths are relative to SW scope.
- */
-const CACHE_VERSION = 'luax-v10';
+/* LuaX service worker */
+const CACHE_VERSION = 'luax-v12';
 const SHELL_CACHE = CACHE_VERSION + '-shell';
 const CDN_CACHE = CACHE_VERSION + '-cdn';
 
@@ -9,6 +7,7 @@ const SHELL_URLS = [
   './',
   './index.html',
   './styles/main.css',
+  './styles/assets-panel.css',
   './favicon.svg',
   './site.webmanifest',
   './src/icons.js',
@@ -21,6 +20,8 @@ const SHELL_URLS = [
   './src/billing.js',
   './src/cloud-sync.js',
   './src/editor.js',
+  './src/assets-panel.js',
+  './src/assets-panel-boot.js',
   './src/play-mode.js',
   './src/perf-tune.js',
   './src/export-share.js',
