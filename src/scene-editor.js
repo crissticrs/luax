@@ -1,4 +1,4 @@
-// src/scene-editor.js — 2D scene editor (full pixel grid)
+// src/scene-editor.js — 2D scene editor (canvas top, edit bar bottom)
 // Brush paints one cell · shapes place as 1 cell · sprite spectrum colors
 
 (function () {
@@ -169,46 +169,46 @@
             '<span class="spr-title" id="scene-editor-title">Scene</span>' +
             '<button type="button" class="btn btn-sm" id="scn-delete-obj">Delete</button>' +
             '<button type="button" class="btn btn-primary btn-sm" id="scn-save">Save</button></div>' +
-            '<div class="scn-body"><aside class="scn-palette">' +
+            '<div class="scn-body">' +
+            '<div class="scn-stage-wrap" id="scn-stage-wrap">' +
+            '<canvas id="scene-canvas" width="640" height="360"></canvas></div>' +
+            '<div class="scn-editbar" id="scn-editbar">' +
+            '<div class="scn-editbar-top">' +
             '<div class="scn-tabs">' +
             '<button type="button" class="scn-tab active" data-scn-tab="paint">Paint</button>' +
             '<button type="button" class="scn-tab" data-scn-tab="sprites">Sprites</button></div>' +
-            '<div class="scn-panel active" id="scn-panel-paint">' +
-            '<div class="scn-section-label">Tool (1 cell)</div>' +
             '<div class="scn-tool-row" id="scn-tools">' +
-            '<button type="button" class="scn-tool active" data-tool="select">↖</button>' +
-            '<button type="button" class="scn-tool" data-tool="brush">Brush</button>' +
-            '<button type="button" class="scn-tool" data-tool="rect">□</button>' +
-            '<button type="button" class="scn-tool" data-tool="tri">△</button>' +
-            '<button type="button" class="scn-tool" data-tool="circle">○</button>' +
-            '<button type="button" class="scn-tool" data-tool="eraser">⌫</button></div>' +
-            '<div class="scn-section-label">Color</div>' +
-            '<div class="scn-color-active" id="scn-color-active"></div>' +
-            '<div class="scn-spectrum-box">' +
+            '<button type="button" class="scn-tool active" data-tool="select" title="Select">↖</button>' +
+            '<button type="button" class="scn-tool" data-tool="brush" title="Brush">Brush</button>' +
+            '<button type="button" class="scn-tool" data-tool="rect" title="Rect">□</button>' +
+            '<button type="button" class="scn-tool" data-tool="tri" title="Triangle">△</button>' +
+            '<button type="button" class="scn-tool" data-tool="circle" title="Circle">○</button>' +
+            '<button type="button" class="scn-tool" data-tool="eraser" title="Eraser">⌫</button></div>' +
+            '<div class="scn-zoom-group">' +
+            '<button type="button" class="btn btn-sm" id="scn-zoom-out">−</button>' +
+            '<button type="button" class="btn btn-sm" id="scn-zoom-reset">100%</button>' +
+            '<button type="button" class="btn btn-sm" id="scn-zoom-in">+</button></div></div>' +
+            '<div class="scn-panel active" id="scn-panel-paint">' +
+            '<div class="scn-color-strip">' +
+            '<div class="scn-color-active" id="scn-color-active" title="Current color"></div>' +
+            '<div class="scn-spectrum-compact">' +
             '<div class="scn-sv" id="scn-sv"><div class="scn-sv-cursor" id="scn-sv-cursor"></div></div>' +
             '<input type="range" id="scn-hue" class="scn-hue" min="0" max="360" value="120">' +
+            '</div>' +
             '<div class="scn-hex-row">' +
             '<div class="scn-spectrum-preview" id="scn-spectrum-preview"></div>' +
             '<input type="text" id="scn-hex-input" class="scn-hex-input" maxlength="7" value="#22b14c">' +
-            '</div></div>' +
-            '<div class="scn-section-label">Presets</div>' +
+            '</div>' +
             '<div class="scn-paint-grid" id="scn-paint-grid"></div>' +
-            '<div class="scn-section-label">Selected scale</div>' +
             '<div class="scn-scale-row">' +
+            '<span class="scn-scale-tag">Scale</span>' +
             '<input type="range" id="scn-obj-scale" min="1" max="8" step="1" value="1">' +
-            '<span id="scn-scale-label">1×</span></div>' +
-            '<p class="scn-grid-note">Grid ' + CELL + 'px · click places 1 cell</p></div>' +
+            '<span id="scn-scale-label">1×</span></div></div></div>' +
             '<div class="scn-panel" id="scn-panel-sprites">' +
-            '<div class="scn-section-label">Tap sprite, then cell</div>' +
-            '<div id="scn-palette-list"></div></div></aside>' +
-            '<div class="scn-stage-wrap" id="scn-stage-wrap">' +
-            '<canvas id="scene-canvas" width="640" height="360"></canvas></div></div>' +
-            '<div class="scn-toolbar">' +
-            '<button type="button" class="btn btn-sm" id="scn-zoom-out">−</button>' +
-            '<button type="button" class="btn btn-sm" id="scn-zoom-reset">100%</button>' +
-            '<button type="button" class="btn btn-sm" id="scn-zoom-in">+</button>' +
+            '<div id="scn-palette-list" class="scn-palette-list-h"></div></div>' +
+            '<div class="scn-editbar-footer">' +
             '<span class="scn-sel-info" id="scn-sel-info">Pixel grid · one cell per click</span>' +
-            '<span class="scn-hint">2D</span></div>';
+            '<span class="scn-hint">2D · grid ' + CELL + 'px</span></div></div></div>';
 
         const music = $('music-editor-view');
         const editor = $('editor-view');
@@ -383,6 +383,11 @@
     }
 
     function openSceneEditor(name, isNew) {
+        // Force rebuild DOM if old sidebar layout still present
+        const existing = $('scene-editor-view');
+        if (existing && !existing.querySelector('.scn-editbar')) {
+            existing.remove();
+        }
         ensureSceneDom();
         loadScenes();
         const proj = getProjectName();
@@ -499,7 +504,7 @@
         const assets = getAssetMap();
         const names = Object.keys(assets).sort();
         if (!names.length) {
-            list.innerHTML = '<div class="scn-pal-empty">No sprites yet.\n+ Create → Draw image</div>';
+            list.innerHTML = '<div class="scn-pal-empty">No sprites yet · Create → Draw image</div>';
             return;
         }
         list.innerHTML = names.map(fn =>
@@ -886,6 +891,19 @@
         if (e.touches.length < 2) pinch = null;
     }
 
+    function deleteProjectScene(fn) {
+        if (!fn) return false;
+        loadScenes();
+        const proj = getProjectName();
+        if (!proj) return false;
+        const map = getProjectSceneMap(proj);
+        if (!(fn in map)) return false;
+        delete map[fn];
+        saveScenes();
+        try { if (typeof renderFiles === 'function') renderFiles(); } catch (_) {}
+        return true;
+    }
+
     function enhanceFilesListWithScenes() {
         const list = $('files-list');
         if (!list) return;
@@ -898,27 +916,27 @@
             const div = document.createElement('div');
             div.className = 'list-item';
             div.setAttribute('data-scene', fn);
+            const safeFn = String(fn).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             div.innerHTML =
-                '<div class="item-title"><span style="font-size:1.1rem">🗺</span>' +
+                '<div class="item-title" onclick="openSceneEditor(\'' + safeFn + '\', false)">' +
+                '<span style="font-size:1.1rem">🗺</span>' +
                 '<span>' + escapeHtml(fn) + '</span><span class="item-badge">SCENE</span></div>' +
                 '<div class="item-actions">' +
                 '<button type="button" class="btn-icon-sm" data-scn-edit="' + escapeAttr(fn) + '">✎</button>' +
                 '<button type="button" class="btn btn-delete" data-scn-del="' + escapeAttr(fn) + '">🗑</button></div>';
-            div.querySelector('.item-title').onclick = () => openSceneEditor(fn, false);
+            div.querySelector('.item-title').onclick = (ev) => { ev.preventDefault(); openSceneEditor(fn, false); };
             const ed = div.querySelector('[data-scn-edit]');
             if (ed) ed.onclick = (ev) => { ev.stopPropagation(); openSceneEditor(fn, false); };
             const del = div.querySelector('[data-scn-del]');
             if (del) del.onclick = (ev) => {
+                ev.preventDefault();
                 ev.stopPropagation();
                 if (!confirm('Delete scene "' + fn + '"?')) return;
-                loadScenes();
-                delete getProjectSceneMap(getProjectName())[fn];
-                saveScenes();
-                try { if (typeof renderFiles === 'function') renderFiles(); } catch (_) {}
+                deleteProjectScene(fn);
             };
             list.appendChild(div);
         });
-        try { if (typeof enhanceFilesListSwipe === 'function') setTimeout(enhanceFilesListSwipe, 0); } catch (_) {}
+        try { if (typeof enhanceFilesListSwipe === 'function') setTimeout(enhanceFilesListSwipe, 30); } catch (_) {}
     }
 
     function hookRenderFiles() {
@@ -961,6 +979,9 @@
 
     function initSceneEditor() {
         loadScenes();
+        // Remove stale sidebar DOM from older version so new layout builds
+        const old = $('scene-editor-view');
+        if (old && !old.querySelector('.scn-editbar')) old.remove();
         ensureSceneDom();
         hideSceneView();
         injectCreateMenu();
@@ -989,5 +1010,6 @@
         window.getProjectSceneMap = getProjectSceneMap;
         window.saveSceneFromEditor = saveSceneFromEditor;
         window.closeSceneEditor = closeSceneEditor;
+        window.deleteProjectScene = deleteProjectScene;
     } catch (_) {}
 })();
