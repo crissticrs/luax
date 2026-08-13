@@ -1,17 +1,17 @@
 /* LuaX service worker */
-const CACHE_VERSION = 'luax-v16';
+const CACHE_VERSION = 'luax-v17';
 const SHELL_CACHE = CACHE_VERSION + '-shell';
 const CDN_CACHE = CACHE_VERSION + '-cdn';
 
 const SHELL_URLS = [
   './', './index.html', './styles/main.css', './styles/assets-panel.css',
-  './styles/swipe-list.css', './styles/ide-shell.css',
+  './styles/swipe-list.css', './styles/scene-editor.css',
   './favicon.svg', './site.webmanifest',
   './src/icons.js', './src/templates.js', './src/storage.js',
   './src/sprite-editor.js', './src/music-editor.js', './src/modal.js',
   './src/auth.js', './src/billing.js', './src/cloud-sync.js',
   './src/editor.js', './src/assets-panel.js', './src/assets-panel-boot.js',
-  './src/swipe-list.js', './src/ide-shell.js', './src/play-mode.js', './src/perf-tune.js',
+  './src/swipe-list.js', './src/scene-editor.js', './src/play-mode.js', './src/perf-tune.js',
   './src/export-share.js', './src/app.js', './src/error-tracking.js', './src/xss-guard.js',
 ];
 
