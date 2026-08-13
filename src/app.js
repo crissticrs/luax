@@ -23,7 +23,9 @@
       loadScript('src/assets-panel-boot.js', function () {
         loadScript('src/swipe-list.js', function () {
           loadScript('src/scene-editor.js', function () {
-            loadScript('src/scene-play.js');
+            loadScript('src/scene-editor-layout.js', function () {
+              loadScript('src/scene-play.js');
+            });
           });
         });
       });
