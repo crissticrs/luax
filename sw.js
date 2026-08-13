@@ -1,5 +1,5 @@
 /* LuaX service worker */
-const CACHE_VERSION = 'luax-v26';
+const CACHE_VERSION = 'luax-v27';
 const SHELL_CACHE = CACHE_VERSION + '-shell';
 const CDN_CACHE = CACHE_VERSION + '-cdn';
 
