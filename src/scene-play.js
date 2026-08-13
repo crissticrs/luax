@@ -100,6 +100,31 @@
     return true;
   }
 
+  function injectLuaScene() {
+    try {
+      if (typeof fengari === 'undefined' || !fengari.L) return;
+      const code =
+        'do\n' +
+        '  local api = (require("js")).global.LuaDeckAPI\n' +
+        '  if gfx then\n' +
+        '    gfx.scene = function(name, x, y) api.gfx:scene(name, x, y) end\n' +
+        '    gfx.scenes = function()\n' +
+        '      local arr = api.gfx:scenes()\n' +
+        '      local t = {}\n' +
+        '      if arr then\n' +
+        '        local n = tonumber(arr.length) or 0\n' +
+        '        for i = 0, n - 1 do t[#t+1] = arr[i] end\n' +
+        '      end\n' +
+        '      return t\n' +
+        '    end\n' +
+        '  end\n' +
+        'end\n';
+      fengari.lauxlib.luaL_dostring(fengari.L, fengari.to_luastring(code));
+    } catch (e) {
+      console.warn('scene lua inject', e);
+    }
+  }
+
   function hookStartPlay() {
     try {
       const sp = typeof window.startPlayMode === 'function' ? window.startPlayMode : null;
@@ -107,27 +132,14 @@
       window.startPlayMode = function () {
         patchApi();
         const r = sp.apply(this, arguments);
-        try {
-          if (typeof fengari !== 'undefined' && fengari.L) {
-            const code =
-              'if gfx and not gfx.scene then\n' +
-              '  local api = (require("js")).global.LuaDeckAPI\n' +
-              '  gfx.scene = function(name, x, y) api.gfx:scene(name, x, y) end\n' +
-              '  gfx.scenes = function()\n' +
-              '    local arr = api.gfx:scenes()\n' +
-              '    local t = {}\n' +
-              '    if arr then\n' +
-              '      local n = tonumber(arr.length) or 0\n' +
-              '      for i = 0, n - 1 do t[#t+1] = arr[i] end\n' +
-              '    end\n' +
-              '    return t\n' +
-              '  end\n' +
-              'end\n';
-            fengari.lauxlib.luaL_dostring(fengari.L, fengari.to_luastring(code));
-          }
-        } catch (e) {
-          console.warn('scene lua inject', e);
-        }
+        // startPlayMode is async — inject after Lua shim loads
+        Promise.resolve(r).then(function () {
+          patchApi();
+          injectLuaScene();
+          // also retry a few times while game boots
+          setTimeout(function () { patchApi(); injectLuaScene(); }, 80);
+          setTimeout(function () { patchApi(); injectLuaScene(); }, 200);
+        }).catch(function () {});
         return r;
       };
       window.startPlayMode._luaxScene = true;
