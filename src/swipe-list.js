@@ -165,6 +165,7 @@ function buildSwipeRow(opts) {
     row.dataset.kind = opts.kind || '';
     row.dataset.name = opts.name || '';
     row.dataset.enhanced = '1';
+    if (opts.kind === 'scene') row.setAttribute('data-scene', opts.name || '');
 
     const left = document.createElement('div');
     left.className = 'swipe-actions swipe-actions-left';
@@ -322,14 +323,26 @@ function directListItems(list) {
 }
 
 function extractFileName(el, html) {
+    try {
+        const ds = el.getAttribute && el.getAttribute('data-scene');
+        if (ds) return ds;
+        const scn = el.querySelector && el.querySelector('[data-scene], [data-scn-edit], [data-scn-del]');
+        if (scn) {
+            return scn.getAttribute('data-scene') || scn.getAttribute('data-scn-edit') || scn.getAttribute('data-scn-del') || '';
+        }
+    } catch (_) {}
     const patterns = [
         /openFile\('([^']+)'\)/,
         /openSpriteEditor\('([^']+)'\)/,
         /openMusicEditor\('([^']+)'\)/,
+        /openSceneEditor\('([^']+)'\)/,
         /promptRenameFile\('([^']+)'\)/,
         /deleteFile\([^,]*,\s*'([^']+)'\)/,
         /deleteAsset\([^,]*,\s*'([^']+)'\)/,
-        /deleteMusicPattern\([^,]*,\s*'([^']+)'\)/
+        /deleteMusicPattern\([^,]*,\s*'([^']+)'\)/,
+        /data-scene="([^"]+)"/,
+        /data-scn-edit="([^"]+)"/,
+        /data-scn-del="([^"]+)"/
     ];
     for (let i = 0; i < patterns.length; i++) {
         const m = html.match(patterns[i]);
@@ -348,7 +361,9 @@ function extractFileName(el, html) {
     return '';
 }
 
-function detectFileKind(html) {
+function detectFileKind(html, el) {
+    if (el && el.getAttribute && el.getAttribute('data-scene')) return 'scene';
+    if (/data-scene|data-scn-edit|data-scn-del|item-badge">SCENE|>SCENE<|openSceneEditor/.test(html)) return 'scene';
     if (/deleteAsset|openSpriteEditor|item-badge">IMG|>IMG</.test(html)) return 'sprite';
     if (/deleteMusic|openMusicEditor|MUSIC/.test(html)) return 'music';
     return 'file';
@@ -434,6 +449,31 @@ function enhanceProjectsListSwipe() {
     pinnedRows.concat(otherRows).forEach(r => list.appendChild(r));
 }
 
+function deleteSceneFile(name) {
+    if (!name) return;
+    if (!confirm('Delete scene "' + name + '"?')) return;
+    try {
+        if (typeof window.deleteProjectScene === 'function') {
+            window.deleteProjectScene(name);
+            return;
+        }
+    } catch (_) {}
+    try {
+        const key = 'luax_project_scenes';
+        const raw = localStorage.getItem(key);
+        const all = raw ? JSON.parse(raw) : {};
+        let proj = getActiveProjectName();
+        if (proj && all[proj]) {
+            delete all[proj][name];
+            localStorage.setItem(key, JSON.stringify(all));
+        }
+        if (typeof renderFiles === 'function') renderFiles();
+        else if (typeof window.renderFiles === 'function') window.renderFiles();
+    } catch (err) {
+        console.error('deleteSceneFile', err);
+    }
+}
+
 function enhanceFilesListSwipe() {
     const list = document.getElementById('files-list');
     if (!list) return;
@@ -447,7 +487,7 @@ function enhanceFilesListSwipe() {
         const name = extractFileName(el, html);
         if (!name) return;
 
-        const kind = detectFileKind(html);
+        const kind = detectFileKind(html, el);
         const pinnedOn = isFilePinned(name);
         const title = el.querySelector('.item-title');
         let inner = title ? title.outerHTML : html;
@@ -484,6 +524,11 @@ function enhanceFilesListSwipe() {
                 icon: '🗑', label: 'Delete', cls: 'swipe-delete',
                 onClick: () => { try { deleteMusicPattern({ stopPropagation: function () {} }, name); } catch (_) {} }
             });
+        } else if (kind === 'scene') {
+            rightActions.push({
+                icon: '🗑', label: 'Delete', cls: 'swipe-delete',
+                onClick: () => { try { deleteSceneFile(name); } catch (_) {} }
+            });
         }
 
         const row = buildSwipeRow({
@@ -502,6 +547,10 @@ function enhanceFilesListSwipe() {
                 if (kind === 'file') openFile(name);
                 else if (kind === 'sprite') openSpriteEditor(name);
                 else if (kind === 'music') openMusicEditor(name);
+                else if (kind === 'scene') {
+                    if (typeof openSceneEditor === 'function') openSceneEditor(name, false);
+                    else if (typeof window.openSceneEditor === 'function') window.openSceneEditor(name, false);
+                }
             } catch (_) {}
         });
         el.replaceWith(row);
@@ -637,4 +686,5 @@ try {
     window.toggleProjectPin = toggleProjectPin;
     window.toggleFilePin = toggleFilePin;
     window.closeAllSwipeRows = closeAllSwipeRows;
+    window.deleteSceneFile = deleteSceneFile;
 } catch (_) {}
