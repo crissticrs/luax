@@ -217,7 +217,10 @@
         else if (editor) parent.insertBefore(view, editor);
         else parent.appendChild(view);
 
-        $('scn-back').onclick = () => closeSceneEditor();
+        $('scn-back').onclick = function (ev) {
+            try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+            closeSceneEditor();
+        };
         $('scn-save').onclick = () => saveSceneFromEditor();
         $('scn-delete-obj').onclick = () => deleteSelectedObject();
         $('scn-zoom-in').onclick = () => { viewScale = Math.min(6, viewScale * 1.25); drawScene(); updateZoomLabel(); };
@@ -359,6 +362,26 @@
         openSceneEditor(fn, true);
     }
 
+    function hideSceneView() {
+        const v = $('scene-editor-view');
+        if (!v) return;
+        v.classList.remove('active');
+        v.style.display = 'none';
+        v.style.pointerEvents = 'none';
+        v.style.visibility = 'hidden';
+        v.style.zIndex = '-1';
+    }
+
+    function showSceneView() {
+        const v = $('scene-editor-view');
+        if (!v) return;
+        v.classList.add('active');
+        v.style.display = 'flex';
+        v.style.pointerEvents = '';
+        v.style.visibility = '';
+        v.style.zIndex = '50';
+    }
+
     function openSceneEditor(name, isNew) {
         ensureSceneDom();
         loadScenes();
@@ -381,7 +404,7 @@
         sceneData.objects.forEach(o => { if (o.id >= nextObjId) nextObjId = o.id + 1; });
         selectedId = null;
         panX = 0; panY = 0; viewScale = 1;
-        dirty = !!isNew;
+        dirty = false;
         setTool('select');
         const title = $('scene-editor-title');
         if (title) title.textContent = sceneName;
@@ -392,30 +415,42 @@
             updateZoomLabel();
         });
         try {
-            if (typeof switchView === 'function') switchView('scene-editor-view');
-            else {
-                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-                $('scene-editor-view').classList.add('active');
+            document.querySelectorAll('.view').forEach(el => {
+                if (el.id !== 'scene-editor-view') el.classList.remove('active');
+            });
+            if (typeof switchView === 'function') {
+                try { switchView('scene-editor-view'); } catch (_) {}
             }
-        } catch (_) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            const v = $('scene-editor-view');
-            if (v) { v.classList.add('active'); v.style.display = 'flex'; }
-        }
+        } catch (_) {}
+        showSceneView();
         setTimeout(resizeCanvas, 80);
     }
 
     function closeSceneEditor() {
-        if (dirty && !confirm('Unsaved scene changes.\n\nOK = discard\nCancel = stay')) return;
+        // Auto-save if dirty — avoids blocking confirm() freezes on mobile Safari
+        if (dirty) {
+            try { saveSceneFromEditor(); } catch (_) {}
+        }
         dirty = false;
+        dragState = null;
+        pinch = null;
+        hideSceneView();
         try {
-            if (typeof switchView === 'function') switchView('files-view');
-            else {
-                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-                const fv = $('files-view');
-                if (fv) fv.classList.add('active');
+            document.querySelectorAll('.view').forEach(el => {
+                if (el.id !== 'files-view') el.classList.remove('active');
+            });
+            const fv = $('files-view');
+            if (fv) {
+                fv.classList.add('active');
+                fv.style.display = '';
+                fv.style.visibility = '';
+                fv.style.pointerEvents = '';
+            }
+            if (typeof switchView === 'function') {
+                try { switchView('files-view'); } catch (_) {}
             }
         } catch (_) {}
+        hideSceneView();
         try { if (typeof renderFiles === 'function') renderFiles(); } catch (_) {}
     }
 
@@ -906,9 +941,10 @@
             const wrapped = function (id) {
                 const r = sv.apply(this, arguments);
                 if (id === 'scene-editor-view') {
-                    const v = $('scene-editor-view');
-                    if (v) { v.classList.add('active'); v.style.display = 'flex'; }
+                    showSceneView();
                     setTimeout(resizeCanvas, 50);
+                } else {
+                    hideSceneView();
                 }
                 return r;
             };
@@ -921,6 +957,7 @@
     function initSceneEditor() {
         loadScenes();
         ensureSceneDom();
+        hideSceneView();
         injectCreateMenu();
         hookRenderFiles();
         patchSwitchView();
@@ -946,5 +983,6 @@
         window.promptNewScene = promptNewScene;
         window.getProjectSceneMap = getProjectSceneMap;
         window.saveSceneFromEditor = saveSceneFromEditor;
+        window.closeSceneEditor = closeSceneEditor;
     } catch (_) {}
 })();
