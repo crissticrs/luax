@@ -1,6 +1,6 @@
 /* 2D Scene editor — full pixel grid + spectrum color */
 #scene-editor-view.view {
-    display: none;
+    display: none !important;
     flex-direction: column;
     height: 100%;
     height: 100dvh;
@@ -9,8 +9,14 @@
     position: fixed;
     inset: 0;
     z-index: 50;
+    pointer-events: none;
+    visibility: hidden;
 }
-#scene-editor-view.view.active { display: flex; }
+#scene-editor-view.view.active {
+    display: flex !important;
+    pointer-events: auto;
+    visibility: visible;
+}
 
 .scn-header {
     display: flex;
