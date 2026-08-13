@@ -31,9 +31,9 @@
     (document.head || document.documentElement).appendChild(s);
 })();
 
-let modalCallback = null;
-let modalCancelCallback = null;
-let modalMode = 'form';
+var modalCallback = null;
+var modalCancelCallback = null;
+var modalMode = 'form';
 
 function openModal(title, bodyHtml, confirmLabel, callback) {
     modalMode = 'form';
@@ -76,10 +76,10 @@ function confirmModal() {
 
 function _lxEsc(s) {
     return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"')
         .replace(/\n/g, '<br>');
 }
 
