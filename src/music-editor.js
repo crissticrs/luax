@@ -1,8 +1,5 @@
 // src/music-editor.js — visual step sequencer / chiptune music editor
 
-// ============================================================
-// MUSIC EDITOR (visual step sequencer)
-// ============================================================
 const MUSIC_KEY = 'luadeck_project_music';
 let projectMusic = {};
 try { projectMusic = JSON.parse(localStorage.getItem(MUSIC_KEY) || '{}') || {}; } catch (_) { projectMusic = {}; }
@@ -21,7 +18,7 @@ const musEd = {
     steps: 16,
     channelCount: 10,
     wave: 'square',
-    channels: null, // channelCount x steps of note strings or ''
+    channels: null,
     paintNote: 'C4',
 };
 
@@ -40,9 +37,7 @@ function refreshMusicLimitUI() {
     if (chSel) {
         Array.from(chSel.options).forEach(opt => {
             const v = parseInt(opt.value, 10);
-            const locked = v > maxCh;
-            opt.disabled = locked;
-            // keep star label for pro tiers
+            opt.disabled = v > maxCh;
         });
         if (parseInt(chSel.value, 10) > maxCh) chSel.value = String(maxCh);
     }
@@ -71,7 +66,6 @@ function requireMusicProFor(nChannels, nSteps) {
     return false;
 }
 
-/** Hot-reload playing pattern from the editor without restarting the step clock. */
 function syncMusicFromEditorLive() {
     if (!musicState.active) return;
     if (!document.getElementById('music-editor-view')?.classList.contains('active')) return;
@@ -83,10 +77,7 @@ function syncMusicFromEditorLive() {
     const waves = [];
     for (let c = 0; c < nCh; c++) {
         const row = (musEd.channels && musEd.channels[c]) || [];
-        channels[c] = normalizeChannel(
-            row.map(n => (n ? noteToFreq(n) : 0)),
-            steps
-        );
+        channels[c] = normalizeChannel(row.map(n => (n ? noteToFreq(n) : 0)), steps);
         waves[c] = wave || 'square';
     }
     musicState.bpm = Math.max(40, Math.min(240, bpm));
@@ -112,13 +103,11 @@ function updateMusicLiveBar(stepIdx) {
     stepEl.textContent = (stepIdx + 1) + ' / ' + musicState.steps;
     const chips = [];
     const nCh = (musicState.channels && musicState.channels.length) || 0;
-    const ed = (document.getElementById('music-editor-view')?.classList.contains('active') && musEd.channels)
-        ? musEd.channels : null;
+    const ed = (document.getElementById('music-editor-view')?.classList.contains('active') && musEd.channels) ? musEd.channels : null;
     for (let c = 0; c < nCh; c++) {
         let label = '';
-        if (ed && ed[c]) {
-            label = ed[c][stepIdx] || '';
-        } else {
+        if (ed && ed[c]) label = ed[c][stepIdx] || '';
+        else {
             const cell = musicState.channels[c] && musicState.channels[c][stepIdx];
             if (typeof cell === 'object' && cell && cell.f) label = Math.round(cell.f) + 'Hz';
             else if (typeof cell === 'number' && cell > 0) label = Math.round(cell) + 'Hz';
@@ -128,9 +117,7 @@ function updateMusicLiveBar(stepIdx) {
             chips.push('<span class="mus-live-chip" title="Ch' + (c + 1) + '" style="background:' + col + ';border-color:' + col + '">Ch' + (c + 1) + ' ' + label + '</span>');
         }
     }
-    notesEl.innerHTML = chips.length
-        ? chips.join('')
-        : '<span class="mus-live-empty">Rest (no notes this step)</span>';
+    notesEl.innerHTML = chips.length ? chips.join('') : '<span class="mus-live-empty">Rest (no notes this step)</span>';
 }
 
 function updateMusicPlayhead(stepIdx) {
@@ -138,9 +125,7 @@ function updateMusicPlayhead(stepIdx) {
     if (!grid) return;
     grid.querySelectorAll('.mus-cell.playhead').forEach(el => el.classList.remove('playhead'));
     if (stepIdx == null || stepIdx < 0 || !musicState.active) return;
-    grid.querySelectorAll('.mus-cell[data-step="' + stepIdx + '"]').forEach(el => {
-        el.classList.add('playhead');
-    });
+    grid.querySelectorAll('.mus-cell[data-step="' + stepIdx + '"]').forEach(el => el.classList.add('playhead'));
 }
 
 function openMusicEditor(existingName) {
@@ -157,16 +142,9 @@ function openMusicEditor(existingName) {
         });
         if (!loaded.length) loaded = musicEmptyGrid(steps, 10);
         let chCount = loaded.length;
-        // Clamp to plan limits (still allow opening, but trim for free)
         if (!isPro()) {
-            if (chCount > MUS_FREE_MAX_CHANNELS) {
-                loaded = loaded.slice(0, MUS_FREE_MAX_CHANNELS);
-                chCount = MUS_FREE_MAX_CHANNELS;
-            }
-            if (steps > MUS_FREE_MAX_STEPS) {
-                steps = MUS_FREE_MAX_STEPS;
-                loaded = loaded.map(ch => ch.slice(0, steps));
-            }
+            if (chCount > MUS_FREE_MAX_CHANNELS) { loaded = loaded.slice(0, MUS_FREE_MAX_CHANNELS); chCount = MUS_FREE_MAX_CHANNELS; }
+            if (steps > MUS_FREE_MAX_STEPS) { steps = MUS_FREE_MAX_STEPS; loaded = loaded.map(ch => ch.slice(0, steps)); }
         } else {
             chCount = Math.min(chCount, MUS_PRO_MAX_CHANNELS);
             steps = Math.min(steps, MUS_PRO_MAX_STEPS);
@@ -179,10 +157,7 @@ function openMusicEditor(existingName) {
         musEd.channelCount = chCount;
         musEd.channels = loaded;
     } else {
-        musEd.bpm = 120;
-        musEd.steps = 16;
-        musEd.channelCount = 10;
-        musEd.wave = 'square';
+        musEd.bpm = 120; musEd.steps = 16; musEd.channelCount = 10; musEd.wave = 'square';
         musEd.channels = musicEmptyGrid(16, 10);
     }
     const title = document.getElementById('music-editor-title');
@@ -192,22 +167,15 @@ function openMusicEditor(existingName) {
     refreshMusicLimitUI();
     const st = document.getElementById('mus-steps');
     if (st) {
-        // ensure option exists for current steps
         if (![...st.options].some(o => o.value === String(musEd.steps))) {
-            const o = document.createElement('option');
-            o.value = String(musEd.steps);
-            o.textContent = String(musEd.steps);
-            st.appendChild(o);
+            const o = document.createElement('option'); o.value = String(musEd.steps); o.textContent = String(musEd.steps); st.appendChild(o);
         }
         st.value = String(musEd.steps);
     }
     const ch = document.getElementById('mus-channels');
     if (ch) {
         if (![...ch.options].some(o => o.value === String(musEd.channelCount))) {
-            const o = document.createElement('option');
-            o.value = String(musEd.channelCount);
-            o.textContent = String(musEd.channelCount);
-            ch.appendChild(o);
+            const o = document.createElement('option'); o.value = String(musEd.channelCount); o.textContent = String(musEd.channelCount); ch.appendChild(o);
         }
         ch.value = String(musEd.channelCount);
     }
@@ -294,10 +262,7 @@ function renderMusicNoteBar() {
         b.className = 'mus-note-btn' + (musEd.paintNote === n ? ' active' : '');
         b.textContent = n === '' ? '∅' : n;
         b.title = n === '' ? 'Rest (clear)' : n;
-        b.onclick = () => {
-            musEd.paintNote = n;
-            renderMusicNoteBar();
-        };
+        b.onclick = () => { musEd.paintNote = n; renderMusicNoteBar(); };
         bar.appendChild(b);
     });
 }
@@ -318,29 +283,24 @@ function renderMusicGrid() {
     const steps = musEd.steps;
     const nCh = musEd.channelCount || musEd.channels.length || 10;
     musEd.channelCount = nCh;
-    while (musEd.channels.length < nCh) {
-        musEd.channels.push(Array(steps).fill(''));
-    }
+    while (musEd.channels.length < nCh) musEd.channels.push(Array(steps).fill(''));
     if (musEd.channels.length > nCh) musEd.channels = musEd.channels.slice(0, nCh);
-    // Column sizes: keep cells in their tracks (no overflow / overlap)
     const wide = (typeof window !== 'undefined' && window.innerWidth >= 900);
     const labelW = wide ? 48 : 36;
     const cellW = wide ? (window.innerWidth >= 1200 ? 48 : 42) : 30;
     const rowH = wide ? (window.innerWidth >= 1200 ? 38 : 34) : 24;
     grid.style.gridTemplateColumns = labelW + 'px repeat(' + steps + ', ' + cellW + 'px)';
     grid.style.gridAutoRows = rowH + 'px';
-    // Size wrapper to the actual channel rows (shrinks when channels drop e.g. 10 → 4)
     const wrap = document.getElementById('mus-grid-wrap');
     if (wrap) {
         const gap = wide ? 4 : 2;
-        const pad = wide ? 20 : 12; // padding top+bottom
+        const pad = wide ? 20 : 12;
         const contentH = nCh * rowH + Math.max(0, nCh - 1) * gap + pad;
         wrap.style.height = contentH + 'px';
         wrap.style.minHeight = contentH + 'px';
     }
     grid.innerHTML = '';
-    const playStep = (musicState.active && musicState.lastPlayedStep >= 0)
-        ? musicState.lastPlayedStep : -1;
+    const playStep = (musicState.active && musicState.lastPlayedStep >= 0) ? musicState.lastPlayedStep : -1;
     for (let c = 0; c < nCh; c++) {
         if (!musEd.channels[c]) musEd.channels[c] = Array(steps).fill('');
         const color = musChannelColor(c);
@@ -356,29 +316,20 @@ function renderMusicGrid() {
             cell.type = 'button';
             const val = musEd.channels[c][s] || '';
             cell.className = 'mus-cell' + (val ? ' on' : '') + (s === playStep ? ' playhead' : '');
-            // Full note name (C3, D4…) so octaves stay distinct
             cell.textContent = val || '';
             cell.title = val ? ('Ch' + (c + 1) + ' · ' + val) : ('Ch' + (c + 1) + ' · step ' + (s + 1));
             cell.style.setProperty('--ch-color', color);
-            if (!val) {
-                cell.style.borderColor = color + '33';
-            }
+            if (!val) cell.style.borderColor = color + '33';
             cell.dataset.ch = c;
             cell.dataset.step = s;
             cell.onclick = () => {
                 const cur = musEd.channels[c][s] || '';
-                if (musEd.paintNote === '') {
-                    musEd.channels[c][s] = '';
-                } else if (cur === musEd.paintNote) {
-                    musEd.channels[c][s] = '';
-                } else {
-                    musEd.channels[c][s] = musEd.paintNote;
-                }
+                if (musEd.paintNote === '') musEd.channels[c][s] = '';
+                else if (cur === musEd.paintNote) musEd.channels[c][s] = '';
+                else musEd.channels[c][s] = musEd.paintNote;
                 renderMusicGrid();
                 syncMusicFromEditorLive();
-                if (musicState.active && musicState.lastPlayedStep >= 0) {
-                    updateMusicLiveBar(musicState.lastPlayedStep);
-                }
+                if (musicState.active && musicState.lastPlayedStep >= 0) updateMusicLiveBar(musicState.lastPlayedStep);
             };
             grid.appendChild(cell);
         }
@@ -389,9 +340,7 @@ function musicEditorSpec() {
     const bpm = parseInt((document.getElementById('mus-bpm') || {}).value, 10) || musEd.bpm;
     let wave = (document.getElementById('mus-wave') || {}).value || musEd.wave;
     const steps = musEd.steps;
-    const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch =>
-        ch.map(n => n ? noteToFreq(n) : 0)
-    );
+    const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch => ch.map(n => n ? noteToFreq(n) : 0));
     const synth = getActiveSynthParams();
     if (wave === 'custom') wave = synth.wave || 'square';
     return { bpm, wave, steps, loop: true, channels, synth };
@@ -411,9 +360,7 @@ function resolveMusicPattern(name) {
     if (/\.music$/i.test(name)) {
         const bare = name.replace(/\.music$/i, '');
         if (map[bare]) return map[bare];
-    } else if (map[name + '.music']) {
-        return map[name + '.music'];
-    }
+    } else if (map[name + '.music']) return map[name + '.music'];
     return null;
 }
 
@@ -439,9 +386,7 @@ function saveMusicFromEditor() {
     const steps = musEd.steps;
     const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch => ch.slice());
     const synth = getActiveSynthParams();
-    if (wave === 'custom') {
-        musEd.synth = synth;
-    }
+    if (wave === 'custom') musEd.synth = synth;
     const map = getProjectMusicMap(currentProjectName);
     map[name] = { bpm, wave, steps, channels, synth: wave === 'custom' ? synth : undefined };
     saveProjectMusic();
@@ -450,6 +395,8 @@ function saveMusicFromEditor() {
     if (title) title.textContent = name;
     const bare = name.replace(/\.music$/i, '');
     alert('Saved "' + name + '".\n\nIn Lua (both work):\nsfx.music("' + name + '")\nsfx.music("' + bare + '")');
+    try { stopMusic(); } catch (_) {}
+    switchView('files-view');
     renderFiles();
 }
 
@@ -480,4 +427,3 @@ startMusic = function(spec) {
     }
     if (_startMusicRaw) return _startMusicRaw(spec);
 };
-
