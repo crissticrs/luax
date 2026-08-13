@@ -1,3 +1,9 @@
+// Early global bindings (Safari: free vars from other files need window.*)
+window.renderProjects = window.renderProjects || function () {};
+window.promptNewProject = window.promptNewProject || function () {
+    alert('App still loading — try again in a second.');
+};
+
 // src/app.js — app shell: navigation, projects UI, themes, file list, boot
 // Extracted from index.html so the page stays markup-only.
 // Modal helpers (openModal / closeModal / confirmModal) live in src/modal.js.
@@ -52,6 +58,7 @@ function switchView(id) {
 // ============================================================
 let selectedTemplate = 'empty';
 function renderProjects() {
+    window.renderProjects = renderProjects;
     try {
         const list = document.getElementById('projects-list');
         if (!list) return;
@@ -245,6 +252,7 @@ function lxNav(name) {
 }
 
 function promptNewProject() {
+    window.promptNewProject = promptNewProject;
     try {
         // Remove prior overlay if any
         try {
@@ -670,3 +678,10 @@ setTimeout(function () {
     } catch (e) {}
 }, 1500);
 
+window.renderProjects = renderProjects;
+window.promptNewProject = promptNewProject;
+window.promptNewProjectFromTemplate = promptNewProjectFromTemplate;
+window.selectTemplate = selectTemplate;
+window.openProject = openProject;
+window.switchView = switchView;
+window.lxNav = lxNav;
