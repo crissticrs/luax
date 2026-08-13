@@ -1,33 +1,17 @@
 /* LuaX service worker */
-const CACHE_VERSION = 'luax-v12';
+const CACHE_VERSION = 'luax-v13';
 const SHELL_CACHE = CACHE_VERSION + '-shell';
 const CDN_CACHE = CACHE_VERSION + '-cdn';
 
 const SHELL_URLS = [
-  './',
-  './index.html',
-  './styles/main.css',
-  './styles/assets-panel.css',
-  './favicon.svg',
-  './site.webmanifest',
-  './src/icons.js',
-  './src/templates.js',
-  './src/storage.js',
-  './src/sprite-editor.js',
-  './src/music-editor.js',
-  './src/modal.js',
-  './src/auth.js',
-  './src/billing.js',
-  './src/cloud-sync.js',
-  './src/editor.js',
-  './src/assets-panel.js',
-  './src/assets-panel-boot.js',
-  './src/play-mode.js',
-  './src/perf-tune.js',
-  './src/export-share.js',
-  './src/app.js',
-  './src/error-tracking.js',
-  './src/xss-guard.js',
+  './', './index.html', './styles/main.css', './styles/assets-panel.css', './styles/swipe-list.css',
+  './favicon.svg', './site.webmanifest',
+  './src/icons.js', './src/templates.js', './src/storage.js',
+  './src/sprite-editor.js', './src/music-editor.js', './src/modal.js',
+  './src/auth.js', './src/billing.js', './src/cloud-sync.js',
+  './src/editor.js', './src/assets-panel.js', './src/assets-panel-boot.js',
+  './src/swipe-list.js', './src/play-mode.js', './src/perf-tune.js',
+  './src/export-share.js', './src/app.js', './src/error-tracking.js', './src/xss-guard.js',
 ];
 
 const CDN_URLS = [
@@ -55,9 +39,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(
-      keys.filter((k) => k.startsWith('luax-') && k !== SHELL_CACHE && k !== CDN_CACHE).map((k) => caches.delete(k))
-    );
+    await Promise.all(keys.filter((k) => k.startsWith('luax-') && k !== SHELL_CACHE && k !== CDN_CACHE).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });
@@ -78,11 +60,7 @@ function isCdn(url) {
 function shouldBypass(url) {
   try {
     const u = new URL(url);
-    if (u.hostname === 'accounts.google.com') return true;
-    if (u.hostname.endsWith('googleapis.com')) return true;
-    if (u.hostname.endsWith('stripe.com')) return true;
-    if (u.hostname.endsWith('workers.dev')) return true;
-    if (u.pathname.includes('/api/')) return true;
+    if (u.hostname === 'accounts.google.com' || u.hostname.endsWith('googleapis.com') || u.hostname.endsWith('stripe.com') || u.hostname.endsWith('workers.dev') || u.pathname.includes('/api/')) return true;
     return false;
   } catch (_) { return true; }
 }
@@ -92,7 +70,6 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = req.url;
   if (shouldBypass(url)) return;
-
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     event.respondWith((async () => {
       try {
@@ -102,13 +79,11 @@ self.addEventListener('fetch', (event) => {
         return fresh;
       } catch (_) {
         const cache = await caches.open(SHELL_CACHE);
-        return (await cache.match('./index.html')) || (await cache.match('./')) ||
-          new Response('LuaX offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+        return (await cache.match('./index.html')) || (await cache.match('./')) || new Response('LuaX offline', { status: 503 });
       }
     })());
     return;
   }
-
   if (isSameOrigin(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(SHELL_CACHE);
@@ -118,12 +93,10 @@ self.addEventListener('fetch', (event) => {
         return res;
       }).catch(() => null);
       if (cached) { networkPromise.catch(() => {}); return cached; }
-      const net = await networkPromise;
-      return net || new Response('', { status: 504 });
+      return (await networkPromise) || new Response('', { status: 504 });
     })());
     return;
   }
-
   if (isCdn(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(CDN_CACHE);
