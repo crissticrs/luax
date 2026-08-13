@@ -1,4 +1,4 @@
-// Bootstrap: restore app shell + Assets panel
+// Bootstrap: restore app shell + Assets panel + swipe lists
 (function () {
   function loadScript(src, onload) {
     var s = document.createElement('script');
@@ -20,7 +20,9 @@
       }
     } catch (_) {}
     loadScript('src/assets-panel.js', function () {
-      loadScript('src/assets-panel-boot.js');
+      loadScript('src/assets-panel-boot.js', function () {
+        loadScript('src/swipe-list.js');
+      });
     });
   });
 })();
