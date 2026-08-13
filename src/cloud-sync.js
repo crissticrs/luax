@@ -1,13 +1,8 @@
 // src/cloud-sync.js — Google Drive upload / download / merge
 
-// Safari-safe access to the global projects table (defined in storage.js)
 function lxProjects() {
-    try {
-        if (typeof window !== 'undefined' && window.projects) return window.projects;
-    } catch (_) {}
-    try {
-        if (typeof projects !== 'undefined' && projects) return projects;
-    } catch (_) {}
+    try { if (typeof window !== 'undefined' && window.projects) return window.projects; } catch (_) {}
+    try { if (typeof projects !== 'undefined' && projects) return projects; } catch (_) {}
     try { window.projects = window.projects || {}; } catch (_) {}
     return (typeof window !== 'undefined' && window.projects) ? window.projects : {};
 }
@@ -20,25 +15,17 @@ async function driveFetch(path, options = {}) {
     if (!googleToken) throw new Error('Not signed in');
     const res = await fetch('https://www.googleapis.com/drive/v3' + path, {
         ...options,
-        headers: {
-            Authorization: 'Bearer ' + googleToken,
-            ...(options.headers || {}),
-        },
+        headers: { Authorization: 'Bearer ' + googleToken, ...(options.headers || {}) },
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         const msg = (err.error && err.error.message) || res.statusText || 'Drive API error';
-        const insufficient =
-            /insufficient.*scope|ACCESS_TOKEN_SCOPE_INSUFFICIENT|permission/i.test(msg) ||
-            (err.error && err.error.status === 'PERMISSION_DENIED');
+        const insufficient = /insufficient.*scope|ACCESS_TOKEN_SCOPE_INSUFFICIENT|permission/i.test(msg) || (err.error && err.error.status === 'PERMISSION_DENIED');
         if (insufficient && !scopeReauthInFlight) {
             scopeReauthInFlight = true;
             setCloudStatus('Cloud: need Drive permission — approve when prompted', 'warn');
             try { localStorage.removeItem(SCOPE_VERSION_KEY); } catch (_) {}
-            setTimeout(() => {
-                scopeReauthInFlight = false;
-                requestGoogleTokenWithScopes({ forceConsent: true, silent: true });
-            }, 400);
+            setTimeout(() => { scopeReauthInFlight = false; requestGoogleTokenWithScopes({ forceConsent: true, silent: true }); }, 400);
         }
         throw new Error(msg);
     }
@@ -50,10 +37,7 @@ async function findCloudFile() {
     const q = encodeURIComponent(`name='${CLOUD_FILE_NAME}' and 'appDataFolder' in parents and trashed=false`);
     const res = await driveFetch(`/files?spaces=appDataFolder&q=${q}&fields=files(id,name,modifiedTime)`);
     const data = await res.json();
-    if (data.files && data.files.length) {
-        cloudFileId = data.files[0].id;
-        return cloudFileId;
-    }
+    if (data.files && data.files.length) { cloudFileId = data.files[0].id; return cloudFileId; }
     return null;
 }
 
@@ -65,16 +49,11 @@ async function cloudUpload(silent, opts) {
     const free = opts && opts.free;
     const now = Date.now();
     const needCredit = !free && (now - lastCloudCreditAt) >= CLOUD_CREDIT_COOLDOWN_MS;
-
     if (needCredit) {
         const st = loadCreditsState();
         const cost = CREDIT_COSTS.cloud_save || 0;
-        if (st.left < cost) {
-            if (!silent) setCloudStatus('Cloud: need credits to backup', 'warn');
-            return;
-        }
+        if (st.left < cost) { if (!silent) setCloudStatus('Cloud: need credits to backup', 'warn'); return; }
     }
-
     cloudSyncing = true;
     if (!silent) setCloudStatus('Cloud: saving…');
     try {
@@ -89,49 +68,25 @@ async function cloudUpload(silent, opts) {
         let body, url, method;
         if (fileId) {
             const updateMeta = { name: CLOUD_FILE_NAME, mimeType: 'application/json' };
-            body =
-                `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
-                `${JSON.stringify(updateMeta)}\r\n` +
-                `--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
-                `${payload}\r\n--${boundary}--`;
+            body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(updateMeta)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${payload}\r\n--${boundary}--`;
             url = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`;
             method = 'PATCH';
         } else {
             const meta = { name: CLOUD_FILE_NAME, parents: ['appDataFolder'], mimeType: 'application/json' };
-            body =
-                `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
-                `${JSON.stringify(meta)}\r\n` +
-                `--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
-                `${payload}\r\n--${boundary}--`;
+            body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${payload}\r\n--${boundary}--`;
             url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&spaces=appDataFolder';
             method = 'POST';
         }
-        const res = await fetch(url, {
-            method,
-            headers: {
-                Authorization: 'Bearer ' + googleToken,
-                'Content-Type': `multipart/related; boundary=${boundary}`,
-            },
-            body,
-        });
+        const res = await fetch(url, { method, headers: { Authorization: 'Bearer ' + googleToken, 'Content-Type': `multipart/related; boundary=${boundary}` }, body });
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            const apiMsg = (err.error && err.error.message) || err.error_description || '';
-            throw new Error(apiMsg || ('Upload failed HTTP ' + res.status));
+            throw new Error((err.error && err.error.message) || err.error_description || ('Upload failed HTTP ' + res.status));
         }
-        if (!fileId) {
-            const data = await res.json();
-            cloudFileId = data.id;
-        }
-
-        if (needCredit) {
-            if (await spendCredits('cloud_save', { silent: true })) {
-                lastCloudCreditAt = now;
-            }
-        }
-
+        if (!fileId) { const data = await res.json(); cloudFileId = data.id; }
+        if (needCredit) { if (await spendCredits('cloud_save', { silent: true })) lastCloudCreditAt = now; }
         setCloudStatus('Cloud: synced ✓', 'ok');
         updateProfileUI();
+        try { if (typeof window.renderProjects === 'function') window.renderProjects(); } catch (_) {}
     } catch (err) {
         const msg = (err && err.message) ? String(err.message) : 'sync failed';
         const short = msg.length > 48 ? msg.slice(0, 45) + '…' : msg;
@@ -141,21 +96,13 @@ async function cloudUpload(silent, opts) {
             scopeReauthInFlight = true;
             setCloudStatus('Cloud: approve Drive access when prompted', 'warn');
             try { localStorage.removeItem(SCOPE_VERSION_KEY); } catch (_) {}
-            setTimeout(() => {
-                scopeReauthInFlight = false;
-                requestGoogleTokenWithScopes({ forceConsent: true, silent: true });
-            }, 500);
+            setTimeout(() => { scopeReauthInFlight = false; requestGoogleTokenWithScopes({ forceConsent: true, silent: true }); }, 500);
         }
-    } finally {
-        cloudSyncing = false;
-    }
+    } finally { cloudSyncing = false; }
 }
 
 function retryCloudSync() {
-    if (!googleToken || !isGoogleTokenValid()) {
-        setCloudStatus('Cloud: sign in required', 'warn');
-        return;
-    }
+    if (!googleToken || !isGoogleTokenValid()) { setCloudStatus('Cloud: sign in required', 'warn'); return; }
     setCloudStatus('Cloud: retrying…');
     cloudSyncOnSignIn({ free: true }).catch(() => {});
 }
@@ -163,8 +110,7 @@ function retryCloudSync() {
 function scheduleCloudSave() {
     if (!googleToken) return;
     clearTimeout(cloudSaveTimer);
-    const delay = isPro() ? 1200 : 8000;
-    cloudSaveTimer = setTimeout(() => cloudUpload(true), delay);
+    cloudSaveTimer = setTimeout(() => cloudUpload(true), isPro() ? 1200 : 8000);
 }
 
 async function cloudSyncOnSignIn(opts) {
@@ -203,12 +149,19 @@ async function cloudSyncOnSignIn(opts) {
                         }
                     });
                 } else {
-                    const localCount = Object.keys(lxProjects()).length;
-                    const cloudCount = Object.keys(cloudProjects).length;
-                    if (localCount === 0 && cloudCount > 0) {
+                    if (Object.keys(lxProjects()).length === 0 && Object.keys(cloudProjects).length > 0) {
                         lxSetProjects(cloudProjects);
                         changed = true;
                     }
+                }
+
+                // Safety net: empty local + cloud has data → always restore
+                if (Object.keys(lxProjects()).length === 0 && Object.keys(cloudProjects).length > 0) {
+                    lxSetProjects(cloudProjects);
+                    if (cloudMeta) {
+                        try { Object.keys(cloudMeta).forEach(function (n) { projectMeta[n] = cloudMeta[n]; }); } catch (_) {}
+                    }
+                    changed = true;
                 }
 
                 if (changed) {
@@ -223,13 +176,14 @@ async function cloudSyncOnSignIn(opts) {
                         try { snap[name] = JSON.stringify(lxProjects()[name]); } catch (_) { snap[name] = ''; }
                     });
                     _lastProjectsSnapshotStr = snap;
-                    try { if (typeof window.renderProjects === "function") window.renderProjects(); } catch (_) {}
                 }
+                try { if (typeof window.renderProjects === 'function') window.renderProjects(); } catch (_) {}
             }
         }
         await cloudUpload(true, { free: true });
         setCloudStatus('Cloud: synced ✓', 'ok');
         updateProfileUI();
+        try { if (typeof window.renderProjects === 'function') window.renderProjects(); } catch (_) {}
     } catch (err) {
         const msg = (err && err.message) ? String(err.message) : 'sync error';
         const short = msg.length > 48 ? msg.slice(0, 45) + '…' : msg;
@@ -239,10 +193,7 @@ async function cloudSyncOnSignIn(opts) {
             scopeReauthInFlight = true;
             setCloudStatus('Cloud: approve Drive access when prompted', 'warn');
             try { localStorage.removeItem(SCOPE_VERSION_KEY); } catch (_) {}
-            setTimeout(() => {
-                scopeReauthInFlight = false;
-                requestGoogleTokenWithScopes({ forceConsent: true, silent: true });
-            }, 500);
+            setTimeout(() => { scopeReauthInFlight = false; requestGoogleTokenWithScopes({ forceConsent: true, silent: true }); }, 500);
         }
     }
 }
