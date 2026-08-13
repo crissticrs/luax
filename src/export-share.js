@@ -215,85 +215,137 @@
     }
 
     function showShareUrlModal(url, note) {
-        const noteHtml = note
-            ? '<p style="margin:0 0 10px;font-size:0.85rem;opacity:0.9">' + note + '</p>'
-            : '';
-        const safe = String(url)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+        // Standalone overlay — does not depend on openModal layout/CSS
+        try {
+            const old = document.getElementById('luax-share-overlay');
+            if (old) old.remove();
+        } catch (_) {}
 
-        function wireCopyUi() {
-            const box = document.getElementById('share-url-box');
-            const btn = document.getElementById('share-copy-btn');
-            if (box) {
+        const noteText = note ? String(note) : '';
+        const overlay = document.createElement('div');
+        overlay.id = 'luax-share-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.style.cssText = [
+            'position:fixed', 'inset:0', 'z-index:100001',
+            'background:rgba(0,0,0,0.65)', 'display:flex',
+            'align-items:center', 'justify-content:center',
+            'padding:16px', 'box-sizing:border-box'
+        ].join(';');
+
+        const card = document.createElement('div');
+        card.style.cssText = [
+            'width:min(520px,100%)', 'max-height:90vh', 'overflow:auto',
+            'background:var(--panel-color,#1a1625)', 'color:var(--text-color,#e8e6f0)',
+            'border-radius:14px', 'padding:18px 18px 14px',
+            'border:1px solid rgba(255,255,255,0.12)',
+            'box-shadow:0 16px 48px rgba(0,0,0,0.5)'
+        ].join(';');
+
+        const title = document.createElement('h2');
+        title.textContent = 'Share link';
+        title.style.cssText = 'margin:0 0 10px;font-size:1.15rem';
+        card.appendChild(title);
+
+        if (noteText) {
+            const p = document.createElement('p');
+            p.textContent = noteText;
+            p.style.cssText = 'margin:0 0 10px;font-size:0.85rem;opacity:0.9';
+            card.appendChild(p);
+        }
+
+        const hint = document.createElement('p');
+        hint.textContent = 'Anyone with this link can play — no login needed.';
+        hint.style.cssText = 'margin:0 0 8px;font-size:0.9rem;opacity:0.85';
+        card.appendChild(hint);
+
+        const box = document.createElement('input');
+        box.id = 'share-url-box';
+        box.type = 'text';
+        box.readOnly = true;
+        box.value = url;
+        box.style.cssText = [
+            'width:100%', 'font-size:12px', 'font-family:monospace',
+            'box-sizing:border-box', 'padding:10px 12px', 'border-radius:8px',
+            'border:1px solid rgba(255,255,255,0.18)', 'background:rgba(0,0,0,0.4)',
+            'color:inherit', 'margin-bottom:12px'
+        ].join(';');
+        card.appendChild(box);
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.id = 'share-copy-btn';
+        copyBtn.textContent = 'Copy link';
+        copyBtn.className = 'btn btn-primary';
+        copyBtn.style.cssText = 'flex:1;min-width:120px;font-weight:600;padding:10px 14px;cursor:pointer';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.textContent = 'Close';
+        closeBtn.className = 'btn';
+        closeBtn.style.cssText = 'flex:0 0 auto;padding:10px 14px;cursor:pointer';
+
+        function close() {
+            try { overlay.remove(); } catch (_) {}
+        }
+
+        function copyShareUrl() {
+            const text = box.value || url;
+            function ok() {
+                copyBtn.textContent = 'Copied!';
+                copyBtn.style.background = 'rgba(46, 204, 113, 0.45)';
+                if (typeof lxToast === 'function') lxToast('Link copied!', 'ok');
+                setTimeout(function () {
+                    copyBtn.textContent = 'Copy link';
+                    copyBtn.style.background = '';
+                }, 1600);
+            }
+            function fail() {
                 box.focus();
                 box.select();
+                alert('Select the text and press Ctrl/Cmd+C to copy.');
             }
-            function doCopy() {
-                const text = (box && box.value) ? box.value : url;
-                function ok() {
-                    if (btn) {
-                        btn.textContent = 'Copied!';
-                        btn.style.background = 'rgba(46, 204, 113, 0.35)';
-                        setTimeout(function () {
-                            btn.textContent = 'Copy link';
-                            btn.style.background = '';
-                        }, 1600);
-                    }
-                }
-                function fail() {
-                    if (box) { box.focus(); box.select(); }
-                    alert('Could not copy automatically. Select the text and press Ctrl/Cmd+C.');
-                }
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text).then(ok).catch(function () {
-                        // fallback for older browsers / insecure context
-                        if (box) {
-                            box.focus();
-                            box.select();
-                            try {
-                                if (document.execCommand('copy')) ok();
-                                else fail();
-                            } catch (_) { fail(); }
-                        } else fail();
-                    });
-                } else if (box) {
-                    box.focus();
-                    box.select();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(ok).catch(function () {
                     try {
+                        box.focus(); box.select();
                         if (document.execCommand('copy')) ok();
                         else fail();
                     } catch (_) { fail(); }
-                } else {
-                    fail();
-                }
+                });
+            } else {
+                try {
+                    box.focus(); box.select();
+                    if (document.execCommand('copy')) ok();
+                    else fail();
+                } catch (_) { fail(); }
             }
-            if (btn) btn.onclick = doCopy;
         }
 
-        if (typeof openModal === 'function') {
-            openModal(
-                'Share link',
-                noteHtml +
-                '<p style="margin:0 0 8px;font-size:0.9rem;opacity:0.85">Anyone with this link can play — no login needed.</p>' +
-                '<div style="display:flex;gap:8px;align-items:stretch;margin-bottom:8px">' +
-                '<input id="share-url-box" type="text" readonly value="' + safe + '" ' +
-                'style="flex:1;min-width:0;font-size:12px;font-family:monospace;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.18);background:rgba(0,0,0,0.4);color:inherit" />' +
-                '<button type="button" class="btn" id="share-copy-btn" style="white-space:nowrap;padding:10px 16px;font-weight:600">Copy link</button>' +
-                '</div>' +
-                '<p style="margin:0;font-size:0.75rem;opacity:0.65">Tip: the field is already selected — you can also press Ctrl/Cmd+C.</p>',
-                'Done',
-                function () {}
-            );
-            setTimeout(wireCopyUi, 40);
-            setTimeout(wireCopyUi, 120);
-            return;
-        }
+        copyBtn.onclick = function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            copyShareUrl();
+        };
+        closeBtn.onclick = function (e) {
+            e.preventDefault();
+            close();
+        };
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) close();
+        });
 
-        // Absolute last resort
-        window.prompt('Copy this share link:', url);
+        row.appendChild(copyBtn);
+        row.appendChild(closeBtn);
+        card.appendChild(row);
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+
+        setTimeout(function () {
+            try { box.focus(); box.select(); } catch (_) {}
+        }, 50);
     }
 
     /**

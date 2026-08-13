@@ -1327,133 +1327,81 @@ function saveSpriteFromEditor() {
 
 
 
-/** Encode project into a shareable play URL (hash). Free. */
-function encodeSharePayload(obj) {
-    try {
-        return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
-    } catch (_) {
-        return null;
-    }
-}
-function decodeSharePayload(str) {
-    try {
-        return JSON.parse(decodeURIComponent(escape(atob(str))));
-    } catch (_) {
-        try { return JSON.parse(atob(str)); } catch (e2) { return null; }
-    }
-}
 
-function sharePlayLink() {
-    if (!currentProjectName || !projects[currentProjectName]) return;
-    const payload = {
-        v: 1,
-        name: currentProjectName,
-        files: projects[currentProjectName],
-        gamepad: getProjectGamepad(currentProjectName),
-        assets: getProjectAssetMap(currentProjectName)
-    };
-    const encoded = encodeSharePayload(payload);
-    if (!encoded) return alert('Could not build share link');
-    if (encoded.length > 1.8e6) {
-        return alert('Project is too large to put in a link (images?). Remove some PNGs or use Export instead.');
-    }
-    const url = location.origin + location.pathname + location.search + '#play=' + encoded;
-    const doCopy = () => {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            return navigator.clipboard.writeText(url);
-        }
-        const ta = document.createElement('textarea');
-        ta.value = url;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        return Promise.resolve();
-    };
-    doCopy().then(() => {
-        openModal('Share play link',
-            `<p style="font-size:0.9rem;line-height:1.4;margin:0 0 10px">Link copied. Anyone with LuaX can open it and press Play (sign-in still required).</p>
-             <textarea readonly style="width:100%;height:90px;font-size:0.75rem;border-radius:8px;background:#0f1115;color:#ccc;border:1px solid #333;padding:8px">${url.replace(/</g,'&lt;')}</textarea>`,
-            'OK',
-            () => {}
-        );
-    }).catch(() => {
-        prompt('Copy this play link:', url);
-    });
-}
-
-/** Boot helper: open #play=… shared project (or pending from before sign-in) */
-function tryLoadSharedPlay() {
-    try {
-        let raw = null;
-        const h = location.hash || '';
-        if (h.startsWith('#play=')) {
-            raw = h.slice(6);
-            try { sessionStorage.setItem('luax_pending_share', raw); } catch (_) {}
-            try { history.replaceState({}, '', location.pathname + location.search); } catch (_) {}
-        } else {
-            try { raw = sessionStorage.getItem('luax_pending_share'); } catch (_) {}
-        }
-        if (!raw) return false;
-        if (!isAuthed()) return false; // wait until signed in
-        const data = decodeSharePayload(raw);
-        try { sessionStorage.removeItem('luax_pending_share'); } catch (_) {}
-        if (!data || !data.files || !data.files['main.lua']) {
-            alert('Invalid share link');
-            return false;
-        }
-        let name = (data.name || 'Shared').replace(/[^\w \-]/g, '').trim() || 'Shared';
-        if (projects[name]) name = name + '_' + Date.now().toString(36);
-        projects[name] = data.files;
-        setProjectGamepad(name, data.gamepad !== false);
-        if (data.assets && typeof data.assets === 'object') {
-            projectAssets[name] = data.assets;
-            saveProjectAssets();
-        }
-        saveState();
-        currentProjectName = name;
-        return name;
-    } catch (_) {
-        return false;
-    }
-}
+// Share / play links live in src/export-share.js (do not redefine here)
 
 function promptNewFile() {
-    if (!currentProjectName) return alert('Open a project first');
-    if (!LUA_FILE_PRESETS[selectedFilePreset]) selectedFilePreset = 'blank';
+    try {
+        if (!currentProjectName) {
+            alert('Open a project first');
+            return;
+        }
+        const presets = (typeof LUA_FILE_PRESETS !== 'undefined' && LUA_FILE_PRESETS)
+            ? LUA_FILE_PRESETS
+            : {
+                blank: {
+                    name: 'Blank file',
+                    desc: 'Empty script',
+                    code: function (fname) { return '-- ' + fname + '\n'; }
+                }
+            };
+        let presetKey = (typeof selectedFilePreset !== 'undefined' && presets[selectedFilePreset])
+            ? selectedFilePreset
+            : 'blank';
+        if (typeof selectedFilePreset !== 'undefined') selectedFilePreset = presetKey;
 
-    const presetHtml = Object.keys(LUA_FILE_PRESETS).map(k => {
-        const p = LUA_FILE_PRESETS[k];
-        const sel = k === selectedFilePreset ? ' selected' : '';
-        return `<button type="button" class="file-preset-btn${sel}" data-preset="${k}" onclick="selectFilePreset('${k}')">` +
-            `${p.name}<span class="fp-desc">${p.desc}</span></button>`;
-    }).join('');
+        const presetHtml = Object.keys(presets).map(function (k) {
+            const p = presets[k];
+            const sel = k === presetKey ? ' selected' : '';
+            return '<button type="button" class="file-preset-btn' + sel + '" data-preset="' + k +
+                '" onclick="selectFilePreset(\'' + k + '\')">' +
+                p.name + '<span class="fp-desc">' + (p.desc || '') + '</span></button>';
+        }).join('');
 
-    openModal('New Lua File',
-        `<input type="text" id="modal-input" placeholder="e.g. player.lua" autocomplete="off">
-         <div style="font-size:0.85rem;color:#888;margin:10px 0 6px">Preset</div>
-         <div class="template-list">${presetHtml}</div>`,
-        'Create',
-        () => {
-            let name = (document.getElementById('modal-input').value || '').trim();
-            if (!name) return alert('Enter a file name');
+        if (typeof openModal !== 'function') {
+            let name = prompt('New Lua file name (e.g. player.lua)');
+            if (!name) return;
+            name = name.trim();
             if (!name.endsWith('.lua')) name += '.lua';
             if (projects[currentProjectName][name]) return alert('File exists');
-
-            const preset = LUA_FILE_PRESETS[selectedFilePreset] || LUA_FILE_PRESETS.blank;
-            let code;
-            try {
-                code = preset.code(name);
-            } catch (_) {
-                code = '-- ' + name + '\n';
-            }
-            projects[currentProjectName][name] = code;
-            saveState();
-            renderFiles();
-            // open it in the editor
+            projects[currentProjectName][name] = '-- ' + name + '\n';
+            if (typeof saveState === 'function') saveState();
+            if (typeof renderFiles === 'function') renderFiles();
             try { openFile(name); } catch (_) {}
+            return;
         }
-    );
+
+        openModal(
+            'New Lua File',
+            '<input type="text" id="modal-input" placeholder="e.g. player.lua" autocomplete="off">' +
+            '<div style="font-size:0.85rem;color:#888;margin:10px 0 6px">Preset</div>' +
+            '<div class="template-list">' + presetHtml + '</div>',
+            'Create',
+            function () {
+                let name = (document.getElementById('modal-input').value || '').trim();
+                if (!name) return alert('Enter a file name');
+                if (!name.endsWith('.lua')) name += '.lua';
+                if (projects[currentProjectName][name]) return alert('File exists');
+                const key = (typeof selectedFilePreset !== 'undefined' && presets[selectedFilePreset])
+                    ? selectedFilePreset
+                    : 'blank';
+                const preset = presets[key] || presets.blank;
+                let code;
+                try {
+                    code = typeof preset.code === 'function' ? preset.code(name) : ('-- ' + name + '\n');
+                } catch (_) {
+                    code = '-- ' + name + '\n';
+                }
+                projects[currentProjectName][name] = code;
+                if (typeof saveState === 'function') saveState();
+                if (typeof renderFiles === 'function') renderFiles();
+                try { openFile(name); } catch (_) {}
+            }
+        );
+    } catch (err) {
+        console.error('promptNewFile', err);
+        alert('Could not create file: ' + (err && err.message ? err.message : err));
+    }
 }
 
 function deleteFile(e, name) {
@@ -1558,3 +1506,8 @@ function handleLuaImport(ev) {
     reader.readAsText(file);
 }
 
+window.promptNewFile = promptNewFile;
+window.deleteFile = deleteFile;
+if (typeof importLuaFile === "function") window.importLuaFile = importLuaFile;
+if (typeof handleLuaImport === "function") window.handleLuaImport = handleLuaImport;
+if (typeof selectFilePreset === "function") window.selectFilePreset = selectFilePreset;
