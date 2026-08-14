@@ -1,4 +1,4 @@
-/* 2D Scene editor — canvas top, tools 2x3, scale, wide spectrum, emoji tabs right */
+/* 2D Scene editor — canvas top, compact 2x3 tools, brush SCALE, spectrum, emoji tabs */
 #scene-editor-view.view {
     display: none !important;
     flex-direction: column;
@@ -42,6 +42,7 @@
     display: flex;
     gap: 4px;
     flex-shrink: 0;
+    margin-left: auto;
     margin-right: 4px;
 }
 .scn-header .scn-zoom-group .btn {
@@ -87,21 +88,25 @@
     background: var(--panel-color, #1a1c24);
     max-height: 42vh;
     z-index: 3;
+    overflow: hidden;
 }
 
-.scn-editbar-top,
-.scn-editbar-row {
-    display: flex;
-    align-items: stretch;
+.scn-editbar-top { display: none !important; }
+
+.scn-editbar-row,
+#scn-panel-paint {
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
     gap: 8px;
     min-width: 0;
+    flex-wrap: nowrap;
 }
 
 .scn-tools-scale {
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
     flex-shrink: 0;
 }
 
@@ -110,9 +115,9 @@
     display: grid !important;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: repeat(3, auto);
-    gap: 4px;
+    gap: 3px;
     flex: 0 0 auto;
-    width: auto;
+    width: 72px;
     min-width: 0;
     overflow: visible;
 }
@@ -120,12 +125,15 @@
     border: 1px solid var(--glass-border, rgba(255,255,255,0.12));
     background: var(--panel-2, #16181f);
     color: var(--text-color, #e8ecf4);
-    border-radius: 8px;
-    padding: 6px 8px;
-    font-size: 0.68rem;
+    border-radius: 7px;
+    padding: 0 !important;
+    font-size: 0.62rem !important;
     cursor: pointer;
-    min-width: 40px;
+    min-width: 0 !important;
+    width: 34px !important;
+    height: 26px !important;
     text-align: center;
+    line-height: 1;
 }
 .scn-tool.active {
     border-color: var(--accent-color, #a78bfa);
@@ -135,38 +143,38 @@
 
 .scn-scale-row {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
+    flex-direction: row;
+    align-items: center;
     gap: 4px;
     flex-shrink: 0;
-    min-width: 72px;
+    min-width: 0;
 }
 .scn-scale-tag {
-    font-size: 0.58rem;
+    font-size: 0.55rem;
     font-weight: 700;
     text-transform: uppercase;
     color: var(--muted, #9aa3b5);
-    text-align: center;
 }
-.scn-scale-row input[type="range"] { width: 72px; }
-.scn-scale-row span {
-    font-size: 0.68rem;
+.scn-scale-row input[type="range"] { width: 56px; height: 16px; margin: 0; }
+#scn-scale-label {
+    font-size: 0.65rem;
     color: var(--muted, #9aa3b5);
-    text-align: center;
+    min-width: 20px;
 }
 
 .scn-color-strip {
-    display: flex;
+    display: flex !important;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex: 1 1 auto;
     min-width: 0;
+    max-width: calc(100% - 130px);
+    overflow: hidden;
 }
 .scn-color-active {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
     border: 2px solid #fff;
     box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
     flex-shrink: 0;
@@ -174,16 +182,16 @@
 .scn-spectrum-compact {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     flex: 1 1 auto;
-    min-width: 140px;
-    max-width: none;
+    min-width: 0;
+    max-width: 200px;
 }
 .scn-spectrum-preview { display: none !important; }
 .scn-sv {
     position: relative;
     width: 100%;
-    height: 88px;
+    height: 70px;
     border-radius: 6px;
     border: 1px solid rgba(255,255,255,0.12);
     cursor: crosshair;
@@ -203,7 +211,7 @@
 .scn-hue {
     width: 100%;
     margin: 0;
-    height: 14px;
+    height: 12px;
     -webkit-appearance: none;
     appearance: none;
     border-radius: 6px;
@@ -212,30 +220,16 @@
 }
 .scn-hue::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     background: #fff;
     border: 1px solid #333;
     cursor: pointer;
 }
-.scn-hex-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-}
-.scn-hex-input {
-    width: 72px;
-    background: var(--panel-2, #16181f);
-    border: 1px solid var(--glass-border, rgba(255,255,255,0.12));
-    border-radius: 6px;
-    color: var(--text-color, #e8ecf4);
-    font-size: 0.68rem;
-    font-family: ui-monospace, monospace;
-    padding: 4px 5px;
-}
-.scn-paint-grid { display: none !important; }
+.scn-hex-row,
+.scn-paint-grid,
+.scn-hex-input { display: none !important; }
 
 .scn-tabs {
     display: flex;
@@ -243,22 +237,22 @@
     flex-shrink: 0;
     gap: 4px;
     margin-left: auto;
-    width: 48px;
+    width: 40px;
 }
 .scn-tab {
     border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
     background: transparent;
     color: var(--muted, #9aa3b5);
-    font-size: 1.2rem;
-    padding: 10px 6px;
+    font-size: 1.05rem;
+    padding: 0;
     cursor: pointer;
     line-height: 1;
-    border-radius: 10px;
-    flex: 1;
+    border-radius: 9px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 40px;
 }
 .scn-tab.active {
     color: #fff;
@@ -269,23 +263,21 @@
 .scn-panel { display: none; min-width: 0; }
 .scn-panel.active { display: block; }
 
+#scene-editor-view.scn-mode-sprites #scn-panel-paint,
 .scn-editbar.scn-mode-sprites .scn-tools-scale,
 .scn-editbar.scn-mode-sprites .scn-color-strip {
     display: none !important;
 }
+#scene-editor-view.scn-mode-sprites #scn-panel-sprites,
 .scn-editbar.scn-mode-sprites #scn-panel-sprites {
     display: block !important;
     flex: 1 1 auto;
     min-width: 0;
-    max-height: none;
 }
 .scn-editbar.scn-mode-sprites #scn-palette-list,
 .scn-editbar.scn-mode-sprites .scn-palette-list-h {
     max-height: 140px;
     flex-wrap: wrap;
-}
-.scn-editbar.scn-mode-paint #scn-panel-sprites {
-    display: none !important;
 }
 
 .scn-palette-list-h,
@@ -353,7 +345,8 @@
 .scn-hint { font-size: 0.62rem; color: var(--muted, #9aa3b5); flex-shrink: 0; }
 
 @media (max-width: 480px) {
-    .scn-sv { height: 72px; }
+    .scn-sv { height: 64px; }
     .scn-editbar { max-height: 46vh; }
-    .scn-tabs { width: 44px; }
+    .scn-tabs { width: 38px; }
+    .scn-spectrum-compact { max-width: 160px; }
 }
