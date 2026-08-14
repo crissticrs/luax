@@ -1,27 +1,23 @@
-// scene-editor-layout.js — compact arrange; Size = brush; sprites replaces paint
+// scene-editor-layout.js — light polish; SCALE = brush size only
 (function () {
   function $(id) { return document.getElementById(id); }
 
   function setMode(mode) {
+    var view = $('scene-editor-view');
     var editbar = $('scn-editbar');
-    if (!editbar) return;
-    editbar.classList.toggle('scn-mode-sprites', mode === 'sprites');
-    editbar.classList.toggle('scn-mode-paint', mode !== 'sprites');
-    var spritesPanel = $('scn-panel-sprites');
+    if (view) view.classList.toggle('scn-mode-sprites', mode === 'sprites');
+    if (editbar) {
+      editbar.classList.toggle('scn-mode-sprites', mode === 'sprites');
+      editbar.classList.toggle('scn-mode-paint', mode !== 'sprites');
+    }
+    var paint = $('scn-panel-paint');
+    var sprites = $('scn-panel-sprites');
     if (mode === 'sprites') {
-      if (spritesPanel) {
-        spritesPanel.style.display = 'block';
-        spritesPanel.classList.add('active');
-        var row = editbar.querySelector('.scn-editbar-row');
-        if (row && spritesPanel.parentElement !== row) {
-          var tabs = row.querySelector('.scn-tabs');
-          if (tabs) row.insertBefore(spritesPanel, tabs);
-          else row.appendChild(spritesPanel);
-        }
-      }
-    } else if (spritesPanel) {
-      spritesPanel.style.display = 'none';
-      spritesPanel.classList.remove('active');
+      if (paint) { paint.classList.remove('active'); paint.style.display = 'none'; }
+      if (sprites) { sprites.classList.add('active'); sprites.style.display = 'block'; }
+    } else {
+      if (paint) { paint.classList.add('active'); paint.style.display = ''; }
+      if (sprites) { sprites.classList.remove('active'); sprites.style.display = 'none'; }
     }
   }
 
@@ -40,89 +36,36 @@
     });
   }
 
+  function bindScale() {
+    var scale = $('scn-obj-scale');
+    if (!scale || scale._luaxBrush) return;
+    scale._luaxBrush = true;
+    scale.addEventListener('input', function () {
+      var v = parseInt(scale.value, 10) || 1;
+      if (typeof window.__scnSetBrushScale === 'function') window.__scnSetBrushScale(v);
+      var lab = $('scn-scale-label');
+      if (lab) lab.textContent = v + '\u00d7';
+    });
+  }
+
   function arrange() {
     var view = $('scene-editor-view');
     if (!view) return;
     wireTabs();
-
+    bindScale();
+    var tag = view.querySelector('.scn-scale-tag');
+    if (tag) tag.textContent = 'SCALE';
+    var prev = $('scn-spectrum-preview');
+    if (prev) prev.style.display = 'none';
     var header = view.querySelector('.scn-header');
-    var editbar = $('scn-editbar');
-    if (!header || !editbar) return;
-
     var zoom = view.querySelector('.scn-zoom-group');
-    if (zoom && zoom.parentElement !== header) {
+    if (header && zoom && zoom.parentElement !== header) {
       var del = $('scn-delete-obj');
       if (del) header.insertBefore(zoom, del);
       else header.appendChild(zoom);
     }
-
-    var prev = $('scn-spectrum-preview');
-    if (prev) prev.style.display = 'none';
-
-    var tag = editbar.querySelector('.scn-scale-tag');
-    if (tag) tag.textContent = 'Size';
-
-    var scale = $('scn-obj-scale');
-    if (scale && !scale._luaxBrush) {
-      scale._luaxBrush = true;
-      scale.addEventListener('input', function () {
-        var v = parseInt(scale.value, 10) || 1;
-        if (typeof window.__scnSetBrushScale === 'function') window.__scnSetBrushScale(v);
-        var lab = $('scn-scale-label');
-        if (lab) lab.textContent = v + '\u00d7';
-      });
-    }
-
-    if (editbar.querySelector('.scn-editbar-row')) {
-      var active = view.querySelector('.scn-tab.active');
-      setMode(active && active.getAttribute('data-scn-tab') === 'sprites' ? 'sprites' : 'paint');
-      return;
-    }
-
-    var tools = $('scn-tools');
-    var tabs = editbar.querySelector('.scn-tabs');
-    var paintPanel = $('scn-panel-paint');
-    var spritesPanel = $('scn-panel-sprites');
-    var footer = editbar.querySelector('.scn-editbar-footer');
-    var colorStrip = editbar.querySelector('.scn-color-strip');
-    var scaleRow = editbar.querySelector('.scn-scale-row');
-    if (!scaleRow && paintPanel) scaleRow = paintPanel.querySelector('.scn-scale-row');
-    if (!colorStrip && paintPanel) colorStrip = paintPanel.querySelector('.scn-color-strip');
-    if (!tools) return;
-
-    function take(el) {
-      if (el && el.parentNode) el.parentNode.removeChild(el);
-      return el;
-    }
-    tools = take(tools);
-    scaleRow = take(scaleRow);
-    colorStrip = take(colorStrip);
-    tabs = take(tabs);
-    paintPanel = take(paintPanel);
-    spritesPanel = take(spritesPanel);
-    footer = take(footer);
-
-    var row = document.createElement('div');
-    row.className = 'scn-editbar-row';
-    var toolsScale = document.createElement('div');
-    toolsScale.className = 'scn-tools-scale';
-    toolsScale.appendChild(tools);
-    if (scaleRow) toolsScale.appendChild(scaleRow);
-    row.appendChild(toolsScale);
-    if (colorStrip) row.appendChild(colorStrip);
-    if (spritesPanel) row.appendChild(spritesPanel);
-    if (tabs) row.appendChild(tabs);
-
-    editbar.innerHTML = '';
-    editbar.appendChild(row);
-    if (paintPanel) {
-      paintPanel.style.display = 'none';
-      editbar.appendChild(paintPanel);
-    }
-    if (footer) editbar.appendChild(footer);
-
-    setMode('paint');
-    wireTabs();
+    var active = view.querySelector('.scn-tab.active');
+    setMode(active && active.getAttribute('data-scn-tab') === 'sprites' ? 'sprites' : 'paint');
   }
 
   function hook() {
@@ -131,8 +74,8 @@
       if (typeof o === 'function' && !o._luaxArrange) {
         window.openSceneEditor = function () {
           var r = o.apply(this, arguments);
-          setTimeout(arrange, 20);
-          setTimeout(arrange, 120);
+          setTimeout(arrange, 30);
+          setTimeout(arrange, 150);
           return r;
         };
         window.openSceneEditor._luaxArrange = true;
