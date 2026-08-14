@@ -1,6 +1,35 @@
-// scene-editor-layout.js — light polish; SCALE = brush size only
+// scene-editor-layout.js — Create menu inject + layout polish (no gzip dependency)
 (function () {
   function $(id) { return document.getElementById(id); }
+
+  function injectCreateMenu() {
+    var menu = $('files-menu-create');
+    if (!menu) return false;
+    if (menu.querySelector('[data-scn-create]')) return true;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('data-scn-create', '1');
+    btn.textContent = '+ Scene (2D)';
+    btn.onclick = function () {
+      try { if (typeof closeFilesMenus === 'function') closeFilesMenus(); } catch (_) {}
+      if (typeof window.promptNewScene === 'function') {
+        window.promptNewScene();
+        return;
+      }
+      if (typeof window.openSceneEditor === 'function') {
+        var name = prompt('Scene name:', 'level1');
+        if (!name) return;
+        var fn = name.trim().replace(/[^\w\- ]+/g, '');
+        if (!fn) return;
+        if (!fn.endsWith('.scene')) fn += '.scene';
+        window.openSceneEditor(fn, true);
+        return;
+      }
+      alert('Scene editor is still loading — wait a second and try again.');
+    };
+    menu.appendChild(btn);
+    return true;
+  }
 
   function setMode(mode) {
     var view = $('scene-editor-view');
@@ -68,7 +97,7 @@
     setMode(active && active.getAttribute('data-scn-tab') === 'sprites' ? 'sprites' : 'paint');
   }
 
-  function hook() {
+  function hookOpenScene() {
     try {
       var o = window.openSceneEditor;
       if (typeof o === 'function' && !o._luaxArrange) {
@@ -81,12 +110,30 @@
         window.openSceneEditor._luaxArrange = true;
       }
     } catch (_) {}
+  }
+
+  function tick() {
+    injectCreateMenu();
+    hookOpenScene();
     arrange();
   }
 
+  tick();
+  var tries = 0;
+  var t = setInterval(function () {
+    tries++;
+    tick();
+    if (tries > 60) clearInterval(t);
+  }, 500);
+
+  try {
+    var mo = new MutationObserver(function () { injectCreateMenu(); });
+    mo.observe(document.documentElement, { childList: true, subtree: true });
+  } catch (_) {}
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { setTimeout(hook, 200); });
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(tick, 100); });
   } else {
-    setTimeout(hook, 200);
+    setTimeout(tick, 100);
   }
 })();

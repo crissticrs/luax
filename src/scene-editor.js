@@ -1,4 +1,4 @@
-// scene-editor.js — loads gzip from p0..p3 base64 packs
+// scene-editor.js — loads gzip from p0..p3; cache-bust v32
 (function () {
   function boot(code) {
     var s = document.createElement("script");
@@ -9,7 +9,10 @@
   try {
     if (typeof DecompressionStream === "undefined") return fail("no DecompressionStream");
     Promise.all([0,1,2,3].map(function (i) {
-      return fetch("src/scene-editor-p" + i + ".txt").then(function (r) { return r.text(); });
+      return fetch("src/scene-editor-p" + i + ".txt?v=32").then(function (r) {
+        if (!r.ok) throw new Error("pack " + i + " " + r.status);
+        return r.text();
+      });
     })).then(function (parts) {
       var bin = atob(parts.join("").replace(/\s/g, ""));
       var bytes = new Uint8Array(bin.length);
