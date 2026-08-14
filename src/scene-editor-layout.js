@@ -1,4 +1,4 @@
-// scene-editor-layout.js — tools 2x3 | scale | spectrum | tabs right; sprites replaces paint
+// scene-editor-layout.js — compact arrange; Size = brush; sprites replaces paint
 (function () {
   function $(id) { return document.getElementById(id); }
 
@@ -7,10 +7,8 @@
     if (!editbar) return;
     editbar.classList.toggle('scn-mode-sprites', mode === 'sprites');
     editbar.classList.toggle('scn-mode-paint', mode !== 'sprites');
-    var paintPanel = $('scn-panel-paint');
     var spritesPanel = $('scn-panel-sprites');
     if (mode === 'sprites') {
-      if (paintPanel) paintPanel.style.display = 'none';
       if (spritesPanel) {
         spritesPanel.style.display = 'block';
         spritesPanel.classList.add('active');
@@ -21,11 +19,9 @@
           else row.appendChild(spritesPanel);
         }
       }
-    } else {
-      if (spritesPanel) {
-        spritesPanel.style.display = 'none';
-        spritesPanel.classList.remove('active');
-      }
+    } else if (spritesPanel) {
+      spritesPanel.style.display = 'none';
+      spritesPanel.classList.remove('active');
     }
   }
 
@@ -47,7 +43,6 @@
   function arrange() {
     var view = $('scene-editor-view');
     if (!view) return;
-
     wireTabs();
 
     var header = view.querySelector('.scn-header');
@@ -63,6 +58,9 @@
 
     var prev = $('scn-spectrum-preview');
     if (prev) prev.style.display = 'none';
+
+    var tag = editbar.querySelector('.scn-scale-tag');
+    if (tag) tag.textContent = 'Size';
 
     var scale = $('scn-obj-scale');
     if (scale && !scale._luaxBrush) {
@@ -106,7 +104,6 @@
 
     var row = document.createElement('div');
     row.className = 'scn-editbar-row';
-
     var toolsScale = document.createElement('div');
     toolsScale.className = 'scn-tools-scale';
     toolsScale.appendChild(tools);
@@ -135,7 +132,7 @@
         window.openSceneEditor = function () {
           var r = o.apply(this, arguments);
           setTimeout(arrange, 20);
-          setTimeout(arrange, 100);
+          setTimeout(arrange, 120);
           return r;
         };
         window.openSceneEditor._luaxArrange = true;
