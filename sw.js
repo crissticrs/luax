@@ -1,5 +1,5 @@
 /* LuaX service worker */
-const CACHE_VERSION = 'luax-v34';
+const CACHE_VERSION = 'luax-v35';
 const SHELL_CACHE = CACHE_VERSION + '-shell';
 const CDN_CACHE = CACHE_VERSION + '-cdn';
 
@@ -12,7 +12,7 @@ const SHELL_URLS = [
   './src/auth.js', './src/billing.js', './src/cloud-sync.js',
   './src/editor.js', './src/assets-panel.js', './src/assets-panel-boot.js',
   './src/swipe-list.js', './src/scene-editor.js', './src/scene-editor-layout.js',
-  './src/scn_b64_0.txt', './src/scn_b64_1.txt', './src/scn_b64_2.txt',
+  './src/scn_part0.js', './src/scn_part1.js', './src/scn_part2.js', './src/scn_part3.js',
   './src/scene-play.js', './src/play-mode.js', './src/perf-tune.js',
   './src/export-share.js', './src/app.js', './src/error-tracking.js', './src/xss-guard.js',
 ];
