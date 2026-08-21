@@ -1,5 +1,5 @@
 /* LuaX service worker */
-const CACHE_VERSION = 'luax-v41';
+const CACHE_VERSION = 'luax-v42';
 const SHELL_CACHE = CACHE_VERSION + '-shell';
 const CDN_CACHE = CACHE_VERSION + '-cdn';
 
@@ -28,12 +28,25 @@ const CDN_URLS = [
   'https://cdn.jsdelivr.net/npm/fengari-web@0.1.4/dist/fengari-web.js',
 ];
 
+/** fetch with hard timeout so weak mobile networks cannot hang the SW forever */
+function fetchWithTimeout(request, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => {
+    try { ctrl.abort(); } catch (_) {}
+  }, ms);
+  return fetch(request, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const shell = await caches.open(SHELL_CACHE);
-    await Promise.all(SHELL_URLS.map((url) => shell.add(url).catch(() => {})));
+    await Promise.all(SHELL_URLS.map((url) =>
+      fetchWithTimeout(url, 8000).then((r) => r && r.ok ? shell.put(url, r) : null).catch(() => {})
+    ));
     const cdn = await caches.open(CDN_CACHE);
-    await Promise.all(CDN_URLS.map((url) => cdn.add(url).catch(() => {})));
+    await Promise.all(CDN_URLS.map((url) =>
+      fetchWithTimeout(url, 10000).then((r) => r && r.ok ? cdn.put(url, r) : null).catch(() => {})
+    ));
     self.skipWaiting();
   })());
 });
@@ -72,43 +85,52 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = req.url;
   if (shouldBypass(url)) return;
+
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     event.respondWith((async () => {
       try {
-        const fresh = await fetch(req);
-        const cache = await caches.open(SHELL_CACHE);
-        cache.put('./index.html', fresh.clone()).catch(() => {});
-        return fresh;
-      } catch (_) {
-        const cache = await caches.open(SHELL_CACHE);
-        return (await cache.match('./index.html')) || (await cache.match('./')) || new Response('LuaX offline', { status: 503 });
-      }
+        const fresh = await fetchWithTimeout(req, 6000);
+        if (fresh && fresh.ok) {
+          const cache = await caches.open(SHELL_CACHE);
+          cache.put('./index.html', fresh.clone()).catch(() => {});
+          return fresh;
+        }
+      } catch (_) {}
+      const cache = await caches.open(SHELL_CACHE);
+      return (await cache.match('./index.html')) || (await cache.match('./')) || new Response('LuaX offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
     })());
     return;
   }
+
   if (isSameOrigin(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(SHELL_CACHE);
       const cached = await cache.match(req);
-      const networkPromise = fetch(req).then((res) => {
+      const networkPromise = fetchWithTimeout(req, 8000).then((res) => {
         if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
       }).catch(() => null);
-      if (cached) { networkPromise.catch(() => {}); return cached; }
+      if (cached) {
+        networkPromise.catch(() => {});
+        return cached;
+      }
       return (await networkPromise) || new Response('', { status: 504 });
     })());
     return;
   }
+
   if (isCdn(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(CDN_CACHE);
       const cached = await cache.match(req);
       if (cached) return cached;
       try {
-        const res = await fetch(req);
+        const res = await fetchWithTimeout(req, 10000);
         if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
-      } catch (_) { return new Response('', { status: 504 }); }
+      } catch (_) {
+        return new Response('', { status: 504 });
+      }
     })());
   }
 });
