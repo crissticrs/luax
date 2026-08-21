@@ -4,7 +4,7 @@
 
 LuaX is a free, single-page game editor + runtime. Write Lua, draw pixel sprites, compose chiptune music, and press Play — all in your browser. No install, no build step.
 
-**Live app:** [https://crissticrs.github.io/luax/](https://crissticrs.github.io/luax/)
+**Live app:** [https://luax.pages.dev](https://luax.pages.dev)
 
 ---
 
@@ -28,7 +28,7 @@ Editing and playing are free. Credits are only used for cloud backup and project
 
 ## Quick start
 
-1. Open [https://crissticrs.github.io/luax/](https://crissticrs.github.io/luax/)
+1. Open [https://luax.pages.dev](https://luax.pages.dev)
 2. Sign in with Google
 3. Create a project (pick a template or start empty)
 4. Edit `main.lua` (and other files)
@@ -126,7 +126,7 @@ The app is intentionally a **single-file** experience for users — open the URL
 - **Audio:** Web Audio API
 - **Auth / cloud:** Google Identity + Drive `appDataFolder`
 - **Billing:** Stripe (Checkout + Customer Portal)
-- **Hosting:** GitHub Pages + Cloudflare Worker
+- **Hosting:** Cloudflare Pages (`luax.pages.dev`) + Cloudflare Worker
 
 ---
 
