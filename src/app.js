@@ -1,4 +1,4 @@
-// Bootstrap: app shell + assets + swipe + 2D scene editor + scene play API
+// Bootstrap: self-hosted shell + local modules (Cloudflare Pages only — no GitHub Pages / CDN pin)
 (function () {
   function loadScript(src, onload) {
     var s = document.createElement('script');
@@ -8,7 +8,7 @@
     s.onerror = function () { console.error('Failed to load', src); };
     document.head.appendChild(s);
   }
-  loadScript('https://cdn.jsdelivr.net/gh/crissticrs/luax@8c55ba56424525049fd85f3b27d3e2e3a4ab3f10/src/app.js', function () {
+  loadScript('src/app-shell.js', function () {
     try {
       if (typeof renderFiles === 'function') {
         var _rf = renderFiles;
