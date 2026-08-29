@@ -565,8 +565,16 @@ function showRestoreOverlay() {
             '<button type="button" id="luax-restore-signin" style="width:100%;margin-bottom:10px;min-height:48px;border:none;border-radius:12px;background:#8b5cf6;color:#fff;font-size:1rem;font-weight:600;pointer-events:auto;touch-action:manipulation">Sign in with Google</button>' +
             '<button type="button" id="luax-restore-cancel" style="width:100%;min-height:48px;border:none;border-radius:12px;background:#2a2a35;color:#ddd;font-size:0.95rem;pointer-events:auto;touch-action:manipulation">Cancel</button>' +
             '</div>';
-        el.addEventListener('click', function (e) { e.stopPropagation(); }, true);
-        el.addEventListener('touchend', function (e) { e.stopPropagation(); }, true);
+        // Only stopPropagation on the backdrop itself — never block the buttons
+        // (capture-phase stop on the parent was swallowing taps on Sign in / Cancel).
+        el.addEventListener('click', function (e) {
+            if (e.target === el) e.stopPropagation();
+        }, true);
+        el.addEventListener('touchend', function (e) {
+            if (e.target === el) {
+                try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+            }
+        }, { capture: true, passive: false });
         document.body.appendChild(el);
         bindTap(document.getElementById('luax-restore-signin'), function () {
             authRefreshing = false;
