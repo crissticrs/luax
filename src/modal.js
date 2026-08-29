@@ -1,23 +1,7 @@
-// Load error tracking (Sentry + local log) as early as possible
-(function loadErrorTracking() {
-    if (window.reportError) return;
-    try {
-        var s = document.createElement('script');
-        s.src = 'src/error-tracking.js';
-        s.async = false;
-        (document.head || document.documentElement).appendChild(s);
-    } catch (_) {}
-})();
-
-// Load XSS guard (hardens esc for project/file names in onclick)
-(function loadXssGuard() {
-    try {
-        var s = document.createElement('script');
-        s.src = 'src/xss-guard.js';
-        s.async = false;
-        (document.head || document.documentElement).appendChild(s);
-    } catch (_) {}
-})();
+// error-tracking.js and xss-guard.js are loaded as plain <script> tags near
+// the top of index.html now (previously injected dynamically from here with
+// no error handling — see index.html boot watchdog comment for why that
+// pattern was removed).
 
 // ============================================================
 // MODAL + TOAST SYSTEM (themed — replaces native alert/confirm)
