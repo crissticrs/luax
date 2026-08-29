@@ -19,6 +19,44 @@
     <link rel="stylesheet" href="styles/main.css">
     <link rel="manifest" href="site.webmanifest">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+    <script>
+    // Boot watchdog: if the app hasn't finished loading its scripts within
+    // BOOT_TIMEOUT_MS, show a visible retry banner instead of leaving the
+    // page silently stuck. window.__luaxMarkBooted() is called once by the
+    // last script in the chain (src/app.js) when everything has loaded.
+    (function () {
+        var BOOT_TIMEOUT_MS = 12000;
+        var booted = false;
+        var timer = setTimeout(function () {
+            if (booted) return;
+            try {
+                var bar = document.createElement('div');
+                bar.setAttribute('style',
+                    'position:fixed;left:0;right:0;bottom:0;z-index:99999;' +
+                    'background:#2a1a1a;color:#fff;font:14px/1.4 -apple-system,system-ui,sans-serif;' +
+                    'padding:12px 16px;display:flex;align-items:center;justify-content:space-between;' +
+                    'gap:12px;border-top:1px solid #ff6b6b;');
+                var msg = document.createElement('span');
+                msg.textContent = "LuaX is taking longer than usual to load. This is usually a network hiccup.";
+                var btn = document.createElement('button');
+                btn.textContent = 'Retry';
+                btn.setAttribute('style',
+                    'background:#ff6b6b;color:#1a1a1a;border:none;border-radius:6px;' +
+                    'padding:8px 14px;font-weight:600;flex-shrink:0;');
+                btn.onclick = function () { window.location.reload(); };
+                bar.appendChild(msg);
+                bar.appendChild(btn);
+                document.body.appendChild(bar);
+            } catch (_) {}
+        }, BOOT_TIMEOUT_MS);
+
+        window.__luaxMarkBooted = function () {
+            booted = true;
+            clearTimeout(timer);
+        };
+    })();
+    </script>
 </head>
 <body>
 
@@ -507,6 +545,8 @@
 
 
 <!-- Modular LuaX sources -->
+<script src="src/error-tracking.js"></script>
+<script src="src/xss-guard.js"></script>
 <script src="src/icons.js"></script>
 <script src="src/templates.js"></script>
 <script src="src/storage.js"></script>
@@ -520,6 +560,29 @@
 <script src="src/play-mode.js"></script>
 <script src="src/perf-tune.js"></script>
 <script src="src/export-share.js"></script>
+<script src="src/app-shell.js"></script>
+<script>
+// Wrap renderFiles (defined in app-shell.js) so the assets panel refreshes
+// after every file-list render. Kept as its own step, same as before.
+(function () {
+    try {
+        if (typeof renderFiles === 'function') {
+            var _rf = renderFiles;
+            renderFiles = function () {
+                var r = _rf.apply(this, arguments);
+                try { if (typeof refreshAssetsPanel === 'function') refreshAssetsPanel(); } catch (_) {}
+                return r;
+            };
+        }
+    } catch (_) {}
+})();
+</script>
+<script src="src/assets-panel.js"></script>
+<script src="src/assets-panel-boot.js"></script>
+<script src="src/swipe-list.js"></script>
+<script src="src/scene-editor.js"></script>
+<script src="src/scene-editor-layout.js"></script>
+<script src="src/scene-play.js"></script>
 <script src="src/app.js"></script>
 
 <script>
