@@ -108,15 +108,21 @@
                 <nav class="lx-side-nav">
                     <button class="lx-side-item active" data-nav="projects" onclick="lxNav('projects')"><i class="lx-ico" data-ico="folder"></i> Projects</button>
                     <button class="lx-side-item" data-nav="templates" onclick="lxNav('templates')"><i class="lx-ico" data-ico="layers"></i> Templates</button>
-                    <button class="lx-side-item" data-nav="settings" onclick="lxNav('settings')"><i class="lx-ico" data-ico="gear"></i> Settings</button>
+                    <div class="lx-side-sep" aria-hidden="true"></div>
+                    <button class="lx-side-item" data-nav="create-music" onclick="lxDesktopCreate('music')"><i class="lx-ico" data-ico="music"></i> Music</button>
+                    <button class="lx-side-item" data-nav="create-scene" onclick="lxDesktopCreate('scene')"><i class="lx-ico" data-ico="scene"></i> Scene 2D</button>
+                    <button class="lx-side-item" data-nav="create-draw" onclick="lxDesktopCreate('draw')"><i class="lx-ico" data-ico="image"></i> Draw Image</button>
+                    <div class="lx-side-sep" aria-hidden="true"></div>
+                    <button class="lx-side-item" data-nav="import" onclick="lxDesktopCreate('import')"><i class="lx-ico" data-ico="import"></i> Import</button>
                 </nav>
-                <div class="lx-side-footer">
-                    <button type="button" class="profile-circle" id="profile-chip-side" onclick="toggleAccountMenu(event)" title="Account" aria-label="Account menu">
+                <button type="button" class="lx-side-footer lx-side-account" id="lx-side-account-btn" onclick="toggleAccountMenu(event)" title="Account &amp; settings" aria-label="Account menu">
+                    <span class="profile-circle" id="profile-chip-side">
                         <img class="profile-avatar" id="profile-avatar-side" alt="" src="" style="display:none">
                         <span class="profile-avatar placeholder" id="profile-avatar-ph-side"><i class="lx-ico" data-ico="user"></i></span>
-                    </button>
-                    <div class="lx-side-user" id="lx-side-user">Guest</div>
-                </div>
+                    </span>
+                    <span class="lx-side-user" id="lx-side-user">Guest</span>
+                    <span class="lx-side-account-hint">Settings</span>
+                </button>
             </aside>
 
             <div class="lx-main">
@@ -150,6 +156,7 @@
                     <div class="account-menu-user" id="account-menu-user">Not signed in</div>
                     <div class="account-credits" id="account-credits-line">Credits: —</div>
                     <button class="btn btn-sm btn-block" id="account-signin-btn" onclick="googleSignInOrOut(); closeAccountMenu();">Sign in with Google</button>
+                    <button class="btn btn-sm btn-block desktop-only" id="account-settings-btn" onclick="closeAccountMenu(); lxNav('settings');">Settings</button>
                     <button class="btn btn-sm btn-block btn-primary" id="account-sub-btn" onclick="openSubscriptionInfo();">LuaX Pro — €5/mo</button>
                 </div>
 
