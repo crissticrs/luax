@@ -280,7 +280,7 @@ function applyAuthGate() {
     updateProfileUI();
 }
 
-function loginWithGoogle() {
+function loginWithGoogle(opts) {
     const errEl = document.getElementById('login-error');
     if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
     const client = ensureGoogleTokenClient(false);
@@ -292,8 +292,11 @@ function loginWithGoogle() {
         return;
     }
     armLoginPendingTimeout();
+    // Prefer silent/select_account when we already know the user (returning session)
+    const forceConsent = !!(opts && opts.forceConsent) || needsScopeReconsent();
+    const prompt = forceConsent ? 'consent' : (hasRememberedProfile() ? '' : 'select_account');
     try {
-        client.requestAccessToken({ prompt: 'consent' });
+        client.requestAccessToken({ prompt: prompt });
     } catch (err) {
         clearLoginPending();
         showLoginError('Could not open Google Sign-In. Allow pop-ups and try again.');
@@ -553,54 +556,123 @@ function bindTap(el, fn) {
 function showRestoreOverlay() {
     hideRestoreOverlay();
     try {
+        let name = '';
+        let email = '';
+        let picture = '';
+        try {
+            if (!googleProfile) {
+                const pr = localStorage.getItem(PROFILE_STORAGE_KEY);
+                if (pr) googleProfile = JSON.parse(pr);
+            }
+            if (googleProfile) {
+                name = googleProfile.name || '';
+                email = googleProfile.email || '';
+                picture = googleProfile.picture || '';
+            }
+        } catch (_) {}
+        const who = name || email || 'your account';
         const el = document.createElement('div');
         el.id = 'luax-restore-overlay';
         el.setAttribute('role', 'dialog');
         el.setAttribute('aria-live', 'polite');
-        el.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,8,14,0.82);pointer-events:auto;touch-action:manipulation;-webkit-user-select:none;user-select:none;';
+        el.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,8,14,0.88);pointer-events:auto;touch-action:manipulation;-webkit-user-select:none;user-select:none;';
         el.innerHTML =
-            '<div style="max-width:340px;width:100%;background:#16131f;border:1px solid rgba(139,92,246,0.35);border-radius:16px;padding:22px 20px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.45);pointer-events:auto;touch-action:manipulation">' +
-            '<div style="font-size:1.05rem;font-weight:700;color:#e8e6f0;margin-bottom:8px">Restoring session…</div>' +
-            '<p style="margin:0 0 16px;font-size:0.88rem;line-height:1.45;color:#9a96a8">Google sign-in needs a tap on mobile. Use the button below.</p>' +
-            '<button type="button" id="luax-restore-signin" style="width:100%;margin-bottom:10px;min-height:48px;border:none;border-radius:12px;background:#8b5cf6;color:#fff;font-size:1rem;font-weight:600;pointer-events:auto;touch-action:manipulation">Sign in with Google</button>' +
-            '<button type="button" id="luax-restore-cancel" style="width:100%;min-height:48px;border:none;border-radius:12px;background:#2a2a35;color:#ddd;font-size:0.95rem;pointer-events:auto;touch-action:manipulation">Cancel</button>' +
+            '<div style="max-width:360px;width:100%;background:#16131f;border:1px solid rgba(139,92,246,0.35);border-radius:16px;padding:22px 20px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.45);pointer-events:auto;touch-action:manipulation">' +
+            (picture
+                ? '<img src="' + String(picture).replace(/"/g, '') + '" alt="" width="56" height="56" style="width:56px;height:56px;border-radius:50%;object-fit:cover;margin:0 auto 12px;display:block;border:2px solid rgba(139,92,246,0.4)">'
+                : '') +
+            '<div style="font-size:1.1rem;font-weight:700;color:#e8e6f0;margin-bottom:6px">Welcome back</div>' +
+            '<p style="margin:0 0 4px;font-size:0.95rem;font-weight:600;color:#c4b5fd">' + String(who).replace(/</g, '&lt;') + '</p>' +
+            (email && name ? '<p style="margin:0 0 14px;font-size:0.8rem;color:#9a96a8">' + String(email).replace(/</g, '&lt;') + '</p>' : '<p style="margin:0 0 14px"></p>') +
+            '<p style="margin:0 0 16px;font-size:0.85rem;line-height:1.45;color:#9a96a8">Tap once to restore your Google session and open the editor.</p>' +
+            '<button type="button" id="luax-restore-signin" style="width:100%;margin-bottom:10px;min-height:48px;border:none;border-radius:12px;background:#8b5cf6;color:#fff;font-size:1rem;font-weight:600;pointer-events:auto;touch-action:manipulation;cursor:pointer">Continue as ' + String((name || 'Google').split(' ')[0]).replace(/</g, '&lt;') + '</button>' +
+            '<button type="button" id="luax-restore-cancel" style="width:100%;min-height:44px;border:none;border-radius:12px;background:#2a2a35;color:#bbb;font-size:0.9rem;pointer-events:auto;touch-action:manipulation;cursor:pointer">Use a different account</button>' +
             '</div>';
-        // Only stopPropagation on the backdrop itself — never block the buttons
-        // (capture-phase stop on the parent was swallowing taps on Sign in / Cancel).
         el.addEventListener('click', function (e) {
             if (e.target === el) e.stopPropagation();
         }, true);
-        el.addEventListener('touchend', function (e) {
-            if (e.target === el) {
-                try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
-            }
-        }, { capture: true, passive: false });
         document.body.appendChild(el);
-        bindTap(document.getElementById('luax-restore-signin'), function () {
-            authRefreshing = false;
-            clearAuthRefreshTimers();
-            hideRestoreOverlay();
-            clearPersistedGoogleToken({ keepProfile: true });
-            googleToken = null;
-            googleTokenExpiresAt = 0;
-            applyAuthGate();
-            updateProfileUI();
-            try { loginWithGoogle(); } catch (err) {
-                console.warn(err);
-                alert('Google Sign-In failed to open. Check that https://luax.pages.dev is in Google Cloud Authorized JavaScript origins.');
+
+        function doContinue() {
+            authRefreshing = true;
+            authRefreshStartedAt = Date.now();
+            setCloudStatus('Cloud: restoring session…');
+            const btn = document.getElementById('luax-restore-signin');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Connecting…';
             }
-        });
-        bindTap(document.getElementById('luax-restore-cancel'), function () {
-            authRefreshing = false;
-            clearAuthRefreshTimers();
-            hideRestoreOverlay();
-            clearPersistedGoogleToken({ keepProfile: false });
-            googleToken = null;
-            googleTokenExpiresAt = 0;
-            setCloudStatus('Cloud: sign in required', 'warn');
-            applyAuthGate();
-            updateProfileUI();
-        });
+            // Wait briefly for GIS if needed, then request token (user gesture = works on mobile)
+            function request() {
+                const client = ensureGoogleTokenClient(true);
+                if (!client) {
+                    if (typeof google === 'undefined' || !google.accounts) {
+                        setTimeout(request, 250);
+                        return;
+                    }
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = 'Continue as ' + String((name || 'Google').split(' ')[0]);
+                    }
+                    showLoginError('Google Sign-In is still loading. Try again.');
+                    return;
+                }
+                try {
+                    // Empty prompt = reuse previous Google account when possible
+                    client.requestAccessToken({ prompt: needsScopeReconsent() ? 'consent' : '' });
+                } catch (err) {
+                    console.warn('restore token request', err);
+                    try { client.requestAccessToken({ prompt: 'consent' }); } catch (err2) {
+                        console.warn(err2);
+                        alert('Google Sign-In failed to open. Allow pop-ups and try again.');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.textContent = 'Continue as ' + String((name || 'Google').split(' ')[0]);
+                        }
+                    }
+                }
+            }
+            request();
+        }
+
+        const signBtn = document.getElementById('luax-restore-signin');
+        const cancelBtn = document.getElementById('luax-restore-cancel');
+        if (signBtn) {
+            signBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                doContinue();
+            });
+            signBtn.addEventListener('touchend', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                doContinue();
+            }, { passive: false });
+        }
+        if (cancelBtn) {
+            function doCancel() {
+                authRefreshing = false;
+                clearAuthRefreshTimers();
+                hideRestoreOverlay();
+                clearPersistedGoogleToken({ keepProfile: false });
+                googleToken = null;
+                googleTokenExpiresAt = 0;
+                googleProfile = null;
+                setCloudStatus('Cloud: sign in required', 'warn');
+                applyAuthGate();
+                updateProfileUI();
+            }
+            cancelBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                doCancel();
+            });
+            cancelBtn.addEventListener('touchend', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                doCancel();
+            }, { passive: false });
+        }
     } catch (err) {
         console.warn('showRestoreOverlay', err);
     }
@@ -652,6 +724,7 @@ function tryRestoreGoogleSession() {
     clearAuthRefreshTimers();
     updateCloudUI();
     setCloudStatus('Cloud: restoring session…');
+    // Show continue overlay on every device (Google requires a user gesture for a new token)
     showRestoreOverlay();
     try {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -668,40 +741,41 @@ function tryRestoreGoogleSession() {
             authRefreshing = false;
             clearAuthRefreshTimers();
             hideRestoreOverlay();
+            applyAuthGate();
+            updateProfileUI();
             return;
         }
-        if (Date.now() - authRefreshStartedAt >= AUTH_REFRESH_MAX_MS) {
-            failAuthRefresh('Cloud: session expired — sign in again');
+        // Keep overlay up longer so user can tap Continue (don't auto-fail while they're looking)
+        if (Date.now() - authRefreshStartedAt >= AUTH_REFRESH_MAX_MS * 4) {
+            // Don't force fail — leave overlay / login so they can still tap Continue
+            authRefreshing = false;
+            clearAuthRefreshTimers();
+            setCloudStatus('Cloud: tap Continue to sign in', 'warn');
         }
     }, 1000);
 
-    if (isTouchDevice()) {
-        return;
-    }
-
-    const waitForGis = (attempts) => {
-        if (!authRefreshing) return;
-        if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-            const client = ensureGoogleTokenClient(true);
-            if (client) {
-                try {
-                    client.requestAccessToken({ prompt: needsScopeReconsent() ? 'consent' : '' });
-                } catch (err) {
-                    console.warn('silent token request failed', err);
-                    failAuthRefresh('Cloud: sign in required');
+    // Desktop: try a silent token refresh first (no UI if Google still has the session)
+    if (!isTouchDevice()) {
+        const waitForGis = (attempts) => {
+            if (!authRefreshing) return;
+            if (googleToken && isGoogleTokenValid()) return;
+            if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+                const client = ensureGoogleTokenClient(true);
+                if (client) {
+                    try {
+                        client.requestAccessToken({ prompt: needsScopeReconsent() ? 'consent' : '' });
+                    } catch (err) {
+                        console.warn('silent token request failed', err);
+                        // Overlay stays — user can tap Continue
+                    }
                 }
-            } else {
-                failAuthRefresh('Cloud: sign in required');
+                return;
             }
-            return;
-        }
-        if (attempts <= 0) {
-            failAuthRefresh('Cloud: sign in required');
-            return;
-        }
-        authGisWaitTimer = setTimeout(() => waitForGis(attempts - 1), 300);
-    };
-    waitForGis(25);
+            if (attempts <= 0) return;
+            authGisWaitTimer = setTimeout(() => waitForGis(attempts - 1), 300);
+        };
+        waitForGis(25);
+    }
 }
 
 let scopeReauthInFlight = false;

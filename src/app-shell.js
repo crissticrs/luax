@@ -380,6 +380,13 @@ function promptRenameProject(name) {
 function duplicateProject(name) {
     if (!name) return;
     try {
+        if (!canCreateProject()) {
+            alert(
+                'Free plan is limited to ' + FREE_PROJECT_LIMIT + ' projects.\n\n' +
+                'Delete a project or upgrade to Pro for unlimited projects.'
+            );
+            return;
+        }
         let proj = (typeof projects !== 'undefined' && projects) ? projects : (window.projects || {});
         if (!proj[name]) return;
         let base = name + ' copy';
