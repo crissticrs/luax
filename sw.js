@@ -1,5 +1,5 @@
 /* LuaX service worker */
-const CACHE_VERSION = 'luax-v42';
+const CACHE_VERSION = 'luax-v44';
 const SHELL_CACHE = CACHE_VERSION + '-shell';
 const CDN_CACHE = CACHE_VERSION + '-cdn';
 
@@ -11,7 +11,7 @@ const SHELL_URLS = [
   './src/sprite-editor.js', './src/music-editor.js', './src/modal.js',
   './src/auth.js', './src/billing.js', './src/cloud-sync.js',
   './src/editor.js', './src/assets-panel.js', './src/assets-panel-boot.js',
-  './src/swipe-list.js', './src/scene-editor.js', './src/scene-editor-layout.js',
+  './src/swipe-list.js', './src/scene-editor.js', './src/scene-editor-layout.js', './src/scene-editor-layout.js?v=44',
   './src/scene-play.js', './src/play-mode.js', './src/perf-tune.js',
   './src/export-share.js', './src/app.js', './src/app-shell.js', './src/error-tracking.js', './src/xss-guard.js',
 ];
@@ -103,18 +103,18 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isSameOrigin(url)) {
+    // Network-first so a bad cached script cannot pin the tab on a frozen build.
+    // Cache is only the offline fallback.
     event.respondWith((async () => {
       const cache = await caches.open(SHELL_CACHE);
-      const cached = await cache.match(req);
-      const networkPromise = fetchWithTimeout(req, 8000).then((res) => {
-        if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
-        return res;
-      }).catch(() => null);
-      if (cached) {
-        networkPromise.catch(() => {});
-        return cached;
-      }
-      return (await networkPromise) || new Response('', { status: 504 });
+      try {
+        const res = await fetchWithTimeout(req, 8000);
+        if (res && res.ok) {
+          cache.put(req, res.clone()).catch(() => {});
+          return res;
+        }
+      } catch (_) {}
+      return (await cache.match(req)) || new Response('', { status: 504 });
     })());
     return;
   }

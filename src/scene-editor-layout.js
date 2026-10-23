@@ -93,6 +93,8 @@
 
   function wireTabs(view) {
     view.querySelectorAll('.scn-tab').forEach(function (tab) {
+      if (tab._luaxWired) return;
+      tab._luaxWired = true;
       var k = tab.getAttribute('data-scn-tab');
       if (k === 'paint') { tab.textContent = '\uD83D\uDD8C'; tab.title = 'Paint'; }
       if (k === 'sprites') { tab.textContent = '\uD83D\uDC7E'; tab.title = 'Sprites'; }
@@ -285,13 +287,9 @@
     if (tries > 80) clearInterval(t);
   }, 400);
 
-  try {
-    var mo = new MutationObserver(function () {
-      injectCreateMenu();
-      if ($('scene-editor-view')) arrange();
-    });
-    mo.observe(document.documentElement, { childList: true, subtree: true });
-  } catch (_) {}
+  // Do not observe the whole document. arrange()/wireTabs() mutate DOM, so a
+  // subtree MutationObserver here retriggers itself forever and freezes the tab
+  // (browser stays on "loading", watchdog never runs). The interval above is enough.
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { setTimeout(tick, 100); });
