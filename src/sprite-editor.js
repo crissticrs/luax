@@ -1329,32 +1329,55 @@ async function saveSpriteFromEditor() {
         if (!replace) return;
     }
 
-    map[name] = dataUrl;
+    if (typeof projectAssets === 'undefined' || !projectAssets || typeof projectAssets !== 'object') {
+        try { projectAssets = JSON.parse(localStorage.getItem('luadeck_project_assets') || '{}') || {}; } catch (_) { projectAssets = {}; }
+    }
+    if (!projectAssets[target]) projectAssets[target] = {};
+    projectAssets[target][name] = dataUrl;
+    window.projectAssets = projectAssets;
     delete spriteImageCache[target + '::' + name];
-    saveProjectAssets();
+    let saved = false;
+    try {
+        localStorage.setItem('luadeck_project_assets', JSON.stringify(projectAssets));
+        saved = true;
+    } catch (e) {
+        console.warn('assets save failed', e);
+        saved = false;
+    }
     window._luaxForcePickProject = false;
+    if (!saved) {
+        if (typeof lxAlert === 'function') await lxAlert('Could not save image — storage may be full. Try a smaller sprite.');
+        return;
+    }
+    try {
+        const check = JSON.parse(localStorage.getItem('luadeck_project_assets') || '{}');
+        if (!(check[target] && check[target][name])) {
+            if (typeof lxAlert === 'function') await lxAlert('Image save did not stick. Try a smaller sprite or free some space.');
+            return;
+        }
+    } catch (_) {}
     spriteEd.name = name;
     spriteEd.dirty = false;
-    document.getElementById('sprite-editor-title').textContent = name;
+    try {
+        const titleEl = document.getElementById('sprite-editor-title');
+        if (titleEl) titleEl.textContent = name;
+    } catch (_) {}
     if (typeof lxAlert === 'function') {
         await lxAlert('Saved "' + name + '" in project "' + target + '".\n\nIn Lua:\ngfx.sprite("' + name + '", x, y)');
     } else {
         alert('Saved "' + name + '" in "' + target + '"');
     }
+    currentProjectName = target;
+    window.currentProjectName = target;
     try {
         if (typeof openProject === 'function') openProject(target);
-        else {
-            switchView('files-view');
-            renderFiles();
-        }
-    } catch (_) {
-        switchView('files-view');
-        try { renderFiles(); } catch (__) {}
-    }
+    } catch (_) {}
+    try { switchView('files-view'); } catch (_) {}
+    try {
+        if (typeof window.renderFiles === 'function') window.renderFiles();
+        else if (typeof renderFiles === 'function') renderFiles();
+    } catch (_) {}
 }
-
-
-
 
 
 
@@ -1433,6 +1456,24 @@ function promptNewFile() {
         alert('Could not create file: ' + (err && err.message ? err.message : err));
     }
 }
+
+
+async function deleteAsset(e, name) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (!name || !currentProjectName) return;
+    const ok = (typeof lxConfirm === 'function')
+        ? await lxConfirm('Delete image "' + name + '"?', 'Delete image', { confirmLabel: 'Delete', danger: true })
+        : confirm('Delete ' + name + '?');
+    if (!ok) return;
+    try {
+        const map = getProjectAssetMap(currentProjectName);
+        delete map[name];
+        try { delete spriteImageCache[currentProjectName + '::' + name]; } catch (_) {}
+        saveProjectAssets();
+        if (typeof renderFiles === 'function') renderFiles();
+    } catch (err) { console.error('deleteAsset', err); }
+}
+window.deleteAsset = deleteAsset;
 
 async function deleteFile(e, name) {
     if (e && e.stopPropagation) e.stopPropagation();

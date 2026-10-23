@@ -400,9 +400,25 @@ async function saveMusicFromEditor() {
     const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch => ch.slice());
     const synth = getActiveSynthParams();
     if (wave === 'custom') musEd.synth = synth;
-    const map = getProjectMusicMap(target);
-    map[name] = { bpm, wave, steps, channels, synth: wave === 'custom' ? synth : undefined };
-    saveProjectMusic();
+    if (!projectMusic || typeof projectMusic !== 'object') {
+        try { projectMusic = JSON.parse(localStorage.getItem(MUSIC_KEY) || '{}') || {}; } catch (_) { projectMusic = {}; }
+    }
+    if (!projectMusic[target]) projectMusic[target] = {};
+    projectMusic[target][name] = {
+        bpm: bpm,
+        wave: wave,
+        steps: steps,
+        channels: channels,
+        synth: wave === 'custom' ? synth : undefined
+    };
+    window.projectMusic = projectMusic;
+    try {
+        localStorage.setItem(MUSIC_KEY, JSON.stringify(projectMusic));
+    } catch (e) {
+        console.warn('music save failed', e);
+        if (typeof lxAlert === 'function') await lxAlert('Could not save music (storage full?).');
+        return;
+    }
     window._luaxForcePickProject = false;
     musEd.name = name;
     const title = document.getElementById('music-editor-title');
@@ -414,16 +430,14 @@ async function saveMusicFromEditor() {
         alert('Saved "' + name + '" in "' + target + '"');
     }
     try { stopMusic(); } catch (_) {}
+    currentProjectName = target;
+    window.currentProjectName = target;
+    try { if (typeof openProject === 'function') openProject(target); } catch (_) {}
+    try { switchView('files-view'); } catch (_) {}
     try {
-        if (typeof openProject === 'function') openProject(target);
-        else {
-            switchView('files-view');
-            if (typeof renderFiles === 'function') renderFiles();
-        }
-    } catch (_) {
-        switchView('files-view');
-        try { renderFiles(); } catch (__) {}
-    }
+        if (typeof window.renderFiles === 'function') window.renderFiles();
+        else if (typeof renderFiles === 'function') renderFiles();
+    } catch (_) {}
 }
 
 const _startMusicRaw = typeof startMusic === 'function' ? startMusic : null;

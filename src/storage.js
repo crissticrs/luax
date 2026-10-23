@@ -151,9 +151,14 @@ function saveProjectAssets() {
 
 function getProjectAssetMap(name) {
     if (!name) return {};
+    if (!projectAssets || typeof projectAssets !== 'object') projectAssets = {};
     if (!projectAssets[name]) projectAssets[name] = {};
+    window.projectAssets = projectAssets;
     return projectAssets[name];
 }
+window.getProjectAssetMap = getProjectAssetMap;
+window.saveProjectAssets = saveProjectAssets;
+window.projectAssets = projectAssets;
 
 function compressImageFile(file, opts) {
     opts = opts || {};

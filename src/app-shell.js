@@ -343,22 +343,81 @@ function renderFiles() {
     if (!list || !currentProjectName) return;
     let proj = (typeof projects !== 'undefined' && projects) ? projects : (window.projects || {});
     const fileMap = proj[currentProjectName] || {};
-    let files = Object.keys(fileMap).sort();
+    let luaFiles = Object.keys(fileMap).sort();
 
-    // Prefer pinned files first
+    // Sprites / images (merge memory + localStorage so saves always show up)
+    let spriteNames = [];
+    try {
+        let amap = {};
+        try {
+            if (typeof getProjectAssetMap === 'function') amap = getProjectAssetMap(currentProjectName) || {};
+            else if (typeof projectAssets !== 'undefined' && projectAssets[currentProjectName]) amap = projectAssets[currentProjectName];
+        } catch (_) {}
+        try {
+            const raw = localStorage.getItem('luadeck_project_assets');
+            const all = raw ? JSON.parse(raw) : {};
+            const fromDisk = (all && all[currentProjectName]) || {};
+            amap = Object.assign({}, fromDisk, amap || {});
+            // Keep in-memory map in sync
+            if (typeof projectAssets === 'undefined' || !projectAssets) {
+                try { projectAssets = all || {}; } catch (__) {}
+            }
+            if (typeof projectAssets !== 'undefined') {
+                projectAssets[currentProjectName] = amap;
+                window.projectAssets = projectAssets;
+            }
+        } catch (_) {}
+        spriteNames = Object.keys(amap || {}).sort();
+    } catch (_) {}
+
+    // Music patterns (same merge)
+    let musicNames = [];
+    try {
+        let mmap = {};
+        try {
+            if (typeof getProjectMusicMap === 'function') mmap = getProjectMusicMap(currentProjectName) || {};
+            else if (typeof projectMusic !== 'undefined' && projectMusic[currentProjectName]) mmap = projectMusic[currentProjectName];
+        } catch (_) {}
+        try {
+            const raw = localStorage.getItem('luadeck_project_music');
+            const all = raw ? JSON.parse(raw) : {};
+            const fromDisk = (all && all[currentProjectName]) || {};
+            mmap = Object.assign({}, fromDisk, mmap || {});
+            if (typeof projectMusic !== 'undefined') {
+                projectMusic[currentProjectName] = mmap;
+                window.projectMusic = projectMusic;
+            }
+        } catch (_) {}
+        musicNames = Object.keys(mmap || {}).sort();
+    } catch (_) {}
+
+    // Scenes
+    let sceneNames = [];
+    try {
+        if (typeof getProjectSceneMap === 'function') {
+            sceneNames = Object.keys(getProjectSceneMap(currentProjectName) || {}).sort();
+        } else {
+            const raw = localStorage.getItem('luax_project_scenes');
+            const all = raw ? JSON.parse(raw) : {};
+            sceneNames = Object.keys((all && all[currentProjectName]) || {}).sort();
+        }
+    } catch (_) {}
+
+    // Prefer pinned order for lua files
     try {
         const map = JSON.parse(localStorage.getItem('luax_pinned_files') || '{}') || {};
         const pinned = Array.isArray(map[currentProjectName]) ? map[currentProjectName] : [];
         if (pinned.length) {
             const set = {};
             pinned.forEach(function (n) { set[n] = true; });
-            const top = pinned.filter(function (n) { return files.indexOf(n) >= 0; });
-            const rest = files.filter(function (n) { return !set[n]; });
-            files = top.concat(rest);
+            const top = pinned.filter(function (n) { return luaFiles.indexOf(n) >= 0; });
+            const rest = luaFiles.filter(function (n) { return !set[n]; });
+            luaFiles = top.concat(rest);
         }
     } catch (_) {}
 
-    if (!files.length) {
+    const total = luaFiles.length + spriteNames.length + musicNames.length + sceneNames.length;
+    if (!total) {
         list.innerHTML =
             '<div class="lx-empty" style="min-height:160px;padding:24px 16px">' +
             '<h3 style="color:var(--text-color,#e8e6f0)">No files yet</h3>' +
@@ -367,19 +426,55 @@ function renderFiles() {
         return;
     }
 
-    const luaIcon = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.code) ? LX_SVG.code : '📄';
-    list.innerHTML = files.map(function (fn) {
+    const luaIcon = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.file) ? LX_SVG.file : '📄';
+    const imgIcon = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.image) ? LX_SVG.image : '🖼';
+    const musIcon = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.music) ? LX_SVG.music : '🎵';
+    const scnIcon = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.scene) ? LX_SVG.scene : '🗺';
+
+    let html = '';
+
+    luaFiles.forEach(function (fn) {
         const isMain = fn === 'main.lua';
-        return (
-            '<div class="list-item" data-name="' + escapeHtml(fn) + '" onclick="openFile(\'' + esc(fn) + '\')">' +
+        html +=
+            '<div class="list-item" data-name="' + escapeHtml(fn) + '" data-kind="file" onclick="openFile(\'' + esc(fn) + '\')">' +
             '<div class="item-title">' +
                 '<span class="item-icon-svg">' + luaIcon + '</span>' +
                 '<span class="item-name">' + escapeHtml(fn) + '</span>' +
                 (isMain ? '<span class="item-badge">MAIN</span>' : '<span class="item-badge">LUA</span>') +
-            '</div>' +
-            '</div>'
-        );
-    }).join('');
+            '</div></div>';
+    });
+
+    spriteNames.forEach(function (fn) {
+        html +=
+            '<div class="list-item" data-name="' + escapeHtml(fn) + '" data-kind="sprite" onclick="openSpriteEditor(\'' + esc(fn) + '\')">' +
+            '<div class="item-title">' +
+                '<span class="item-icon-svg">' + imgIcon + '</span>' +
+                '<span class="item-name">' + escapeHtml(fn) + '</span>' +
+                '<span class="item-badge">IMG</span>' +
+            '</div></div>';
+    });
+
+    musicNames.forEach(function (fn) {
+        html +=
+            '<div class="list-item" data-name="' + escapeHtml(fn) + '" data-kind="music" onclick="openMusicEditor(\'' + esc(fn) + '\')">' +
+            '<div class="item-title">' +
+                '<span class="item-icon-svg">' + musIcon + '</span>' +
+                '<span class="item-name">' + escapeHtml(fn) + '</span>' +
+                '<span class="item-badge">MUSIC</span>' +
+            '</div></div>';
+    });
+
+    sceneNames.forEach(function (fn) {
+        html +=
+            '<div class="list-item" data-name="' + escapeHtml(fn) + '" data-kind="scene" data-scene="' + escapeHtml(fn) + '" onclick="openSceneEditor(\'' + esc(fn) + '\', false)">' +
+            '<div class="item-title">' +
+                '<span class="item-icon-svg">' + scnIcon + '</span>' +
+                '<span class="item-name">' + escapeHtml(fn) + '</span>' +
+                '<span class="item-badge">SCENE</span>' +
+            '</div></div>';
+    });
+
+    list.innerHTML = html;
 }
 
 /* ---- Project / file management (used by swipe actions & desktop buttons) ---- */
