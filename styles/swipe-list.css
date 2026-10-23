@@ -94,10 +94,14 @@
     pointer-events: none;
 }
 
+/* Single pin badge — right after the name */
 .item-pin-badge {
-    margin-left: 6px;
+    margin-left: 4px;
+    margin-right: 2px;
     font-size: 0.85rem;
-    opacity: 0.9;
+    opacity: 0.95;
+    flex-shrink: 0;
+    line-height: 1;
 }
 .item-chevron-static {
     color: var(--muted);
@@ -106,10 +110,71 @@
     flex-shrink: 0;
 }
 
+/* Desktop: no swipe chrome, hover + right-click menu */
 @media (hover: hover) and (pointer: fine) {
-    .swipe-content.list-item:hover {
+    .swipe-row {
+        touch-action: auto;
+    }
+    .swipe-actions {
+        display: none !important;
+    }
+    .swipe-content.list-item:hover,
+    #projects-list .list-item:hover,
+    #files-list .list-item:hover {
         border-color: color-mix(in srgb, var(--accent-color) 35%, var(--glass-border));
     }
+}
+
+/* Right-click context menu (desktop) */
+.lx-ctx-menu {
+    position: fixed;
+    z-index: 10000;
+    min-width: 180px;
+    max-width: 260px;
+    padding: 6px;
+    border-radius: 12px;
+    background: var(--panel-color, #16131f);
+    border: 1px solid var(--glass-border, rgba(139, 92, 246, 0.25));
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.lx-ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--text-color, #e8e4f0);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.lx-ctx-item:hover {
+    background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+    color: var(--accent-color, #8b5cf6);
+}
+.lx-ctx-item.danger {
+    color: #ef4444;
+}
+.lx-ctx-item.danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+.lx-ctx-ico {
+    width: 1.25em;
+    text-align: center;
+    flex-shrink: 0;
+}
+.lx-ctx-sep {
+    height: 1px;
+    margin: 4px 8px;
+    background: var(--glass-border, rgba(139, 92, 246, 0.2));
 }
 
 @media (max-width: 380px) {
