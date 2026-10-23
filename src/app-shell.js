@@ -160,6 +160,36 @@ function lxNav(name) {
     if (sr) sr.style.display = name === 'projects' ? '' : 'none';
 }
 
+/** Desktop sidebar create shortcuts (Music / Scene / Draw / Import). Mobile unchanged. */
+function lxDesktopCreate(kind) {
+    try {
+        if (kind === 'import') {
+            if (typeof importProject === 'function') importProject();
+            return;
+        }
+        if (kind === 'music') {
+            if (typeof openMusicEditor === 'function') openMusicEditor();
+            else if (typeof lxAlert === 'function') lxAlert('Music editor is still loading…');
+            return;
+        }
+        if (kind === 'draw') {
+            if (typeof openSpriteEditor === 'function') openSpriteEditor();
+            else if (typeof lxAlert === 'function') lxAlert('Image editor is still loading…');
+            return;
+        }
+        if (kind === 'scene') {
+            if (typeof window.promptNewScene === 'function') window.promptNewScene();
+            else if (typeof openSceneEditor === 'function') openSceneEditor('', true);
+            else if (typeof lxAlert === 'function') lxAlert('Scene editor is still loading…');
+            return;
+        }
+    } catch (err) {
+        console.warn('lxDesktopCreate', err);
+        if (typeof lxAlert === 'function') lxAlert(String(err && err.message || err));
+    }
+}
+window.lxDesktopCreate = lxDesktopCreate;
+
 const FREE_PROJECT_LIMIT = 5;
 
 function countProjects() {
@@ -301,11 +331,18 @@ function renderFiles() {
 }
 
 /* ---- Project / file management (used by swipe actions & desktop buttons) ---- */
-function deleteProject(e, name) {
+async function deleteProject(e, name) {
     if (e && e.stopPropagation) e.stopPropagation();
     name = name || (e && e.currentTarget && e.currentTarget.getAttribute('data-name'));
     if (!name) return;
-    if (!confirm('Delete project "' + name + '"? This cannot be undone.')) return;
+    const ok = (typeof lxConfirm === 'function')
+        ? await lxConfirm(
+            'Delete project "' + name + '"? This cannot be undone.',
+            'Delete project',
+            { confirmLabel: 'Delete', danger: true }
+        )
+        : confirm('Delete project "' + name + '"? This cannot be undone.');
+    if (!ok) return;
     try {
         let proj = (typeof projects !== 'undefined' && projects) ? projects : (window.projects || {});
         delete proj[name];
@@ -328,27 +365,30 @@ function deleteProject(e, name) {
         try { switchView('projects-view'); } catch (_) {}
     } catch (err) {
         console.error('deleteProject', err);
-        alert('Could not delete project');
+        if (typeof lxAlert === 'function') lxAlert('Could not delete project');
+        else alert('Could not delete project');
     }
 }
 
-function promptRenameProject(name) {
+async function promptRenameProject(name) {
     if (!name) return;
-    const next = prompt('Rename project:', name);
+    const next = (typeof lxPrompt === 'function')
+        ? await lxPrompt('New name for this project:', name, 'Rename project', { confirmLabel: 'Rename' })
+        : prompt('Rename project:', name);
     if (next == null) return;
     const newName = String(next).trim();
     if (!newName || newName === name) return;
     try {
         let proj = (typeof projects !== 'undefined' && projects) ? projects : (window.projects || {});
         if (proj[newName]) {
-            alert('A project named "' + newName + '" already exists.');
+            if (typeof lxAlert === 'function') lxAlert('A project named "' + newName + '" already exists.');
+            else alert('A project named "' + newName + '" already exists.');
             return;
         }
         proj[newName] = proj[name];
         delete proj[name];
         if (typeof projects !== 'undefined') projects = proj;
         window.projects = proj;
-        // migrate pin
         try {
             const pinned = JSON.parse(localStorage.getItem('luax_pinned_projects') || '[]') || [];
             const i = pinned.indexOf(name);
@@ -357,7 +397,6 @@ function promptRenameProject(name) {
                 localStorage.setItem('luax_pinned_projects', JSON.stringify(pinned));
             }
         } catch (_) {}
-        // migrate gamepad / assets keys if helpers exist
         try {
             if (typeof getProjectGamepad === 'function' && typeof setProjectGamepad === 'function') {
                 setProjectGamepad(newName, getProjectGamepad(name));
@@ -373,7 +412,8 @@ function promptRenameProject(name) {
         if (typeof renderProjects === 'function') renderProjects();
     } catch (err) {
         console.error('promptRenameProject', err);
-        alert('Could not rename project');
+        if (typeof lxAlert === 'function') lxAlert('Could not rename project');
+        else alert('Could not rename project');
     }
 }
 
@@ -412,13 +452,16 @@ function duplicateProject(name) {
     }
 }
 
-function promptRenameFile(name) {
+async function promptRenameFile(name) {
     if (!name || !currentProjectName) return;
     if (name === 'main.lua') {
-        alert('main.lua cannot be renamed.');
+        if (typeof lxAlert === 'function') lxAlert('main.lua cannot be renamed.');
+        else alert('main.lua cannot be renamed.');
         return;
     }
-    const next = prompt('Rename file:', name);
+    const next = (typeof lxPrompt === 'function')
+        ? await lxPrompt('New filename:', name, 'Rename file', { confirmLabel: 'Rename' })
+        : prompt('Rename file:', name);
     if (next == null) return;
     let newName = String(next).trim();
     if (!newName || newName === name) return;

@@ -60,10 +60,10 @@ function confirmModal() {
 
 function _lxEsc(s) {
     return String(s == null ? '' : s)
-        .replace(/&/g, '&')
-        .replace(/</g, '<')
-        .replace(/>/g, '>')
-        .replace(/"/g, '"')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
         .replace(/\n/g, '<br>');
 }
 
@@ -83,28 +83,127 @@ function lxAlert(message, title) {
     });
 }
 
-function lxConfirm(message, title) {
+function lxConfirm(message, title, opts) {
     title = title || 'Confirm';
+    opts = opts || {};
     return new Promise((resolve) => {
         modalMode = 'confirm';
         const cancelBtn = document.getElementById('modal-cancel');
         if (cancelBtn) {
             cancelBtn.style.display = '';
-            cancelBtn.textContent = 'Cancel';
+            cancelBtn.textContent = opts.cancelLabel || 'Cancel';
         }
         document.getElementById('modal-title').textContent = title;
         document.getElementById('modal-body').innerHTML =
             '<p class="lx-dialog-msg">' + _lxEsc(message) + '</p>';
-        document.getElementById('modal-confirm').textContent = 'OK';
+        const conf = document.getElementById('modal-confirm');
+        conf.textContent = opts.confirmLabel || 'Delete';
+        if (opts.danger) conf.classList.add('btn-danger');
+        else conf.classList.remove('btn-danger');
         document.getElementById('custom-modal').style.display = 'flex';
         let settled = false;
         const done = (v) => {
             if (settled) return;
             settled = true;
+            conf.classList.remove('btn-danger');
             resolve(!!v);
         };
         modalCallback = () => done(true);
         modalCancelCallback = () => done(false);
+    });
+}
+
+/** Themed text prompt — replaces window.prompt */
+function lxPrompt(message, defaultValue, title, opts) {
+    title = title || 'Rename';
+    opts = opts || {};
+    defaultValue = defaultValue == null ? '' : String(defaultValue);
+    return new Promise((resolve) => {
+        modalMode = 'form';
+        const cancelBtn = document.getElementById('modal-cancel');
+        if (cancelBtn) {
+            cancelBtn.style.display = '';
+            cancelBtn.textContent = opts.cancelLabel || 'Cancel';
+        }
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-body').innerHTML =
+            '<p class="lx-dialog-msg" style="margin-bottom:12px">' + _lxEsc(message) + '</p>' +
+            '<input type="text" id="lx-prompt-input" class="lx-prompt-input" value="' +
+            String(defaultValue).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') +
+            '" autocomplete="off" spellcheck="false">';
+        document.getElementById('modal-confirm').textContent = opts.confirmLabel || 'Save';
+        document.getElementById('modal-confirm').classList.remove('btn-danger');
+        document.getElementById('custom-modal').style.display = 'flex';
+        let settled = false;
+        const done = (v) => {
+            if (settled) return;
+            settled = true;
+            resolve(v);
+        };
+        modalCallback = () => {
+            const inp = document.getElementById('lx-prompt-input');
+            done(inp ? inp.value : '');
+        };
+        modalCancelCallback = () => done(null);
+        setTimeout(() => {
+            const inp = document.getElementById('lx-prompt-input');
+            if (!inp) return;
+            inp.focus();
+            inp.select();
+            inp.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmModal();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeModal();
+                }
+            };
+        }, 40);
+    });
+}
+
+/** Pick a project from a list (for saving standalone assets). */
+function lxPickProject(title, message) {
+    title = title || 'Choose project';
+    message = message || 'Save into which project?';
+    const names = Object.keys(
+        (typeof projects !== 'undefined' && projects) ? projects : (window.projects || {})
+    ).sort(function (a, b) { return a.localeCompare(b); });
+    return new Promise((resolve) => {
+        if (!names.length) {
+            lxAlert('You have no projects yet. Create one first.', 'No projects');
+            resolve(null);
+            return;
+        }
+        modalMode = 'form';
+        const cancelBtn = document.getElementById('modal-cancel');
+        if (cancelBtn) {
+            cancelBtn.style.display = '';
+            cancelBtn.textContent = 'Cancel';
+        }
+        let opts = names.map(function (n) {
+            return '<option value="' + String(n).replace(/"/g, '&quot;') + '">' +
+                String(n).replace(/</g, '&lt;') + '</option>';
+        }).join('');
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-body').innerHTML =
+            '<p class="lx-dialog-msg" style="margin-bottom:12px">' + _lxEsc(message) + '</p>' +
+            '<select id="lx-pick-project" class="lx-prompt-input">' + opts + '</select>';
+        document.getElementById('modal-confirm').textContent = 'Save here';
+        document.getElementById('modal-confirm').classList.remove('btn-danger');
+        document.getElementById('custom-modal').style.display = 'flex';
+        let settled = false;
+        const done = (v) => {
+            if (settled) return;
+            settled = true;
+            resolve(v);
+        };
+        modalCallback = () => {
+            const sel = document.getElementById('lx-pick-project');
+            done(sel ? sel.value : null);
+        };
+        modalCancelCallback = () => done(null);
     });
 }
 
@@ -161,4 +260,6 @@ window.closeModal = closeModal;
 window.confirmModal = confirmModal;
 window.lxAlert = lxAlert;
 window.lxConfirm = lxConfirm;
+window.lxPrompt = lxPrompt;
+window.lxPickProject = lxPickProject;
 window.lxToast = lxToast;

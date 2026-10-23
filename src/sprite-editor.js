@@ -1166,7 +1166,12 @@ function setupSpriteCanvasInput() {
  */
 function openSpriteEditor(existingName) {
     if (!isAuthed()) { applyAuthGate(); return; }
-    if (!currentProjectName) return alert('Open a project first');
+    // Allow opening without a project (desktop Create → pick project on save)
+    if (!currentProjectName && existingName) {
+        if (typeof lxAlert === 'function') lxAlert('Open a project first to edit this sprite.');
+        else alert('Open a project first');
+        return;
+    }
 
     spriteEd.tool = 'pencil';
     spriteEd.color = '#ffffff';
@@ -1288,10 +1293,8 @@ function closeSpriteEditor() {
     renderFiles();
 }
 
-function saveSpriteFromEditor() {
-    if (!currentProjectName) return;
+async function saveSpriteFromEditor() {
     ensureSpritePixels();
-    // Export flattened layers at true pixel size
     const out = document.createElement('canvas');
     out.width = spriteEd.w;
     out.height = spriteEd.h;
@@ -1301,16 +1304,33 @@ function saveSpriteFromEditor() {
     octx.putImageData(img, 0, 0);
     const dataUrl = out.toDataURL('image/png');
 
+    // Standalone create: pick project first
+    if (!currentProjectName) {
+        const proj = (typeof lxPickProject === 'function')
+            ? await lxPickProject('Save sprite', 'Choose which project to save this image into:')
+            : null;
+        if (!proj) return;
+        currentProjectName = proj;
+        window.currentProjectName = proj;
+    }
+
     let name = spriteEd.name;
     if (!name) {
-        name = prompt('Sprite filename (e.g. hero.png)', 'sprite.png');
+        name = (typeof lxPrompt === 'function')
+            ? await lxPrompt('Sprite filename (e.g. hero.png)', 'sprite.png', 'Save sprite', { confirmLabel: 'Save' })
+            : prompt('Sprite filename (e.g. hero.png)', 'sprite.png');
         if (!name) return;
-        name = name.trim().replace(/[^\w.\-]+/g, '_');
+        name = String(name).trim().replace(/[^\w.\-]+/g, '_');
         if (!/\.(png|jpg|jpeg|webp)$/i.test(name)) name += '.png';
     }
 
     const map = getProjectAssetMap(currentProjectName);
-    if (map[name] && name !== spriteEd.name && !confirm('Replace existing "' + name + '"?')) return;
+    if (map[name] && name !== spriteEd.name) {
+        const replace = (typeof lxConfirm === 'function')
+            ? await lxConfirm('Replace existing "' + name + '"?', 'Replace file', { confirmLabel: 'Replace', danger: true })
+            : confirm('Replace existing "' + name + '"?');
+        if (!replace) return;
+    }
 
     map[name] = dataUrl;
     delete spriteImageCache[currentProjectName + '::' + name];
@@ -1318,7 +1338,11 @@ function saveSpriteFromEditor() {
     spriteEd.name = name;
     spriteEd.dirty = false;
     document.getElementById('sprite-editor-title').textContent = name;
-    alert('Saved "' + name + '".\n\nIn Lua:\ngfx.sprite("' + name + '", x, y)');
+    if (typeof lxAlert === 'function') {
+        await lxAlert('Saved "' + name + '".\n\nIn Lua:\ngfx.sprite("' + name + '", x, y)');
+    } else {
+        alert('Saved "' + name + '".\n\nIn Lua:\ngfx.sprite("' + name + '", x, y)');
+    }
     switchView('files-view');
     renderFiles();
 }
@@ -1404,12 +1428,23 @@ function promptNewFile() {
     }
 }
 
-function deleteFile(e, name) {
-    e.stopPropagation();
-    if (confirm(`Delete ${name}?`)) {
+async function deleteFile(e, name) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (!name || !currentProjectName) return;
+    const ok = (typeof lxConfirm === 'function')
+        ? await lxConfirm(
+            'Delete file "' + name + '"? This cannot be undone.',
+            'Delete file',
+            { confirmLabel: 'Delete', danger: true }
+        )
+        : confirm('Delete ' + name + '?');
+    if (!ok) return;
+    try {
         delete projects[currentProjectName][name];
         saveState();
         renderFiles();
+    } catch (err) {
+        console.error('deleteFile', err);
     }
 }
 

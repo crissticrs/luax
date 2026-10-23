@@ -129,9 +129,14 @@ function updateMusicPlayhead(stepIdx) {
 }
 
 function openMusicEditor(existingName) {
-    if (!currentProjectName) return alert('Open a project first');
+    // Allow new patterns without a project (desktop Create → pick project on save)
+    if (!currentProjectName && existingName) {
+        if (typeof lxAlert === 'function') lxAlert('Open a project first to edit this pattern.');
+        else alert('Open a project first');
+        return;
+    }
     musEd.name = existingName || '';
-    const map = getProjectMusicMap(currentProjectName);
+    const map = currentProjectName ? getProjectMusicMap(currentProjectName) : {};
     if (existingName && map[existingName]) {
         const p = map[existingName];
         let steps = p.steps || 16;
@@ -372,11 +377,20 @@ function previewMusicEditor() {
     updateMusicPlayButton();
 }
 
-function saveMusicFromEditor() {
-    if (!currentProjectName) return;
+async function saveMusicFromEditor() {
+    if (!currentProjectName) {
+        const proj = (typeof lxPickProject === 'function')
+            ? await lxPickProject('Save music', 'Choose which project to save this pattern into:')
+            : null;
+        if (!proj) return;
+        currentProjectName = proj;
+        window.currentProjectName = proj;
+    }
     let name = musEd.name;
     if (!name) {
-        name = prompt('Pattern name (e.g. theme)', 'theme');
+        name = (typeof lxPrompt === 'function')
+            ? await lxPrompt('Pattern name (e.g. theme)', 'theme', 'Save music', { confirmLabel: 'Save' })
+            : prompt('Pattern name (e.g. theme)', 'theme');
         if (!name) return;
     }
     name = normalizeMusicName(name);
@@ -394,7 +408,11 @@ function saveMusicFromEditor() {
     const title = document.getElementById('music-editor-title');
     if (title) title.textContent = name;
     const bare = name.replace(/\.music$/i, '');
-    alert('Saved "' + name + '".\n\nIn Lua (both work):\nsfx.music("' + name + '")\nsfx.music("' + bare + '")');
+    if (typeof lxAlert === 'function') {
+        await lxAlert('Saved "' + name + '".\n\nIn Lua (both work):\nsfx.music("' + name + '")\nsfx.music("' + bare + '")');
+    } else {
+        alert('Saved "' + name + '".\n\nIn Lua (both work):\nsfx.music("' + name + '")\nsfx.music("' + bare + '")');
+    }
     try { stopMusic(); } catch (_) {}
     switchView('files-view');
     renderFiles();

@@ -648,9 +648,12 @@ function enhanceProjectsListSwipe() {
     pinnedRows.concat(otherRows).forEach(r => list.appendChild(r));
 }
 
-function deleteSceneFile(name) {
+async function deleteSceneFile(name) {
     if (!name) return;
-    if (!confirm('Delete scene "' + name + '"?')) return;
+    const ok = (typeof lxConfirm === 'function')
+        ? await lxConfirm('Delete scene "' + name + '"? This cannot be undone.', 'Delete scene', { confirmLabel: 'Delete', danger: true })
+        : confirm('Delete scene "' + name + '"?');
+    if (!ok) return;
     try {
         if (typeof window.deleteProjectScene === 'function') {
             window.deleteProjectScene(name);
