@@ -48,6 +48,48 @@ function switchView(id) {
 }
 
 let selectedTemplate = 'empty';
+
+function countProjectFiles(projectName) {
+    if (!projectName) return 0;
+    let n = 0;
+    try {
+        const proj = (typeof projects !== 'undefined' && projects) ? projects : (window.projects || {});
+        const files = proj[projectName];
+        if (files && typeof files === 'object') n += Object.keys(files).length;
+    } catch (_) {}
+    try {
+        let amap = {};
+        if (typeof getProjectAssetMap === 'function') amap = getProjectAssetMap(projectName) || {};
+        else {
+            const raw = localStorage.getItem('luadeck_project_assets');
+            const all = raw ? JSON.parse(raw) : {};
+            amap = (all && all[projectName]) || {};
+        }
+        n += Object.keys(amap || {}).length;
+    } catch (_) {}
+    try {
+        let mmap = {};
+        if (typeof getProjectMusicMap === 'function') mmap = getProjectMusicMap(projectName) || {};
+        else {
+            const raw = localStorage.getItem('luadeck_project_music');
+            const all = raw ? JSON.parse(raw) : {};
+            mmap = (all && all[projectName]) || {};
+        }
+        n += Object.keys(mmap || {}).length;
+    } catch (_) {}
+    try {
+        if (typeof getProjectSceneMap === 'function') {
+            n += Object.keys(getProjectSceneMap(projectName) || {}).length;
+        } else {
+            const raw = localStorage.getItem('luax_project_scenes');
+            const all = raw ? JSON.parse(raw) : {};
+            n += Object.keys((all && all[projectName]) || {}).length;
+        }
+    } catch (_) {}
+    return n;
+}
+window.countProjectFiles = countProjectFiles;
+
 function renderProjects() {
     window.renderProjects = renderProjects;
     try {
@@ -98,7 +140,7 @@ function renderProjects() {
         const folderIcon = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.folder) ? LX_SVG.folder : '📁';
         const chevronIcon = (typeof LX_SVG !== 'undefined' && LX_SVG && LX_SVG.chevronRight) ? LX_SVG.chevronRight : '›';
         names.forEach(function (name) {
-            const fileCount = (proj[name] && typeof proj[name] === 'object') ? Object.keys(proj[name]).length : 0;
+            const fileCount = countProjectFiles(name);
             let pinned = false;
             try {
                 pinned = (typeof isProjectPinned === 'function')
@@ -338,6 +380,39 @@ function renderTemplatesPanel() {
         ).join('');
 }
 
+
+function refreshProjectFileBadge(projectName) {
+    try {
+        const name = projectName || currentProjectName || window.currentProjectName;
+        if (!name) return;
+        const count = countProjectFiles(name);
+        const list = document.getElementById('projects-list');
+        if (!list) return;
+        const items = list.querySelectorAll('.list-item, .swipe-row');
+        items.forEach(function (el) {
+            const n = el.getAttribute('data-name') || (el.dataset && el.dataset.name) || '';
+            if (n !== name) return;
+            let badge = el.querySelector('.item-badge');
+            const title = el.querySelector('.item-title');
+            if (count <= 0) {
+                if (badge) badge.remove();
+                return;
+            }
+            if (badge) {
+                badge.textContent = String(count);
+                badge.title = 'Files';
+            } else if (title) {
+                const span = document.createElement('span');
+                span.className = 'item-badge';
+                span.title = 'Files';
+                span.textContent = String(count);
+                title.appendChild(span);
+            }
+        });
+    } catch (_) {}
+}
+window.refreshProjectFileBadge = refreshProjectFileBadge;
+
 function renderFiles() {
     const list = document.getElementById('files-list');
     if (!list || !currentProjectName) return;
@@ -475,6 +550,7 @@ function renderFiles() {
     });
 
     list.innerHTML = html;
+    try { refreshProjectFileBadge(currentProjectName); } catch (_) {}
 }
 
 /* ---- Project / file management (used by swipe actions & desktop buttons) ---- */
@@ -507,6 +583,42 @@ async function deleteProject(e, name) {
             currentProjectName = null;
             window.currentProjectName = null;
         }
+        // Purge sprites / music / scenes keyed by this project name
+        try {
+            if (typeof projectAssets === 'undefined' || !projectAssets) {
+                projectAssets = JSON.parse(localStorage.getItem('luadeck_project_assets') || '{}') || {};
+            }
+            if (projectAssets[name]) {
+                delete projectAssets[name];
+                window.projectAssets = projectAssets;
+                localStorage.setItem('luadeck_project_assets', JSON.stringify(projectAssets));
+            }
+        } catch (e) { console.warn('purge assets', e); }
+        try {
+            if (typeof projectMusic === 'undefined' || !projectMusic) {
+                projectMusic = JSON.parse(localStorage.getItem('luadeck_project_music') || '{}') || {};
+            }
+            if (projectMusic[name]) {
+                delete projectMusic[name];
+                window.projectMusic = projectMusic;
+                localStorage.setItem('luadeck_project_music', JSON.stringify(projectMusic));
+            }
+        } catch (e) { console.warn('purge music', e); }
+        try {
+            const raw = localStorage.getItem('luax_project_scenes');
+            const all = raw ? JSON.parse(raw) : {};
+            if (all && all[name]) {
+                delete all[name];
+                localStorage.setItem('luax_project_scenes', JSON.stringify(all));
+            }
+        } catch (e) { console.warn('purge scenes', e); }
+        try {
+            const meta = JSON.parse(localStorage.getItem('luax_project_meta') || '{}') || {};
+            if (meta[name]) {
+                delete meta[name];
+                localStorage.setItem('luax_project_meta', JSON.stringify(meta));
+            }
+        } catch (_) {}
         if (typeof saveState === 'function') saveState();
         if (typeof renderProjects === 'function') renderProjects();
         try { switchView('projects-view'); } catch (_) {}

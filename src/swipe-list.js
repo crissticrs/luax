@@ -520,10 +520,15 @@ function extractFileName(el, html) {
 }
 
 function detectFileKind(html, el) {
-    if (el && el.getAttribute && el.getAttribute('data-scene')) return 'scene';
-    if (/data-scene|data-scn-edit|data-scn-del|item-badge">SCENE|>SCENE<|openSceneEditor/.test(html)) return 'scene';
-    if (/deleteAsset|openSpriteEditor|item-badge">IMG|>IMG</.test(html)) return 'sprite';
-    if (/deleteMusic|openMusicEditor|MUSIC/.test(html)) return 'music';
+    if (el && el.getAttribute) {
+        const k = el.getAttribute('data-kind') || (el.dataset && el.dataset.kind) || '';
+        if (k === 'scene' || k === 'sprite' || k === 'music' || k === 'file') return k;
+        if (el.getAttribute('data-scene')) return 'scene';
+    }
+    const name = (el && (el.getAttribute('data-name') || (el.dataset && el.dataset.name))) || '';
+    if (/\.music$/i.test(name) || /item-badge">MUSIC|>MUSIC<|openMusicEditor|deleteMusic/.test(html || '')) return 'music';
+    if (/\.(png|jpg|jpeg|webp|gif)$/i.test(name) || /item-badge">IMG|>IMG<|openSpriteEditor|deleteAsset/.test(html || '')) return 'sprite';
+    if (/data-scene|data-scn-edit|data-scn-del|item-badge">SCENE|>SCENE<|openSceneEditor/.test(html || '')) return 'scene';
     return 'file';
 }
 

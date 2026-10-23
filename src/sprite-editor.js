@@ -1470,7 +1470,9 @@ async function deleteAsset(e, name) {
         delete map[name];
         try { delete spriteImageCache[currentProjectName + '::' + name]; } catch (_) {}
         saveProjectAssets();
-        if (typeof renderFiles === 'function') renderFiles();
+        if (typeof window.renderFiles === 'function') window.renderFiles();
+        else if (typeof renderFiles === 'function') renderFiles();
+        try { if (typeof refreshProjectFileBadge === 'function') refreshProjectFileBadge(); } catch (_) {}
     } catch (err) { console.error('deleteAsset', err); }
 }
 window.deleteAsset = deleteAsset;

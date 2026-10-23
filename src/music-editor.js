@@ -377,6 +377,38 @@ function previewMusicEditor() {
     updateMusicPlayButton();
 }
 
+
+async function deleteMusicPattern(e, name) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (!name) return;
+    const proj = currentProjectName || window.currentProjectName;
+    if (!proj) return;
+    const ok = (typeof lxConfirm === 'function')
+        ? await lxConfirm('Delete music "' + name + '"?', 'Delete music', { confirmLabel: 'Delete', danger: true })
+        : confirm('Delete ' + name + '?');
+    if (!ok) return;
+    try {
+        if (!projectMusic || typeof projectMusic !== 'object') {
+            try { projectMusic = JSON.parse(localStorage.getItem(MUSIC_KEY) || '{}') || {}; } catch (_) { projectMusic = {}; }
+        }
+        if (projectMusic[proj]) {
+            delete projectMusic[proj][name];
+            // also try bare / .music variants
+            const bare = String(name).replace(/\.music$/i, '');
+            delete projectMusic[proj][bare];
+            delete projectMusic[proj][bare + '.music'];
+        }
+        window.projectMusic = projectMusic;
+        try { localStorage.setItem(MUSIC_KEY, JSON.stringify(projectMusic)); } catch (_) {}
+        if (typeof window.renderFiles === 'function') window.renderFiles();
+        else if (typeof renderFiles === 'function') renderFiles();
+        try { if (typeof renderProjects === 'function') renderProjects(); } catch (_) {}
+    } catch (err) {
+        console.error('deleteMusicPattern', err);
+    }
+}
+window.deleteMusicPattern = deleteMusicPattern;
+
 async function saveMusicFromEditor() {
     const target = (typeof lxResolveSaveProject === 'function')
         ? await lxResolveSaveProject('Save music', 'Choose which project to save this pattern into:')
