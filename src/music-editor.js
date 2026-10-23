@@ -378,14 +378,13 @@ function previewMusicEditor() {
 }
 
 async function saveMusicFromEditor() {
-    if (!currentProjectName) {
-        const proj = (typeof lxPickProject === 'function')
-            ? await lxPickProject('Save music', 'Choose which project to save this pattern into:')
-            : null;
-        if (!proj) return;
-        currentProjectName = proj;
-        window.currentProjectName = proj;
-    }
+    const target = (typeof lxResolveSaveProject === 'function')
+        ? await lxResolveSaveProject('Save music', 'Choose which project to save this pattern into:')
+        : currentProjectName;
+    if (!target) return;
+    currentProjectName = target;
+    window.currentProjectName = target;
+
     let name = musEd.name;
     if (!name) {
         name = (typeof lxPrompt === 'function')
@@ -401,21 +400,30 @@ async function saveMusicFromEditor() {
     const channels = (musEd.channels || musicEmptyGrid(steps)).map(ch => ch.slice());
     const synth = getActiveSynthParams();
     if (wave === 'custom') musEd.synth = synth;
-    const map = getProjectMusicMap(currentProjectName);
+    const map = getProjectMusicMap(target);
     map[name] = { bpm, wave, steps, channels, synth: wave === 'custom' ? synth : undefined };
     saveProjectMusic();
+    window._luaxForcePickProject = false;
     musEd.name = name;
     const title = document.getElementById('music-editor-title');
     if (title) title.textContent = name;
     const bare = name.replace(/\.music$/i, '');
     if (typeof lxAlert === 'function') {
-        await lxAlert('Saved "' + name + '".\n\nIn Lua (both work):\nsfx.music("' + name + '")\nsfx.music("' + bare + '")');
+        await lxAlert('Saved "' + name + '" in project "' + target + '".\n\nIn Lua:\nsfx.music("' + name + '")\nsfx.music("' + bare + '")');
     } else {
-        alert('Saved "' + name + '".\n\nIn Lua (both work):\nsfx.music("' + name + '")\nsfx.music("' + bare + '")');
+        alert('Saved "' + name + '" in "' + target + '"');
     }
     try { stopMusic(); } catch (_) {}
-    switchView('files-view');
-    renderFiles();
+    try {
+        if (typeof openProject === 'function') openProject(target);
+        else {
+            switchView('files-view');
+            if (typeof renderFiles === 'function') renderFiles();
+        }
+    } catch (_) {
+        switchView('files-view');
+        try { renderFiles(); } catch (__) {}
+    }
 }
 
 const _startMusicRaw = typeof startMusic === 'function' ? startMusic : null;

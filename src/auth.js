@@ -98,13 +98,67 @@ function updateProfileUI() {
     renderBillingPanel();
 }
 
+function positionAccountMenu(anchor) {
+    const menu = document.getElementById('account-menu');
+    if (!menu) return;
+    // Reset placement classes
+    menu.classList.remove('account-menu-desktop', 'account-menu-mobile');
+    menu.style.top = '';
+    menu.style.left = '';
+    menu.style.bottom = '';
+    menu.style.right = '';
+
+    const isDesktop = window.matchMedia && window.matchMedia('(min-width: 800px)').matches;
+    const el = anchor || document.getElementById('lx-side-account-btn') || document.getElementById('profile-chip');
+    if (!el) return;
+
+    if (isDesktop) {
+        menu.classList.add('account-menu-desktop');
+        // Measure after display:flex so size is known
+        const r = el.getBoundingClientRect();
+        const mw = menu.offsetWidth || 240;
+        const mh = menu.offsetHeight || 220;
+        // Sit above the profile row, aligned to left of sidebar footer
+        let left = r.left;
+        let bottom = window.innerHeight - r.top + 8;
+        if (left + mw > window.innerWidth - 8) left = window.innerWidth - mw - 8;
+        if (left < 8) left = 8;
+        menu.style.left = left + 'px';
+        menu.style.bottom = bottom + 'px';
+        menu.style.top = 'auto';
+        menu.style.right = 'auto';
+        // If not enough room above, open to the right of the profile
+        if (r.top < mh + 16) {
+            menu.style.bottom = 'auto';
+            menu.style.top = Math.max(8, r.top) + 'px';
+            menu.style.left = Math.min(window.innerWidth - mw - 8, r.right + 8) + 'px';
+        }
+    } else {
+        menu.classList.add('account-menu-mobile');
+        // Keep mobile placement under the header avatar
+        menu.style.top = 'calc(var(--safe-top) + 56px)';
+        menu.style.left = '12px';
+        menu.style.bottom = 'auto';
+        menu.style.right = 'auto';
+    }
+}
+
 function toggleAccountMenu(e) {
     if (e) e.stopPropagation();
     const menu = document.getElementById('account-menu');
     if (!menu) return;
     const open = menu.style.display === 'none' || !menu.style.display;
-    menu.style.display = open ? 'flex' : 'none';
-    updateProfileUI();
+    if (open) {
+        menu.style.display = 'flex';
+        updateProfileUI();
+        // Position after paint so dimensions are correct
+        requestAnimationFrame(function () {
+            const anchor = (e && e.currentTarget) || document.getElementById('lx-side-account-btn') || document.getElementById('profile-chip');
+            positionAccountMenu(anchor);
+        });
+    } else {
+        menu.style.display = 'none';
+    }
 }
 
 function closeAccountMenu() {

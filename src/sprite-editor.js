@@ -1304,27 +1304,24 @@ async function saveSpriteFromEditor() {
     octx.putImageData(img, 0, 0);
     const dataUrl = out.toDataURL('image/png');
 
-    // Standalone create: pick project first
-    if (!currentProjectName) {
-        const proj = (typeof lxPickProject === 'function')
-            ? await lxPickProject('Save sprite', 'Choose which project to save this image into:')
-            : null;
-        if (!proj) return;
-        currentProjectName = proj;
-        window.currentProjectName = proj;
-    }
+    const target = (typeof lxResolveSaveProject === 'function')
+        ? await lxResolveSaveProject('Save image', 'Choose which project to save this image into:')
+        : currentProjectName;
+    if (!target) return;
+    currentProjectName = target;
+    window.currentProjectName = target;
 
     let name = spriteEd.name;
     if (!name) {
         name = (typeof lxPrompt === 'function')
-            ? await lxPrompt('Sprite filename (e.g. hero.png)', 'sprite.png', 'Save sprite', { confirmLabel: 'Save' })
+            ? await lxPrompt('Sprite filename (e.g. hero.png)', 'sprite.png', 'Save image', { confirmLabel: 'Save' })
             : prompt('Sprite filename (e.g. hero.png)', 'sprite.png');
         if (!name) return;
         name = String(name).trim().replace(/[^\w.\-]+/g, '_');
         if (!/\.(png|jpg|jpeg|webp)$/i.test(name)) name += '.png';
     }
 
-    const map = getProjectAssetMap(currentProjectName);
+    const map = getProjectAssetMap(target);
     if (map[name] && name !== spriteEd.name) {
         const replace = (typeof lxConfirm === 'function')
             ? await lxConfirm('Replace existing "' + name + '"?', 'Replace file', { confirmLabel: 'Replace', danger: true })
@@ -1333,18 +1330,27 @@ async function saveSpriteFromEditor() {
     }
 
     map[name] = dataUrl;
-    delete spriteImageCache[currentProjectName + '::' + name];
+    delete spriteImageCache[target + '::' + name];
     saveProjectAssets();
+    window._luaxForcePickProject = false;
     spriteEd.name = name;
     spriteEd.dirty = false;
     document.getElementById('sprite-editor-title').textContent = name;
     if (typeof lxAlert === 'function') {
-        await lxAlert('Saved "' + name + '".\n\nIn Lua:\ngfx.sprite("' + name + '", x, y)');
+        await lxAlert('Saved "' + name + '" in project "' + target + '".\n\nIn Lua:\ngfx.sprite("' + name + '", x, y)');
     } else {
-        alert('Saved "' + name + '".\n\nIn Lua:\ngfx.sprite("' + name + '", x, y)');
+        alert('Saved "' + name + '" in "' + target + '"');
     }
-    switchView('files-view');
-    renderFiles();
+    try {
+        if (typeof openProject === 'function') openProject(target);
+        else {
+            switchView('files-view');
+            renderFiles();
+        }
+    } catch (_) {
+        switchView('files-view');
+        try { renderFiles(); } catch (__) {}
+    }
 }
 
 

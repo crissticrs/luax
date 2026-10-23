@@ -161,12 +161,30 @@ function lxNav(name) {
 }
 
 /** Desktop sidebar create shortcuts (Music / Scene / Draw / Import). Mobile unchanged. */
-function lxDesktopCreate(kind) {
+async function lxDesktopCreate(kind) {
     try {
+        window._luaxForcePickProject = true;
+        window._luaxCreateTargetProject = null;
+
         if (kind === 'import') {
+            window._luaxForcePickProject = false;
             if (typeof importProject === 'function') importProject();
             return;
         }
+
+        // Ask for project first so save always has a clear destination
+        const proj = (typeof lxResolveSaveProject === 'function')
+            ? await lxResolveSaveProject(
+                kind === 'music' ? 'New music' : kind === 'draw' ? 'New image' : 'New scene',
+                'Choose which project this will belong to:'
+            )
+            : currentProjectName;
+        if (!proj) return;
+        currentProjectName = proj;
+        window.currentProjectName = proj;
+        window._luaxForcePickProject = false; // already chosen
+        window._luaxCreateTargetProject = proj;
+
         if (kind === 'music') {
             if (typeof openMusicEditor === 'function') openMusicEditor();
             else if (typeof lxAlert === 'function') lxAlert('Music editor is still loading…');
@@ -189,6 +207,40 @@ function lxDesktopCreate(kind) {
     }
 }
 window.lxDesktopCreate = lxDesktopCreate;
+
+/** Resolve target project for a standalone create (always pick when forced or multiple projects). */
+async function lxResolveSaveProject(title, message) {
+    const force = !!window._luaxForcePickProject;
+    const names = Object.keys(
+        (typeof projects !== 'undefined' && projects) ? projects : (window.projects || {})
+    );
+    if (!names.length) {
+        if (typeof lxAlert === 'function') {
+            await lxAlert('You have no projects yet. Create a project first, then save again.', 'No projects');
+        } else {
+            alert('Create a project first');
+        }
+        return null;
+    }
+    // Sidebar create always forces a pick. From inside a project with one target, skip.
+    const needPick = force || !currentProjectName || (names.length > 1 && force !== false && window._luaxForcePickProject);
+    if (!force && currentProjectName && names.length === 1) return currentProjectName;
+    if (!force && currentProjectName && names.length > 1 && !window._luaxForcePickProject) {
+        // Editing inside an open project — save there
+        return currentProjectName;
+    }
+
+    if (typeof lxPickProject === 'function') {
+        const proj = await lxPickProject(title || 'Save to project', message || 'Choose which project to save into:');
+        if (proj) {
+            window._luaxForcePickProject = false;
+            return proj;
+        }
+        return null;
+    }
+    return currentProjectName || names[0] || null;
+}
+window.lxResolveSaveProject = lxResolveSaveProject;
 
 const FREE_PROJECT_LIMIT = 5;
 
