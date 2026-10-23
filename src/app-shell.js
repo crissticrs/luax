@@ -60,6 +60,7 @@ function renderProjects() {
         try { names = Object.keys(proj).sort(); } catch (_) { names = []; }
         if (q) names = names.filter(function (n) { return n.toLowerCase().indexOf(q) >= 0; });
 
+        // Keep pinned projects first when available
         try {
             const pinned = (typeof loadPinnedProjects === 'function')
                 ? loadPinnedProjects()
@@ -114,6 +115,8 @@ function renderProjects() {
             div.setAttribute('data-name', name);
             div.setAttribute('data-rename', name);
             div.setAttribute('data-gp', name);
+            // Structure expected by swipe-list enhancer
+            // Pin once, right after the name (before the file-count badge)
             div.innerHTML =
                 '<div class="item-title">' +
                     '<span class="item-icon-svg">' + folderIcon + '</span>' +
@@ -121,19 +124,16 @@ function renderProjects() {
                     (pinned ? '<span class="item-pin-badge" title="Pinned">📌</span>' : '') +
                     (fileCount ? '<span class="item-badge" title="Files">' + fileCount + '</span>' : '') +
                 '</div>' +
-                '<div class="item-actions desktop-actions">' +
-                    '<button type="button" class="btn btn-icon" data-gp="' + esc(name) + '" title="' + (gpOn ? 'Gamepad on' : 'Gamepad off') + '" onclick="event.stopPropagation(); try{toggleProjectGamepadFor(\'' + esc(name) + '\'); renderProjects();}catch(_){}">' + (gpOn ? '🎮' : '🚫') + '</button>' +
-                    '<button type="button" class="btn btn-icon" data-rename="' + esc(name) + '" title="Rename" onclick="event.stopPropagation(); try{promptRenameProject(\'' + esc(name) + '\');}catch(_){}">✎</button>' +
-                    '<button type="button" class="btn btn-icon" title="Duplicate" onclick="event.stopPropagation(); try{duplicateProject(\'' + esc(name) + '\');}catch(_){}">⧉</button>' +
-                    '<button type="button" class="btn btn-icon danger" title="Delete" onclick="event.stopPropagation(); try{deleteProject(event,\'' + esc(name) + '\');}catch(_){}">🗑</button>' +
-                '</div>' +
                 '<span class="item-chevron">' + chevronIcon + '</span>';
+            // Hidden data hooks for swipe / context menu (not visible)
+            div.setAttribute('data-gp-on', gpOn ? '1' : '0');
             div.addEventListener('click', function (e) {
-                if (e.target.closest && e.target.closest('.item-actions, button, .swipe-action')) return;
+                if (e.target.closest && e.target.closest('.item-actions, button, .swipe-action, .lx-ctx-menu')) return;
                 try { openProject(name); } catch (_) {}
             });
             list.appendChild(div);
         });
+        // Mobile tip: swipe for actions
         try {
             if (!list.querySelector('.swipe-hint') && window.matchMedia && window.matchMedia('(hover: none)').matches) {
                 const hint = document.createElement('div');
@@ -149,7 +149,7 @@ function renderProjects() {
 
 function escapeHtml(s) {
     return String(s == null ? '' : s)
-        .replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"');
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function esc(s) { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
@@ -245,6 +245,7 @@ function renderFiles() {
     const fileMap = proj[currentProjectName] || {};
     let files = Object.keys(fileMap).sort();
 
+    // Prefer pinned files first
     try {
         const map = JSON.parse(localStorage.getItem('luax_pinned_files') || '{}') || {};
         const pinned = Array.isArray(map[currentProjectName]) ? map[currentProjectName] : [];
@@ -276,17 +277,12 @@ function renderFiles() {
                 '<span class="item-name">' + escapeHtml(fn) + '</span>' +
                 (isMain ? '<span class="item-badge">MAIN</span>' : '<span class="item-badge">LUA</span>') +
             '</div>' +
-            '<div class="item-actions desktop-actions">' +
-                '<button type="button" class="btn btn-icon" title="Rename" onclick="event.stopPropagation(); try{promptRenameFile(\'' + esc(fn) + '\');}catch(_){}">✎</button>' +
-                (!isMain
-                    ? '<button type="button" class="btn btn-icon danger" title="Delete" onclick="event.stopPropagation(); try{deleteFile(event,\'' + esc(fn) + '\');}catch(_){}">🗑</button>'
-                    : '') +
-            '</div>' +
             '</div>'
         );
     }).join('');
 }
 
+/* ---- Project / file management (used by swipe actions & desktop buttons) ---- */
 function deleteProject(e, name) {
     if (e && e.stopPropagation) e.stopPropagation();
     name = name || (e && e.currentTarget && e.currentTarget.getAttribute('data-name'));
@@ -334,6 +330,7 @@ function promptRenameProject(name) {
         delete proj[name];
         if (typeof projects !== 'undefined') projects = proj;
         window.projects = proj;
+        // migrate pin
         try {
             const pinned = JSON.parse(localStorage.getItem('luax_pinned_projects') || '[]') || [];
             const i = pinned.indexOf(name);
@@ -342,6 +339,7 @@ function promptRenameProject(name) {
                 localStorage.setItem('luax_pinned_projects', JSON.stringify(pinned));
             }
         } catch (_) {}
+        // migrate gamepad / assets keys if helpers exist
         try {
             if (typeof getProjectGamepad === 'function' && typeof setProjectGamepad === 'function') {
                 setProjectGamepad(newName, getProjectGamepad(name));
@@ -458,6 +456,7 @@ function hydrateIcons(root) {
     } catch (_) {}
 }
 
+// boot
 try {
     applyTheme(localStorage.getItem('luax_theme') || 'purple');
 } catch (_) {
