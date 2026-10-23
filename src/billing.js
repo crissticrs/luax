@@ -363,7 +363,7 @@ function renderBillingPanel() {
     } else {
         el.innerHTML = `
             <p class="billing-status free">Free plan</p>
-            <p class="billing-meta">${CREDIT_WEEKLY_FREE} credits / week · upgrade anytime for ${CREDIT_WEEKLY_PRO}/week</p>
+            <p class="billing-meta">${CREDIT_WEEKLY_FREE} credits / week · max 5 projects · upgrade for unlimited projects + ${CREDIT_WEEKLY_PRO}/week</p>
             <p class="billing-email-warn" role="alert">Important: Your billing email must match your LuaX account email. If using Apple Pay / Google Pay, check the email on Stripe’s form before making a purchase, or Pro won’t unlock on this account.</p>
             <div class="billing-actions">
               <button type="button" class="btn btn-primary btn-sm" onclick="openSubscriptionInfo()">Upgrade to Pro — €5/mo</button>
@@ -675,7 +675,7 @@ function renderProPage() {
                     <div class="pro-benefit-ico">⚡</div>
                     <div>
                         <h3>${proCred} credits every week</h3>
-                        <p>10× the free plan (${freeCred}/week). Cloud backup (${cloudCost}/hour) and export (${exportCost}) last much longer.</p>
+                        <p>10× the free plan (${freeCred}/week). Cloud save (${cloudCost}) and export (${exportCost}) go much further.</p>
                     </div>
                 </div>
                 <div class="pro-benefit">
@@ -741,17 +741,24 @@ function renderProPage() {
                 </div>
             </div>
             <div class="pro-benefit">
+                <div class="pro-benefit-ico">📁</div>
+                <div>
+                    <h3>Unlimited projects</h3>
+                    <p>Free is capped at <b>5 projects</b>. Pro removes the limit so you can keep as many games as you want.</p>
+                </div>
+            </div>
+            <div class="pro-benefit">
                 <div class="pro-benefit-ico">☁️</div>
                 <div>
-                    <h3>Priority cloud backup</h3>
-                    <p>Projects sync to your private Google Drive app folder more often (${cloudCost} credits/hour). Great if you switch devices.</p>
+                    <h3>Cloud save when you want</h3>
+                    <p>Tap <b>Save to cloud</b> to push a backup to your private Google Drive folder (${cloudCost} credits each time). Background sync stays free.</p>
                 </div>
             </div>
             <div class="pro-benefit">
                 <div class="pro-benefit-ico">📤</div>
                 <div>
                     <h3>More project exports</h3>
-                    <p>Each export costs ${exportCost} credits. With ${proCred}/week you can ship builds and backups without running dry mid-week.</p>
+                    <p>Each export costs ${exportCost} credits. With ${proCred}/week you can ship builds without running dry mid-week.</p>
                 </div>
             </div>
             <div class="pro-benefit">
@@ -792,14 +799,19 @@ function renderProPage() {
                     <td class="hl">up to ${proSt}</td>
                 </tr>
                 <tr>
-                    <td>Cloud backup</td>
-                    <td class="yes">Yes</td>
-                    <td class="yes">Yes · faster</td>
+                    <td>Projects</td>
+                    <td>max 5</td>
+                    <td class="hl">Unlimited</td>
+                </tr>
+                <tr>
+                    <td>Cloud save</td>
+                    <td>${cloudCost} credits each</td>
+                    <td class="yes">${cloudCost} credits · more room</td>
                 </tr>
                 <tr>
                     <td>Export projects</td>
-                    <td class="yes">Yes</td>
-                    <td class="yes">Yes · more room</td>
+                    <td>${exportCost} credits each</td>
+                    <td class="yes">${exportCost} · more room</td>
                 </tr>
                 <tr>
                     <td>Code editor & PLAY</td>

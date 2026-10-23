@@ -85,14 +85,14 @@ function updateProfileUI() {
     if (creditsEl) {
         creditsEl.innerHTML = (isPro() ? 'Pro · ' : 'Free · ') +
             st.left + ' / ' + st.weekly + ' credits left this week' +
-            '<br><span style="font-weight:500;color:var(--muted);font-size:0.75rem">Cloud ' +
-            CREDIT_COSTS.cloud_save + '/hr · Export ' + CREDIT_COSTS.export +
+            '<br><span style="font-weight:500;color:var(--muted);font-size:0.75rem">Cloud save ' +
+            CREDIT_COSTS.cloud_save + ' · Export ' + CREDIT_COSTS.export +
             ' · resets weekly</span>';
     }
     const creditsPill = document.getElementById('status-credits-pill');
     if (creditsPill) {
         creditsPill.textContent = (isPro() ? 'Pro · ' : 'Free · ') + st.left + '/' + st.weekly + ' credits';
-        creditsPill.title = 'Cloud backup ' + CREDIT_COSTS.cloud_save + '/hour · Export ' + CREDIT_COSTS.export + ' · weekly reset';
+        creditsPill.title = 'Cloud save ' + CREDIT_COSTS.cloud_save + ' credits · Export ' + CREDIT_COSTS.export + ' · weekly reset';
     }
     if (subBtn) subBtn.textContent = isPro() ? 'Billing & cancel' : 'LuaX Pro — €5/mo';
     renderBillingPanel();

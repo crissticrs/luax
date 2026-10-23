@@ -1443,6 +1443,16 @@ function handleImport(ev) {
     const reader = new FileReader();
     reader.onload = () => {
         try {
+            try {
+                if (typeof canCreateProject === 'function' && !canCreateProject()) {
+                    alert(
+                        'Free plan is limited to 5 projects.\n\n' +
+                        'Upgrade to Pro for unlimited projects, or delete an existing project first.'
+                    );
+                    ev.target.value = '';
+                    return;
+                }
+            } catch (_) {}
             const data = JSON.parse(reader.result);
             const files = data.files || data;
             if (typeof files !== 'object') throw new Error('Invalid format');

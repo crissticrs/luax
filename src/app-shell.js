@@ -133,15 +133,6 @@ function renderProjects() {
             });
             list.appendChild(div);
         });
-        // Mobile tip: swipe for actions
-        try {
-            if (!list.querySelector('.swipe-hint') && window.matchMedia && window.matchMedia('(hover: none)').matches) {
-                const hint = document.createElement('div');
-                hint.className = 'swipe-hint';
-                hint.textContent = 'Swipe a project left or right for Pin · Rename · Delete';
-                list.appendChild(hint);
-            }
-        } catch (_) {}
     } catch (err) {
         console.error('renderProjects', err);
     }
@@ -169,9 +160,36 @@ function lxNav(name) {
     if (sr) sr.style.display = name === 'projects' ? '' : 'none';
 }
 
+const FREE_PROJECT_LIMIT = 5;
+
+function countProjects() {
+    try {
+        const proj = (typeof projects !== 'undefined' && projects) ? projects : (window.projects || {});
+        return Object.keys(proj || {}).length;
+    } catch (_) { return 0; }
+}
+
+function canCreateProject() {
+    try {
+        if (typeof isPro === 'function' && isPro()) return true;
+    } catch (_) {}
+    return countProjects() < FREE_PROJECT_LIMIT;
+}
+
 function promptNewProject() {
     window.promptNewProject = promptNewProject;
     try {
+        if (!canCreateProject()) {
+            alert(
+                'Free plan is limited to ' + FREE_PROJECT_LIMIT + ' projects.\n\n' +
+                'Upgrade to Pro for unlimited projects (and more weekly credits).'
+            );
+            try {
+                if (typeof lxNav === 'function') lxNav('settings');
+                else if (typeof switchView === 'function') switchView('projects-view');
+            } catch (_) {}
+            return;
+        }
         if (typeof TEMPLATES === 'undefined' || !TEMPLATES) {
             alert('Templates still loading. Wait a second and try again.');
             return;
@@ -440,10 +458,22 @@ function renderThemeGrid() {
     if (!el) return;
     let cur = 'purple';
     try { cur = localStorage.getItem('luax_theme') || 'purple'; } catch (_) {}
-    el.innerHTML = THEMES.map(t =>
-        '<button type="button" class="theme-btn' + (t.id === cur ? ' active' : '') + '" onclick="applyTheme(\'' + t.id + '\'); renderThemeGrid()">' +
-        t.name + '</button>'
-    ).join('');
+    el.innerHTML = THEMES.map(function (t) {
+        const c0 = t.colors[0] || '#8b5cf6';
+        const c1 = t.colors[1] || '#16131f';
+        const c2 = t.colors[2] || '#0c0a12';
+        return (
+            '<button type="button" class="theme-card' + (t.id === cur ? ' active' : '') + '" ' +
+            'onclick="applyTheme(\'' + t.id + '\'); renderThemeGrid()" aria-pressed="' + (t.id === cur ? 'true' : 'false') + '">' +
+            '<span class="theme-swatch" aria-hidden="true">' +
+            '<i style="background:' + c0 + '"></i>' +
+            '<i style="background:' + c1 + '"></i>' +
+            '<i style="background:' + c2 + '"></i>' +
+            '</span>' +
+            '<span class="theme-card-name">' + t.name + '</span>' +
+            '</button>'
+        );
+    }).join('');
 }
 
 function hydrateIcons(root) {

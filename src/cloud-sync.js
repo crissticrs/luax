@@ -41,18 +41,31 @@ async function findCloudFile() {
     return null;
 }
 
-let lastCloudCreditAt = 0;
-const CLOUD_CREDIT_COOLDOWN_MS = 60 * 60 * 1000;
-
+// Credits are only charged for an explicit user-triggered "Save to cloud".
+// Background / sign-in sync is always free.
 async function cloudUpload(silent, opts) {
     if (!googleToken || cloudSyncing) return;
-    const free = opts && opts.free;
-    const now = Date.now();
-    const needCredit = !free && (now - lastCloudCreditAt) >= CLOUD_CREDIT_COOLDOWN_MS;
-    if (needCredit) {
-        const st = loadCreditsState();
-        const cost = CREDIT_COSTS.cloud_save || 0;
-        if (st.left < cost) { if (!silent) setCloudStatus('Cloud: need credits to backup', 'warn'); return; }
+    const paid = !!(opts && opts.paid);
+    if (paid) {
+        const st = (typeof loadCreditsState === 'function') ? loadCreditsState() : { left: 0 };
+        const cost = (typeof CREDIT_COSTS !== 'undefined' && CREDIT_COSTS.cloud_save) || 2;
+        if (st.left < cost) {
+            if (!silent) {
+                setCloudStatus('Cloud: need ' + cost + ' credits to save', 'warn');
+                try {
+                    alert(
+                        'Not enough credits to save to cloud.\n\n' +
+                        'Cloud save costs ' + cost + ' credits.\n' +
+                        'You have ' + st.left + ' left this week.'
+                    );
+                } catch (_) {}
+            }
+            return false;
+        }
+        if (typeof spendCredits === 'function') {
+            const ok = await spendCredits('cloud_save', { silent: !!silent });
+            if (!ok) return false;
+        }
     }
     cloudSyncing = true;
     if (!silent) setCloudStatus('Cloud: saving…');
@@ -83,10 +96,10 @@ async function cloudUpload(silent, opts) {
             throw new Error((err.error && err.error.message) || err.error_description || ('Upload failed HTTP ' + res.status));
         }
         if (!fileId) { const data = await res.json(); cloudFileId = data.id; }
-        if (needCredit) { if (await spendCredits('cloud_save', { silent: true })) lastCloudCreditAt = now; }
-        setCloudStatus('Cloud: synced ✓', 'ok');
-        updateProfileUI();
+        setCloudStatus(paid ? 'Cloud: saved ✓ (−' + ((CREDIT_COSTS && CREDIT_COSTS.cloud_save) || 2) + ' credits)' : 'Cloud: synced ✓', 'ok');
+        try { if (typeof updateProfileUI === 'function') updateProfileUI(); } catch (_) {}
         try { if (typeof window.renderProjects === 'function') window.renderProjects(); } catch (_) {}
+        return true;
     } catch (err) {
         const msg = (err && err.message) ? String(err.message) : 'sync failed';
         const short = msg.length > 48 ? msg.slice(0, 45) + '…' : msg;
@@ -98,7 +111,18 @@ async function cloudUpload(silent, opts) {
             try { localStorage.removeItem(SCOPE_VERSION_KEY); } catch (_) {}
             setTimeout(() => { scopeReauthInFlight = false; requestGoogleTokenWithScopes({ forceConsent: true, silent: true }); }, 500);
         }
+        return false;
     } finally { cloudSyncing = false; }
+}
+
+/** Explicit user action: costs credits. */
+async function saveToCloud() {
+    if (!googleToken || !isGoogleTokenValid()) {
+        setCloudStatus('Cloud: sign in required', 'warn');
+        try { alert('Sign in with Google to save projects to the cloud.'); } catch (_) {}
+        return;
+    }
+    await cloudUpload(false, { paid: true });
 }
 
 function retryCloudSync() {
@@ -107,11 +131,17 @@ function retryCloudSync() {
     cloudSyncOnSignIn({ free: true }).catch(() => {});
 }
 
+/** Background sync — never charges credits. */
 function scheduleCloudSave() {
     if (!googleToken) return;
     clearTimeout(cloudSaveTimer);
-    cloudSaveTimer = setTimeout(() => cloudUpload(true), isPro() ? 1200 : 8000);
+    cloudSaveTimer = setTimeout(() => cloudUpload(true, { free: true }), isPro() ? 1200 : 8000);
 }
+
+try {
+    window.saveToCloud = saveToCloud;
+    window.cloudUpload = cloudUpload;
+} catch (_) {}
 
 async function cloudSyncOnSignIn(opts) {
     try {
