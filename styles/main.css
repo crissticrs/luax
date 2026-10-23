@@ -112,13 +112,20 @@ body:not(.CodeMirror) { -webkit-user-select: none; user-select: none; }
     font-size: 0.95rem;
 }
 .account-menu {
-    position: absolute; z-index: 2000;
-    top: calc(var(--safe-top) + 56px); left: 12px;
-    min-width: 220px; max-width: calc(100vw - 24px);
+    position: fixed; z-index: 10050;
+    min-width: 240px; max-width: min(320px, calc(100vw - 24px));
     background: var(--panel-color); border: 1px solid var(--glass-border);
     border-radius: 14px; padding: 12px;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
     display: flex; flex-direction: column; gap: 8px;
+}
+/* Mobile default (overridden by JS when open) */
+.account-menu-mobile {
+    top: calc(var(--safe-top) + 56px);
+    left: 12px;
+}
+.account-menu-desktop {
+    /* top/left/bottom set in JS relative to profile row */
 }
 .account-menu-user {
     font-size: 0.85rem; color: var(--muted, #aaa); padding: 4px 4px 6px;
