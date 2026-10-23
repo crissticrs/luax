@@ -298,16 +298,169 @@ function onSwipePointerUp(e) {
     swipeVelocity = 0;
 }
 
+function isFinePointerDesktop() {
+    try {
+        return !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+    } catch (_) { return false; }
+}
+
+function closeCtxMenu() {
+    const m = document.getElementById('lx-ctx-menu');
+    if (m) m.remove();
+}
+
+function showCtxMenu(x, y, items) {
+    closeCtxMenu();
+    if (!items || !items.length) return;
+    const menu = document.createElement('div');
+    menu.id = 'lx-ctx-menu';
+    menu.className = 'lx-ctx-menu';
+    menu.setAttribute('role', 'menu');
+    items.forEach(function (it) {
+        if (it.sep) {
+            const s = document.createElement('div');
+            s.className = 'lx-ctx-sep';
+            menu.appendChild(s);
+            return;
+        }
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'lx-ctx-item' + (it.danger ? ' danger' : '');
+        btn.innerHTML = '<span class="lx-ctx-ico">' + (it.icon || '') + '</span><span>' + (it.label || '') + '</span>';
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeCtxMenu();
+            try { it.onClick && it.onClick(); } catch (err) { console.warn(err); }
+        });
+        menu.appendChild(btn);
+    });
+    document.body.appendChild(menu);
+    // Position, keep on-screen
+    const pad = 8;
+    const mw = menu.offsetWidth || 200;
+    const mh = menu.offsetHeight || 200;
+    let left = x;
+    let top = y;
+    if (left + mw > window.innerWidth - pad) left = window.innerWidth - mw - pad;
+    if (top + mh > window.innerHeight - pad) top = window.innerHeight - mh - pad;
+    if (left < pad) left = pad;
+    if (top < pad) top = pad;
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+}
+
+function onListContextMenu(e) {
+    // Desktop only
+    if (!isFinePointerDesktop()) return;
+    const row = e.target.closest && e.target.closest('.swipe-row, .list-item');
+    if (!row) return;
+    // Only on project / file lists
+    const inProjects = !!(row.closest && row.closest('#projects-list'));
+    const inFiles = !!(row.closest && row.closest('#files-list'));
+    if (!inProjects && !inFiles) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    closeAllSwipeRows();
+
+    const name = row.dataset.name || extractProjectName(row) || extractFileName(row, row.innerHTML || '');
+    if (!name) return;
+
+    if (inProjects) {
+        let gpOn = true;
+        try { gpOn = getProjectGamepad(name); } catch (_) {}
+        const pinnedOn = isProjectPinned(name);
+        showCtxMenu(e.clientX, e.clientY, [
+            {
+                icon: pinnedOn ? '📌' : '📍',
+                label: pinnedOn ? 'Unpin' : 'Pin',
+                onClick: function () { toggleProjectPin(name); }
+            },
+            {
+                icon: '🎮',
+                label: gpOn ? 'Gamepad: on' : 'Gamepad: off',
+                onClick: function () {
+                    try { toggleProjectGamepadFor(name); } catch (_) {}
+                    try {
+                        if (typeof window.renderProjects === 'function') window.renderProjects();
+                        else if (typeof renderProjects === 'function') renderProjects();
+                    } catch (_) {}
+                }
+            },
+            { sep: true },
+            {
+                icon: '✎', label: 'Rename',
+                onClick: function () { try { promptRenameProject(name); } catch (_) {} }
+            },
+            {
+                icon: '⧉', label: 'Duplicate',
+                onClick: function () { try { duplicateProject(name); } catch (_) {} }
+            },
+            {
+                icon: '🗑', label: 'Delete', danger: true,
+                onClick: function () {
+                    try { deleteProject({ stopPropagation: function () {} }, name); } catch (_) {}
+                }
+            }
+        ]);
+        return;
+    }
+
+    // Files list
+    const kind = row.dataset.kind || detectFileKind(row.innerHTML || '', row);
+    const pinnedOn = isFilePinned(name);
+    const items = [{
+        icon: pinnedOn ? '📌' : '📍',
+        label: pinnedOn ? 'Unpin' : 'Pin',
+        onClick: function () { toggleFilePin(name); }
+    }];
+    if (kind === 'file') {
+        items.push({ sep: true });
+        items.push({
+            icon: '✎', label: 'Rename',
+            onClick: function () { try { promptRenameFile(name); } catch (_) {} }
+        });
+        if (name !== 'main.lua') {
+            items.push({
+                icon: '🗑', label: 'Delete', danger: true,
+                onClick: function () {
+                    try { deleteFile({ stopPropagation: function () {} }, name); } catch (_) {}
+                }
+            });
+        }
+    } else if (kind === 'sprite' || kind === 'music' || kind === 'scene') {
+        items.push({ sep: true });
+        items.push({
+            icon: '🗑', label: 'Delete', danger: true,
+            onClick: function () {
+                try {
+                    if (kind === 'sprite') deleteAsset({ stopPropagation: function () {} }, name);
+                    else if (kind === 'music') deleteMusicPattern({ stopPropagation: function () {} }, name);
+                    else deleteSceneFile(name);
+                } catch (_) {}
+            }
+        });
+    }
+    showCtxMenu(e.clientX, e.clientY, items);
+}
+
 function wireSwipeListeners() {
     if (window._luaxSwipeWired) return;
     window._luaxSwipeWired = true;
+    // Touch only — never mouse-drag swipe on PC
     document.addEventListener('touchstart', onSwipePointerDown, { passive: true, capture: true });
     document.addEventListener('touchmove', onSwipePointerMove, { passive: false, capture: true });
     document.addEventListener('touchend', onSwipePointerUp, { passive: true, capture: true });
     document.addEventListener('touchcancel', onSwipePointerUp, { passive: true, capture: true });
-    document.addEventListener('mousedown', onSwipePointerDown, true);
-    document.addEventListener('mousemove', onSwipePointerMove, true);
-    document.addEventListener('mouseup', onSwipePointerUp, true);
+    // Right-click context menu on desktop
+    document.addEventListener('contextmenu', onListContextMenu, true);
+    document.addEventListener('click', function (e) {
+        if (!(e.target.closest && e.target.closest('.lx-ctx-menu'))) closeCtxMenu();
+    }, true);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeCtxMenu();
+    }, true);
 }
 
 function directListItems(list) {
@@ -324,6 +477,8 @@ function directListItems(list) {
 
 function extractFileName(el, html) {
     try {
+        const dn = el.getAttribute && el.getAttribute('data-name');
+        if (dn) return dn;
         const ds = el.getAttribute && el.getAttribute('data-scene');
         if (ds) return ds;
         const scn = el.querySelector && el.querySelector('[data-scene], [data-scn-edit], [data-scn-del]');
@@ -342,18 +497,21 @@ function extractFileName(el, html) {
         /deleteMusicPattern\([^,]*,\s*'([^']+)'\)/,
         /data-scene="([^"]+)"/,
         /data-scn-edit="([^"]+)"/,
-        /data-scn-del="([^"]+)"/
+        /data-scn-del="([^"]+)"/,
+        /data-name="([^"]+)"/
     ];
     for (let i = 0; i < patterns.length; i++) {
-        const m = html.match(patterns[i]);
+        const m = (html || '').match(patterns[i]);
         if (m) return m[1].replace(/\\'/g, "'");
     }
-    const title = el.querySelector('.item-title');
+    const nameEl = el.querySelector && el.querySelector('.item-name');
+    if (nameEl && nameEl.textContent) return nameEl.textContent.trim();
+    const title = el.querySelector && el.querySelector('.item-title');
     if (title) {
         const spans = title.querySelectorAll('span');
         for (let i = 0; i < spans.length; i++) {
             const s = spans[i];
-            if (s.classList.contains('item-badge') || s.classList.contains('item-icon-svg')) continue;
+            if (s.classList.contains('item-badge') || s.classList.contains('item-icon-svg') || s.classList.contains('item-pin-badge')) continue;
             const t = (s.textContent || '').trim();
             if (t && t.length < 80) return t;
         }
@@ -367,6 +525,24 @@ function detectFileKind(html, el) {
     if (/deleteAsset|openSpriteEditor|item-badge">IMG|>IMG</.test(html)) return 'sprite';
     if (/deleteMusic|openMusicEditor|MUSIC/.test(html)) return 'music';
     return 'file';
+}
+
+function extractProjectName(el) {
+    if (!el) return '';
+    try {
+        const fromData = el.getAttribute('data-name') || el.getAttribute('data-rename') || el.getAttribute('data-gp') || '';
+        if (fromData) return fromData;
+        const gpBtn = el.querySelector('[data-gp]');
+        if (gpBtn && gpBtn.getAttribute('data-gp')) return gpBtn.getAttribute('data-gp');
+        const renBtn = el.querySelector('[data-rename]');
+        if (renBtn && renBtn.getAttribute('data-rename')) return renBtn.getAttribute('data-rename');
+        const nameEl = el.querySelector('.item-name');
+        if (nameEl && nameEl.textContent) return nameEl.textContent.trim();
+        const html = el.innerHTML || '';
+        const m = html.match(/openProject\('([^']+)'\)/);
+        if (m) return m[1].replace(/\\'/g, "'");
+    } catch (_) {}
+    return '';
 }
 
 function enhanceProjectsListSwipe() {
@@ -385,10 +561,7 @@ function enhanceProjectsListSwipe() {
         if (el.classList.contains('swipe-row') && el.dataset.enhanced === '1') {
             rows.push(el); return;
         }
-        const gpBtn = el.querySelector('[data-gp]');
-        const renBtn = el.querySelector('[data-rename]');
-        const name = (gpBtn && gpBtn.getAttribute('data-gp')) ||
-            (renBtn && renBtn.getAttribute('data-rename')) || '';
+        const name = extractProjectName(el);
         if (!name) { rows.push(el); return; }
 
         let gpOn = true;
@@ -396,9 +569,34 @@ function enhanceProjectsListSwipe() {
         const pinnedOn = isProjectPinned(name);
         const title = el.querySelector('.item-title');
         const chevron = el.querySelector('.item-chevron');
-        let inner = title ? title.outerHTML : el.innerHTML;
+        // Use title as-is — pin badge is already rendered once by app-shell (never re-add)
+        let inner = title ? title.outerHTML : (
+            '<div class="item-title"><span class="item-name">' +
+            String(name).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+            '</span>' +
+            (pinnedOn ? '<span class="item-pin-badge" title="Pinned">📌</span>' : '') +
+            '</div>'
+        );
+        // Strip any accidental duplicate pin badges
+        if (title) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = inner;
+            const badges = tmp.querySelectorAll('.item-pin-badge');
+            for (let bi = 1; bi < badges.length; bi++) badges[bi].remove();
+            const tEl = tmp.querySelector('.item-title');
+            if (tEl) inner = tEl.outerHTML;
+        }
         if (title && chevron) inner += '<span class="item-chevron-static">' + chevron.innerHTML + '</span>';
-        if (pinnedOn && title) inner = inner.replace('</div>', '<span class="item-pin-badge" title="Pinned">📌</span></div>');
+        else if (!title) inner += '<span class="item-chevron-static">›</span>';
+
+        // On desktop: keep plain list item (no swipe chrome); right-click menu handles actions
+        if (isFinePointerDesktop()) {
+            el.dataset.kind = 'project';
+            el.dataset.name = name;
+            el.dataset.enhanced = '1';
+            rows.push(el);
+            return;
+        }
 
         const row = buildSwipeRow({
             kind: 'project', name: name, innerHtml: inner,
@@ -426,6 +624,7 @@ function enhanceProjectsListSwipe() {
         });
 
         row.querySelector('.swipe-content').addEventListener('click', (e) => {
+            if (e.target.closest && e.target.closest('.swipe-action, button')) return;
             if ((row._swipeTx || 0) !== 0) {
                 e.preventDefault(); e.stopPropagation();
                 setSwipeOffset(row, 0, true);
@@ -490,9 +689,36 @@ function enhanceFilesListSwipe() {
         const kind = detectFileKind(html, el);
         const pinnedOn = isFilePinned(name);
         const title = el.querySelector('.item-title');
-        let inner = title ? title.outerHTML : html;
-        if (pinnedOn && title) {
-            inner = inner.replace('</div>', '<span class="item-pin-badge" title="Pinned">📌</span></div>');
+        let inner;
+        if (title) {
+            inner = title.outerHTML;
+        } else {
+            const safe = String(name).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const badge = kind === 'sprite' ? 'IMG' : kind === 'music' ? 'MUSIC' : kind === 'scene' ? 'SCENE' : 'LUA';
+            inner = '<div class="item-title"><span class="item-name">' + safe + '</span><span class="item-badge">' + badge + '</span></div>';
+        }
+        // Pin only if missing — never duplicate
+        if (pinnedOn && inner.indexOf('item-pin-badge') < 0) {
+            // Insert after .item-name when possible
+            if (inner.indexOf('item-name') >= 0) {
+                inner = inner.replace(
+                    /(<\/span>)(\s*<span class="item-badge")/,
+                    '$1<span class="item-pin-badge" title="Pinned">📌</span>$2'
+                );
+                if (inner.indexOf('item-pin-badge') < 0) {
+                    inner = inner.replace('</div>', '<span class="item-pin-badge" title="Pinned">📌</span></div>');
+                }
+            } else {
+                inner = inner.replace('</div>', '<span class="item-pin-badge" title="Pinned">📌</span></div>');
+            }
+        }
+
+        // Desktop: plain row + right-click menu (no swipe chrome)
+        if (isFinePointerDesktop()) {
+            el.dataset.kind = kind;
+            el.dataset.name = name;
+            el.dataset.enhanced = '1';
+            return;
         }
 
         const leftActions = [{
@@ -687,4 +913,7 @@ try {
     window.toggleFilePin = toggleFilePin;
     window.closeAllSwipeRows = closeAllSwipeRows;
     window.deleteSceneFile = deleteSceneFile;
+    window.loadPinnedProjects = loadPinnedProjects;
+    window.isProjectPinned = isProjectPinned;
+    window.isFilePinned = isFilePinned;
 } catch (_) {}
