@@ -335,11 +335,69 @@ body:not(.CodeMirror) { -webkit-user-select: none; user-select: none; }
         background: color-mix(in srgb, var(--accent-color) 18%, transparent);
         color: var(--accent-color);
     }
-    .lx-side-footer {
-        display: flex; align-items: center; gap: 10px; padding: 12px 8px 4px;
-        border-top: 1px solid var(--glass-border); margin-top: 12px;
+    .lx-side-sep {
+        height: 1px;
+        margin: 8px 10px;
+        background: var(--glass-border);
+        opacity: 0.85;
     }
-    .lx-side-user { font-size: 0.8rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+    .lx-side-footer,
+    .lx-side-account {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 8px;
+        margin-top: 12px;
+        border: none;
+        border-top: 1px solid var(--glass-border);
+        border-radius: 12px;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        text-align: left;
+        transition: background 0.15s ease;
+    }
+    .lx-side-account:hover {
+        background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+    }
+    .lx-side-account .profile-circle {
+        pointer-events: none; /* whole row is the click target */
+        flex-shrink: 0;
+    }
+    .lx-side-user {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text-color);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        min-width: 0;
+    }
+    .lx-side-account-hint {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--muted);
+        flex-shrink: 0;
+        opacity: 0.85;
+    }
+    .lx-prompt-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--glass-border);
+        background: var(--panel-2, var(--panel-color));
+        color: var(--text-color);
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+    .btn-danger {
+        background: #ef4444 !important;
+        border-color: #ef4444 !important;
+        color: #fff !important;
+    }
     .lx-bottom-nav { display: none; }
     .desktop-only { display: inline-flex !important; }
     .mobile-only { display: none !important; }
