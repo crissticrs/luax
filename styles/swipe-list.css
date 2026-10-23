@@ -79,9 +79,14 @@
     will-change: transform;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-user-drag: none;
+    touch-action: pan-y;
+    cursor: pointer;
 }
 
-.swipe-content .item-actions {
+/* Hide inline action buttons when inside a swipe row (actions live under the swipe) */
+.swipe-content .item-actions,
+.swipe-content .desktop-actions {
     display: none !important;
 }
 
