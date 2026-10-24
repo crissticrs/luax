@@ -184,7 +184,8 @@ function escapeHtml(s) {
     return String(s == null ? '' : s)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-function esc(s) { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+// NOTE: esc() lives in storage.js (full JS-string + HTML-attribute escaping).
+// A weaker duplicate used to be declared here and overwrote it at load time.
 
 function lxNav(name) {
     document.querySelectorAll('.lx-panel').forEach(p => p.classList.remove('active'));

@@ -28,7 +28,7 @@ const STRIPE_STATUS_KEY = '';
 
 function weekId() {
     const d = new Date();
-    const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const tmp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); // UTC: must match worker.js weekIdUTC()
     const day = tmp.getUTCDay() || 7;
     tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
     const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));

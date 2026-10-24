@@ -9,10 +9,10 @@ function esc(s) {
         .replace(/\r/g, '\\r')
         .replace(/\u2028/g, '\\u2028')
         .replace(/\u2029/g, '\\u2029')
-        .replace(/&/g, '&')
-        .replace(/"/g, '"')
-        .replace(/</g, '<')
-        .replace(/>/g, '>');
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 function sanitizeName(name, fallback) {
     let s = String(name == null ? '' : name).trim();
