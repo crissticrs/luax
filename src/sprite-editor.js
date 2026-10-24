@@ -1497,72 +1497,8 @@ async function deleteFile(e, name) {
     }
 }
 
-// Export / Import
-async function exportProject() {
-    if (!currentProjectName) return;
-    if (!(await spendCredits('export'))) return;
-    const data = {
-        name: currentProjectName,
-        files: projects[currentProjectName],
-        gamepad: getProjectGamepad(currentProjectName),
-        assets: getProjectAssetMap(currentProjectName),
-        exportedAt: new Date().toISOString(),
-        engine: 'LuaX'
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = currentProjectName + '.luax.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
-}
-
-function importProject() {
-    document.getElementById('import-input').click();
-}
-
-function handleImport(ev) {
-    const file = ev.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-        try {
-            try {
-                if (typeof canCreateProject === 'function' && !canCreateProject()) {
-                    alert(
-                        'Free plan is limited to 5 projects.\n\n' +
-                        'Upgrade to Pro for unlimited projects, or delete an existing project first.'
-                    );
-                    ev.target.value = '';
-                    return;
-                }
-            } catch (_) {}
-            const data = JSON.parse(reader.result);
-            const files = data.files || data;
-            if (typeof files !== 'object') throw new Error('Invalid format');
-            let name = data.name || file.name.replace(/\.luadeck\.json$/i, '').replace(/\.json$/i, '') || 'Imported';
-            if (projects[name]) name = name + '_' + Date.now();
-            projects[name] = files;
-            // restore gamepad flag if present (default true)
-            setProjectGamepad(name, data.gamepad !== false);
-            if (data.assets && typeof data.assets === 'object') {
-                projectAssets[name] = data.assets;
-                saveProjectAssets();
-            }
-            if (data.maps && typeof data.maps === 'object') {
-                projectMaps[name] = data.maps;
-                saveProjectMaps();
-            }
-            saveState();
-            renderProjects();
-            alert('Imported as "' + name + '"');
-        } catch (err) {
-            alert('Import failed: ' + err.message);
-        }
-        ev.target.value = '';
-    };
-    reader.readAsText(file);
-}
+// Export / Import of whole projects lives in export-share.js
+// (exportProject, importProject, handleImport, sharePlayLink).
 
 // Import a single .lua file into the current project
 function importLuaFile() {
