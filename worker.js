@@ -137,6 +137,11 @@ async function handleCancel(request, env) {
     return json({ ok: true, email, scheduled: 0, note: 'no_active_subscription' });
   }
 
+  if (scheduled === 0) {
+    // Every Stripe update failed: leave stored state untouched and tell the client.
+    return json({ ok: false, error: 'cancel_failed', errors }, 502);
+  }
+
   await putSub(env, email, {
     active: true,
     activeUntil: activeUntil,
@@ -164,6 +169,7 @@ async function verifyGoogleAccessToken(accessToken, env) {
     if (!res.ok) return null;
     const data = await res.json().catch(() => null);
     if (!data || !data.email) return null;
+    if (data.email_verified === false || data.email_verified === 'false') return null;
 
     const expected =
       (env && env.GOOGLE_CLIENT_ID) ||
@@ -870,6 +876,10 @@ async function verifyStripeSignature(payload, sigHeader, secret) {
     if (k === 'v1') v1s.push(v);
   }
   if (!timestamp || !v1s.length) return false;
+
+  // Reject stale/replayed webhooks (Stripe's default tolerance is 5 minutes)
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
 
   const signedPayload = timestamp + '.' + payload;
   const key = await crypto.subtle.importKey(
