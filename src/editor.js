@@ -552,7 +552,7 @@ function switchTab(fn) {
 }
 
 function openFile(name) {
-    if (!isAuthed()) { applyAuthGate(); return; }
+    if (!canAccessApp()) { applyAuthGate(); return; }
     currentFileName = name;
     const content = projects[currentProjectName][name] || '';
     savedContent = content;

@@ -1982,7 +1982,7 @@ function gameLoop(timestamp) {
 
 
 async function startPlayMode() {
-    if (!isAuthed()) { applyAuthGate(); return; }
+    if (!canAccessApp()) { applyAuthGate(); return; }
     if (!currentProjectName) {
         return alert('Open a project first.');
     }

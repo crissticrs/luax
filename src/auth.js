@@ -74,6 +74,9 @@ function updateProfileUI() {
     } else if (isAuthRestoring()) {
         label = 'Restoring session…';
         side = 'Restoring…';
+    } else if (isGuestMode()) {
+        label = 'Guest · 1 project\nSign in to create more';
+        side = 'Guest';
     }
     if (userEl) { userEl.textContent = label; userEl.style.whiteSpace = 'pre-line'; }
     if (sideUser) sideUser.textContent = side;
@@ -287,8 +290,40 @@ function isGuestPlay() {
 function setGuestPlay(on) {
     window.luaxGuestPlay = !!on;
 }
+// ---- Guest mode: try the editor without an account (limited to 1 project) ----
+var GUEST_MODE_KEY = 'luax_guest_mode';
+var _guestModeMem = false; // fallback when localStorage is unavailable
+
+function isGuestMode() {
+    if (isAuthed() || hasRememberedProfile()) return false; // returning users must sign in again
+    try { return localStorage.getItem(GUEST_MODE_KEY) === '1' || _guestModeMem; } catch (_) { return _guestModeMem; }
+}
+function enterGuestMode() {
+    _guestModeMem = true;
+    try { localStorage.setItem(GUEST_MODE_KEY, '1'); } catch (_) {}
+    const errEl = document.getElementById('login-error');
+    if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
+    applyAuthGate();
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('projects-view')?.classList.add('active');
+    try { if (typeof window.renderProjects === 'function') window.renderProjects(); } catch (_) {}
+    updateProfileUI();
+}
+function leaveGuestMode() {
+    _guestModeMem = false;
+    try { localStorage.removeItem(GUEST_MODE_KEY); } catch (_) {}
+}
+// Shown whenever a guest tries something that needs an account.
+function promptGuestSignIn(reason) {
+    const ok = confirm(
+        (reason || 'This needs an account.') +
+        '\n\nSign in with Google to create more projects and back up to Google Drive.\n\nSign in now?'
+    );
+    if (ok) loginWithGoogle();
+    return ok;
+}
 function canAccessApp() {
-    return isAuthed() || isGuestPlay();
+    return isAuthed() || isGuestPlay() || isGuestMode();
 }
 
 function failAuthRefresh(reason) {
@@ -313,8 +348,26 @@ function applyAuthGate() {
         updateProfileUI();
         return;
     }
+    if (isGuestMode() && !isAuthRestoring()) {
+        const login = document.getElementById('login-view');
+        if (login) login.classList.remove('active');
+        if (!document.querySelector('.view.active:not(#login-view)')) {
+            document.getElementById('projects-view')?.classList.add('active');
+        }
+        void (typeof window.renderProjects === "function" && window.renderProjects());
+        updateProfileUI();
+        return;
+    }
     const locked = !isAuthed();
     const login = document.getElementById('login-view');
+    // Returning users (remembered profile) must sign in again; only brand-new visitors get the guest option.
+    const guestBtn = document.getElementById('login-guest-btn');
+    const guestHint = document.getElementById('login-hint');
+    const offerGuest = !hasRememberedProfile();
+    if (guestBtn) guestBtn.style.display = offerGuest ? '' : 'none';
+    if (guestHint) guestHint.textContent = offerGuest
+        ? 'Guests can make 1 project, saved on this device only. Sign in to create more and back up to Google Drive.'
+        : 'Sign in to open your projects.';
     if (locked) {
         if (typeof isPlaying !== 'undefined' && isPlaying) {
             try { stopPlayMode(); } catch (_) {}
@@ -501,6 +554,7 @@ function ensureGoogleTokenClient(silent) {
                 }
                 persistGoogleToken(resp.access_token, resp.expires_in);
                 markScopesGranted();
+                leaveGuestMode(); // any guest project stays on this device and syncs like a normal one
                 applyAuthGate();
                 document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
                 document.getElementById('projects-view')?.classList.add('active');

@@ -1165,7 +1165,7 @@ function setupSpriteCanvasInput() {
  * Open editor for a new sprite, or edit existing asset by name.
  */
 function openSpriteEditor(existingName) {
-    if (!isAuthed()) { applyAuthGate(); return; }
+    if (!canAccessApp()) { applyAuthGate(); return; }
     // Allow opening without a project (desktop Create → pick project on save)
     if (!currentProjectName && existingName) {
         if (typeof lxAlert === 'function') lxAlert('Open a project first to edit this sprite.');

@@ -600,6 +600,10 @@ async function spendCredits(action, opts) {
 
 function openSubscriptionInfo() {
     closeAccountMenu();
+    if (!isAuthed() && typeof isGuestMode === 'function' && isGuestMode()) {
+        promptGuestSignIn('LuaX Pro needs an account.');
+        return;
+    }
     try { closeModal(); } catch (_) {}
     const active = document.querySelector('.view.active');
     window._proReturnView = (active && active.id && active.id !== 'pro-view')

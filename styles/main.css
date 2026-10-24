@@ -991,6 +991,12 @@ body.controls-hidden #console-panel {
     border-radius: 12px; font-weight: 600; gap: 10px;
 }
 .login-card .btn-google-login:active { background: #f1f3f4; }
+.login-card .btn-guest-login {
+    width: 100%; min-height: 44px; margin-top: 10px; font-size: 0.95rem;
+    background: transparent; color: var(--text-color);
+    border: 1px solid var(--glass-border); border-radius: 12px; font-weight: 600;
+}
+.login-card .btn-guest-login:active { opacity: 0.75; }
 .login-card .login-hint {
     margin: 18px 0 0; font-size: 0.78rem; color: var(--muted); line-height: 1.35;
 }

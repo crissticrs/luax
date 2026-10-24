@@ -38,7 +38,7 @@ document.addEventListener('click', function (e) {
 function switchView(id) {
     const guestOk = (typeof isGuestPlay === 'function' && isGuestPlay()) &&
         (id === 'play-view' || id === 'files-view' || id === 'login-view');
-    if (!isAuthed() && !guestOk && id !== 'login-view') {
+    if (!isAuthed() && !guestOk && !(typeof isGuestMode === 'function' && isGuestMode()) && id !== 'login-view') {
         applyAuthGate();
         return;
     }
@@ -294,25 +294,44 @@ function countProjects() {
     } catch (_) { return 0; }
 }
 
+const GUEST_PROJECT_LIMIT = 1;
+
+function guestLimited() {
+    try { return typeof isGuestMode === 'function' && isGuestMode(); } catch (_) { return false; }
+}
+
 function canCreateProject() {
+    if (guestLimited()) return countProjects() < GUEST_PROJECT_LIMIT;
     try {
         if (typeof isPro === 'function' && isPro()) return true;
     } catch (_) {}
     return countProjects() < FREE_PROJECT_LIMIT;
 }
 
+// Explains why a project can't be created. Returns true if the caller should stop.
+function showProjectLimitMessage(extraFree) {
+    if (guestLimited()) {
+        promptGuestSignIn('Guests can create ' + GUEST_PROJECT_LIMIT + ' project.');
+        return true;
+    }
+    alert(
+        'Free plan is limited to ' + FREE_PROJECT_LIMIT + ' projects.\n\n' +
+        (extraFree || 'Upgrade to Pro for unlimited projects (and more weekly credits).')
+    );
+    return true;
+}
+
 function promptNewProject() {
     window.promptNewProject = promptNewProject;
     try {
         if (!canCreateProject()) {
-            alert(
-                'Free plan is limited to ' + FREE_PROJECT_LIMIT + ' projects.\n\n' +
-                'Upgrade to Pro for unlimited projects (and more weekly credits).'
-            );
-            try {
-                if (typeof lxNav === 'function') lxNav('settings');
-                else if (typeof switchView === 'function') switchView('projects-view');
-            } catch (_) {}
+            showProjectLimitMessage();
+            if (!guestLimited()) {
+                try {
+                    if (typeof lxNav === 'function') lxNav('settings');
+                    else if (typeof switchView === 'function') switchView('projects-view');
+                } catch (_) {}
+            }
             return;
         }
         if (typeof TEMPLATES === 'undefined' || !TEMPLATES) {
@@ -356,7 +375,7 @@ function selectTemplate(k) { selectedTemplate = k; }
 
 function openProject(name) {
     const guest = (typeof isGuestPlay === 'function' && isGuestPlay());
-    if (!isAuthed() && !guest) { applyAuthGate(); return; }
+    if (!canAccessApp()) { applyAuthGate(); return; }
     try {
         currentProjectName = name;
         window.currentProjectName = name;
@@ -681,10 +700,7 @@ function duplicateProject(name) {
     if (!name) return;
     try {
         if (!canCreateProject()) {
-            alert(
-                'Free plan is limited to ' + FREE_PROJECT_LIMIT + ' projects.\n\n' +
-                'Delete a project or upgrade to Pro for unlimited projects.'
-            );
+            showProjectLimitMessage('Delete a project or upgrade to Pro for unlimited projects.');
             return;
         }
         let proj = (typeof projects !== 'undefined' && projects) ? projects : (window.projects || {});
@@ -828,14 +844,14 @@ try { if (typeof lastSaveAt !== 'undefined' && !lastSaveAt && typeof saveState =
 
 setTimeout(function () {
     try {
-        if (typeof isAuthed === 'function' && isAuthed() && typeof renderProjects === 'function') {
+        if (typeof canAccessApp === 'function' && canAccessApp() && typeof renderProjects === 'function') {
             renderProjects();
         }
     } catch (e) { console.warn('boot renderProjects', e); }
 }, 500);
 setTimeout(function () {
     try {
-        if (typeof isAuthed === 'function' && isAuthed() && typeof renderProjects === 'function') {
+        if (typeof canAccessApp === 'function' && canAccessApp() && typeof renderProjects === 'function') {
             renderProjects();
         }
     } catch (e) {}

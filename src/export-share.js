@@ -585,6 +585,16 @@
                     return;
                 }
 
+                if (typeof canCreateProject === 'function' && !canCreateProject()) {
+                    if (typeof showProjectLimitMessage === 'function') {
+                        showProjectLimitMessage('Delete a project or upgrade to Pro to import more.');
+                    } else {
+                        alert('Project limit reached.');
+                    }
+                    ev.target.value = '';
+                    return;
+                }
+
                 const name = installProjectPayload(payload);
                 if (!name) {
                     alert('Import failed.');
